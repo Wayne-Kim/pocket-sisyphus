@@ -438,6 +438,21 @@ export const DAEMON_CAPABILITIES: readonly string[] = [
   // 된다). 자율 실행 경로(cron·워크플로우·skip_permissions)에 도구를 노출하는 건 보안 가드레일이
   // 적용된 뒤에만 — skip_permissions_v1 + 이 capability 로 게이트.
   "mcp_tools_v1",
+  // 수집 «전문가 관점» 렌즈를 11종 «전체» 로 확장 — v2(security 추가) 위에 qa/pm/marketing/analytics/
+  // ops/logic/ux 7종을 더 얹어 리서치(po_research_lens_v9)와 같은 전문가 집합을 수집에서도 쓰게 한다.
+  // lens.ts 의 collectLensHeadmatter 가 7종 머리말을(리서치 같은 렌즈와 의미 일치) 일반 수집 경로에
+  // 주입하고, lensPersona 가 각 렌즈의 «정체성» 을 PO 가 아니라 그 전문가로 바꿔 «고른 전문가가 직접
+  // 브리프를 쓰게» 한다(수집·리서치·디자인 분기 공통). v2 «위» 의 별도 capability 인 이유는 v2 와 동일 —
+  // 새 iOS 가 v2-까지만-아는(security 까진 알아도 qa/… 는 모르는) 옛 daemon 에 그 lens 를 보내면
+  // collectLensHeadmatter 가 빈 문자열을 돌려 parseLens 가 통과시킨 값이 «머리말 없는 default 수집» 으로
+  // 조용히 폴백 → «거짓 UI». 그래서 iOS 는 이 capability 가 있을 때만 수집 픽커에 7종을 더 넣는다.
+  // default/design/bug/security 는 v1/v2 그대로라 회귀 0.
+  "po_collect_lens_v3",
+  // po_briefs.lens 컬럼 — 이 브리프를 «쓴 전문가» 를 행에 직접 박는다(수집 collectLens / 리서치
+  // research.lens). GET /api/po/briefs 가 lens 필드를 함께 돌려주고, iOS 가 백로그 카드에 전문가
+  // 배지를 띄운다(default 면 배지 숨김). 옛 row·옛 daemon 은 lens 누락/'default' → 배지 숨김으로
+  // 회귀 0. 리서치가 만든 브리프는 po_research.lens 와도 일치(카드는 JOIN 없이 이 컬럼만 읽음).
+  "po_brief_lens_v1",
 ] as const;
 
 /**

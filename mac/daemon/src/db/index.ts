@@ -110,6 +110,10 @@ function applyMigrations(d: Database.Database): void {
   // 숨김으로 회귀 0.
   ensureColumn("po_briefs", "exec_agent_id", "TEXT");
   ensureColumn("po_briefs", "cleanup_agent_id", "TEXT");
+  // 이 브리프를 «쓴 전문가» 렌즈 (po_brief_lens_v1) — 수집/리서치가 고른 lens 를 브리프에 직접 박아
+  // iOS 카드가 JOIN 없이 전문가 배지를 띄운다. 옛 row·전방위는 DEFAULT 'default' → 배지 숨김으로
+  // 회귀 0. po_research.lens / po_profiles.lens 와 동형 (CHECK 는 schema.sql 에만, ALTER 미강화).
+  ensureColumn("po_briefs", "lens", "TEXT NOT NULL DEFAULT 'default'");
   // 주기 수집 — 레포별 5필드 cron 식. NULL = 꺼짐 (수동 «지금 수집» 만).
   ensureColumn("po_profiles", "schedule", "TEXT");
   // ASC 스토어 리뷰 신호 — 이 레포 앱의 ASC 앱 ID(또는 번들 ID). NULL = 리뷰 수집 꺼짐.

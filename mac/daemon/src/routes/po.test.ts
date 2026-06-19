@@ -452,13 +452,13 @@ describe("POST /api/po/collect — 전문가 관점 렌즈 (po_collect_lens_v1)"
 
   it("lens=\"design\" 이면 디자인 부채 발굴 모드로 재구성된다", async () => {
     const prompt = await promptFor({ lens: "design" });
-    expect(prompt).toContain("«디자이너» 페르소나");
+    expect(prompt).toContain("너는 이 저장소의 «디자인 전문가» 다");
     expect(prompt).toContain("## 1단계 — UI 표면 스캔");
   });
 
   it("옛 클라이언트 persona=\"designer\" 는 design 렌즈로 매핑된다 (designer→design 동치)", async () => {
     const prompt = await promptFor({ persona: "designer" });
-    expect(prompt).toContain("«디자이너» 페르소나");
+    expect(prompt).toContain("너는 이 저장소의 «디자인 전문가» 다");
     expect(prompt).toContain("## 1단계 — UI 표면 스캔");
   });
 
