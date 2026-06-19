@@ -3,6 +3,19 @@ import SwiftUI
 
 @MainActor
 final class ChatViewModel: ObservableObject {
+    /// PTY 키 입력(터미널/REPL 타이핑)이 WS 로 «전송됐는지» 의 표면화 상태.
+    /// fire-and-forget 송신이 연결 끊김으로 silent drop 되면 사용자가 즉시 알고 재시도하도록
+    /// 세션 화면에 일시적·비파괴 배너를 띄우는 데 쓴다.
+    /// - ok: 정상(배너 없음).
+    /// - failed: 직전 입력이 안 갔고 아직 끊긴 상태(danger).
+    /// - reconnecting: 실패 후 다시 연결됨 — 복구 확인 중(info/secondary), 곧 자동 해제.
+    enum PtyInputDelivery: Equatable {
+        case ok
+        case failed
+        case reconnecting
+    }
+    @Published private(set) var ptyInputDelivery: PtyInputDelivery = .ok
+
     @Published private(set) var items: [ChatItem] = []
     @Published private(set) var isSending: Bool = false
     @Published private(set) var isAwaitingReply: Bool = false
@@ -134,6 +147,17 @@ final class ChatViewModel: ObservableObject {
     private let sessionId: String
     private var pollTask: Task<Void, Never>?
     private var ws: WSClient?
+    /// 입력 전송 표면화 상태 머신 (ptyInputDelivery 의 백킹).
+    /// - inputDeliveryFailed: 드랍된 입력이 있고 아직 복구 미확인.
+    /// - wsConnected: WSClient 의 연결 상태(onConnectionChange 콜백으로 갱신).
+    /// - inputBannerShownAt / inputBannerClearTask: 최소 표시시간 히스테리시스 — 빠른
+    ///   끊김↔복구 토글에서 배너가 깜빡이지 않게 한다.
+    private var inputDeliveryFailed = false
+    private var wsConnected = true
+    private var inputBannerShownAt: Date?
+    private var inputBannerClearTask: Task<Void, Never>?
+    /// 한 번 뜬 배너가 적어도 이만큼은 떠 있게 — 즉각 복구에도 깜빡임 방지.
+    private static let inputBannerMinDisplaySec: TimeInterval = 1.6
     /// WS push 신호를 받으면 wake() 해서 polling loop 가 즉시 한 번 더 돌게 한다.
     /// 공용 헬퍼 (`WakeBox` + `sleepUntilWakeOrTimeout`) 사용.
     private let wakeBox = WakeBox()
@@ -337,6 +361,9 @@ final class ChatViewModel: ObservableObject {
                 conn: conn,
                 sessionId: sessionId,
                 sinceProvider: { [weak self] in self?.lastCreatedAt },
+                onConnectionChange: { [weak self] connected in
+                    self?.handleWSConnectionChange(connected)
+                },
             ) { [weak self] event in
                 self?.handleWSEvent(event)
             }
@@ -350,6 +377,9 @@ final class ChatViewModel: ObservableObject {
         gitStatusTask?.cancel()
         gitStatusTask = nil
         ws?.stop()
+        // 입력 표면화 배너 상태도 초기화 — 재진입 시 stale 배너 방지.
+        clearInputDelivery()
+        wsConnected = true
         // 잠든 sleep 슬롯들을 즉시 깨워 두 loop 가 빠져나오게 한다.
         wakeBox.wake()
         gitStatusWakeBox.wake()
@@ -952,10 +982,78 @@ final class ChatViewModel: ObservableObject {
             }
             guard let ws = self.ws else {
                 KSTrace.log("send", session: self.sessionId, agent: self.currentSession?.agent, bytes: bytes, note: "DROP ws=nil — WS 미생성 / stop 후 호출")
+                // WS 인스턴스 자체가 없으면 입력은 확실히 안 갔다 — 끊김으로 표면화.
+                self.noteInputSendResult(false)
                 return
             }
-            await ws.sendPtyInput(bytes, agent: self.currentSession?.agent)
+            let sent = await ws.sendPtyInput(bytes, agent: self.currentSession?.agent)
+            self.noteInputSendResult(sent)
         }
+    }
+
+    // MARK: - 입력 전송 표면화 (PtyInputDelivery)
+
+    /// WS 연결/끊김 전이 콜백 — WSClient.onConnectionChange 가 호출.
+    /// 입력이 드랍된 적이 있을 때만 배너 상태를 움직인다(끊김 자체는 화면 캡처·ping 등 다른
+    /// 소비자와 공유하는 정상 이벤트라, 입력 손실이 없으면 배너를 띄우지 않는다).
+    private func handleWSConnectionChange(_ connected: Bool) {
+        wsConnected = connected
+        guard inputDeliveryFailed else { return }
+        if connected {
+            // 재연결 성공 — 복구 확인. 최소 표시시간 뒤 자동 해제.
+            scheduleInputBannerRecovery()
+        } else {
+            // 다시 끊김 — 복구 예약 취소하고 danger 유지(깜빡임 방지).
+            inputBannerClearTask?.cancel()
+            inputBannerClearTask = nil
+            ptyInputDelivery = .failed
+        }
+    }
+
+    /// sendPtyInput 결과를 표면화 상태에 반영. ok=true 면 복구 경로, false 면 실패 배너.
+    private func noteInputSendResult(_ ok: Bool) {
+        if ok {
+            wsConnected = true
+            if inputDeliveryFailed { scheduleInputBannerRecovery() }
+        } else {
+            wsConnected = false
+            markInputDeliveryFailed()
+        }
+    }
+
+    /// 입력 드랍 — danger 배너를 띄운다(이미 떠 있으면 표시 시각 유지).
+    private func markInputDeliveryFailed() {
+        inputBannerClearTask?.cancel()
+        inputBannerClearTask = nil
+        if !inputDeliveryFailed {
+            inputDeliveryFailed = true
+            inputBannerShownAt = Date()
+        }
+        ptyInputDelivery = .failed
+    }
+
+    /// 복구 확인(재연결/송신 성공) — info/secondary 로 바꾸고 최소 표시시간을 채운 뒤 해제.
+    /// 그 사이 새 실패가 오면 markInputDeliveryFailed 가 이 Task 를 취소한다(히스테리시스).
+    private func scheduleInputBannerRecovery() {
+        guard inputDeliveryFailed else { return }
+        ptyInputDelivery = .reconnecting
+        inputBannerClearTask?.cancel()
+        let shownFor = inputBannerShownAt.map { Date().timeIntervalSince($0) } ?? Self.inputBannerMinDisplaySec
+        let remaining = max(Self.inputBannerMinDisplaySec - shownFor, 0.6)
+        inputBannerClearTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
+            guard let self, !Task.isCancelled else { return }
+            self.clearInputDelivery()
+        }
+    }
+
+    /// 배너 완전 해제 — 정상 상태로 복귀.
+    private func clearInputDelivery() {
+        inputBannerClearTask?.cancel()
+        inputBannerClearTask = nil
+        inputDeliveryFailed = false
+        inputBannerShownAt = nil
+        ptyInputDelivery = .ok
     }
 
 }
