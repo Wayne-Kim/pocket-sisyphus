@@ -12,6 +12,7 @@
 import {
   DESIGN_LENS_FOCUS,
   collectLensHeadmatter,
+  lensPersona,
   researchLensHeadmatter,
   type PoLens,
 } from "./lens.js";
@@ -554,7 +555,7 @@ ${opts.decisionHistory
     // 디자인 부채 evidence kind — 위반 «종류» 를 분류한다(ref=파일:라인, summary=위반 토큰/패턴명).
     // ingest 는 kind 를 자유 문자열로 받으므로(스키마 동일) 프롬프트에서만 정의한다.
     const designKinds = `design_token_drift|design_color_misuse|design_a11y|design_contrast|design_pattern|design_i18n|code_comment${opts.storeReviews ? "|asc_review" : ""}`;
-    return `너는 이 저장소 프로덕트 오너(PO)의 «디자이너» 페르소나다. 다른 기능의 «제약» 으로만 따라붙던 디자인을 이번엔 «1급 주제» 로 삼아, 이 레포의 UI 표면을 디자인 SSOT 대비로 스캔해 «디자인 부채» 를 기회 브리프로 발굴하는 것이 임무다. 코드를 수정하지 마라 — 읽기/조사만 한다.
+    return `${lensPersona("design")} 다른 기능의 «제약» 으로만 따라붙던 디자인을 이번엔 «1급 주제» 로 삼아, 이 레포의 UI 표면을 디자인 SSOT 대비로 스캔해 «디자인 부채» 를 기회 브리프로 발굴하는 것이 임무다. 코드를 수정하지 마라 — 읽기/조사만 한다.
 
 이건 «구현 후 검수» 가 아니라 «구현 전 발굴(discovery)» 다 — 이미 만들어진 화면에서 디자인 일관성·접근성·대비·토큰 드리프트·패턴 불일치를 찾아, 코드 기능 백로그와 «나란히» 우선순위 브리프로 올린다. (구현 워크플로우의 «디자인 리뷰 게이트 노드» 나 브리프 카드의 «디자인 수용 기준 블록» 과 역할이 겹치지 않는다 — 그건 만들어진 변경을 검수/수용하는 자리고, 여긴 무엇을 고칠지 «찾는» 자리다.)
 ${profile}${directive}${history}${verification}${storeReviews}${crashSignals}${designContext}
@@ -604,7 +605,7 @@ ${DEDUP_SCHEMA_FIELD}
   // 문자열 → lensBlock 이 통째로 사라져 기존 수집 프롬프트와 byte-identical (회귀 0).
   const collectHeadmatter = collectLensHeadmatter(opts.lens ?? "default");
   const lensBlock = collectHeadmatter ? `\n${collectHeadmatter}\n` : "";
-  return `너는 이 저장소의 프로덕트 오너(PO) 에이전트다. 이 레포의 «다음에 만들 가치 있는 일» 을 찾아 기회 브리프로 정리하는 것이 임무다. 코드를 수정하지 마라 — 읽기/조사만 한다.
+  return `${lensPersona(opts.lens ?? "default")} 이 레포의 «다음에 만들 가치 있는 일» 을 찾아 기회 브리프로 정리하는 것이 임무다. 코드를 수정하지 마라 — 읽기/조사만 한다.
 ${profile}${directive}${history}${verification}${storeReviews}${crashSignals}${designContext}${lensBlock}
 ## 1단계 — 신호 수집 (가능한 것만, 실패해도 계속)
 ${githubSignal}
@@ -724,7 +725,7 @@ export function buildPoResearchPrompt(opts: {
     : `- evidence 의 kind 는 "web"(웹 출처 — ref 는 반드시 URL) / "market"(시장 신호 — ref 는 URL) / "repo"(레포 근거 — 파일:라인) / "user_directive"(이 리서치 요청 자체) 를 쓴다.
 - **각 브리프는 web/market 근거를 최소 1개** 포함해야 한다 — 조사가 뒷받침하지 않는 브리프는 만들지 마라. 조사 결과 «하지 말아야 한다» 는 결론이면 브리프 0건(빈 배열)도 정답이다 — 그 이유는 보고서에 담아라.`;
 
-  return `너는 이 저장소의 프로덕트 오너(PO) 에이전트다. ${intro} 코드를 수정하지 마라 — 조사만 한다.
+  return `${lensPersona(opts.lens ?? "default")} ${intro} 코드를 수정하지 마라 — 조사만 한다.
 
 ## 조사 주제 (사용자 요청)
 ${opts.topic}

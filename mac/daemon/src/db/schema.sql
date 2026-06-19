@@ -281,7 +281,8 @@ CREATE TABLE IF NOT EXISTS po_briefs (
   verify_note        TEXT,                 -- 출시 후 검증의 판정 사유 한 줄 (verified/missed 에서만)
   exec_workflow_id   TEXT,                 -- «워크플로우로 실행» 승인이 만든 워크플로우 (po_workflow_v1)
   exec_run_id        TEXT,                 -- 그 워크플로우의 run — iOS 브리프 상세가 진행을 표시
-  exec_note          TEXT                  -- 워크플로우 경로 메모 (AI 설계 실패 fallback / 게이트 거부 / run 실패)
+  exec_note          TEXT,                 -- 워크플로우 경로 메모 (AI 설계 실패 fallback / 게이트 거부 / run 실패)
+  lens               TEXT NOT NULL DEFAULT 'default'  -- 이 브리프를 «쓴 전문가» (po_brief_lens_v1). 수집/리서치가 고른 lens (default/design/bug/qa/security/pm/marketing/analytics/ops/logic/ux). 옛 row·전방위는 'default'. iOS 카드가 전문가 배지로 표시.
 );
 
 CREATE INDEX IF NOT EXISTS idx_po_briefs_status ON po_briefs(status, score DESC, created_at DESC);

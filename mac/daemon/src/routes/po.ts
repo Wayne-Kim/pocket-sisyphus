@@ -75,6 +75,8 @@ type PoBriefRow = {
   exec_note: string | null;
   exec_agent_id: string | null;
   cleanup_agent_id: string | null;
+  /** 이 브리프를 «쓴 전문가» 렌즈 (po_brief_lens_v1) — po_research.lens 와 같은 집합. 옛 row 는 DEFAULT 'default'. */
+  lens: string;
 };
 
 type PoResearchRow = {
@@ -144,6 +146,8 @@ function toApi(row: PoBriefRow): Record<string, unknown> {
     execNote: row.exec_note,
     execAgentId: row.exec_agent_id,
     cleanupAgentId: row.cleanup_agent_id,
+    // 이 브리프를 «쓴 전문가» — iOS 카드가 배지로 노출 (default 면 배지 숨김). 옛 row/누락은 'default'.
+    lens: row.lens ?? "default",
   };
 }
 

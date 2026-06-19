@@ -123280,6 +123280,136 @@
           }
         }
       }
+    },
+    "수집을 맡길 전문가를 골라요. 고른 전문가가 그 관점으로 신호를 모아 «직접» 브리프를 써요 — 예를 들어 «보안» 은 노출·악용 위험을, «디자인» 은 디자인 부채(접근성·대비·토큰 드리프트)를, «디버깅» 은 크래시·재현 버그·회귀를 우선 봐요. 이번 수집에만 적용돼요.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختر الخبير الذي سيتولى هذا التجميع. يجمع الخبير المختار الإشارات من منظوره الخاص ويكتب الملخصات «بنفسه» — على سبيل المثال، يركّز «الأمان» على مخاطر الكشف والاستغلال، و«التصميم» على ديون التصميم (إمكانية الوصول، التباين، انحراف الرموز)، و«التصحيح» على الأعطال والأخطاء القابلة لإعادة الإنتاج والانحدارات. ينطبق على هذا التجميع فقط."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick the expert to run this collection. The chosen expert gathers signals through their own lens and writes the briefs «directly» — for example, «Security» focuses on exposure and exploitation risks, «Design» on design debt (accessibility, contrast, token drift), and «Debugging» on crashes, repro bugs, and regressions. Applies to this collection only."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige al experto que realizará esta recolección. El experto elegido reúne señales desde su propia perspectiva y escribe los briefs «directamente»: por ejemplo, «Seguridad» se centra en riesgos de exposición y explotación, «Diseño» en la deuda de diseño (accesibilidad, contraste, deriva de tokens) y «Depuración» en fallos, errores reproducibles y regresiones. Solo se aplica a esta recolección."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez l'expert chargé de cette collecte. L'expert choisi rassemble les signaux selon son propre regard et rédige «lui-même» les briefs — par exemple, «Sécurité» se concentre sur les risques d'exposition et d'exploitation, «Design» sur la dette de design (accessibilité, contraste, dérive des jetons) et «Débogage» sur les plantages, bugs reproductibles et régressions. S'applique uniquement à cette collecte."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "इस संग्रह को चलाने वाला विशेषज्ञ चुनें। चुना गया विशेषज्ञ अपने दृष्टिकोण से संकेत इकट्ठा करता है और «स्वयं» ब्रीफ़ लिखता है — उदाहरण के लिए, «सुरक्षा» एक्सपोज़र और दुरुपयोग के जोखिमों पर, «डिज़ाइन» डिज़ाइन ऋण (सुलभता, कंट्रास्ट, टोकन ड्रिफ़्ट) पर, और «डिबगिंग» क्रैश, पुनरुत्पादनीय बग और रिग्रेशन पर ध्यान देता है। केवल इस संग्रह पर लागू होता है।"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今回の収集を任せる専門家を選びます。選んだ専門家がその視点でシグナルを集め、«自ら» ブリーフを書きます — 例えば «セキュリティ» は露出・悪用のリスクを、«デザイン» はデザイン負債（アクセシビリティ・コントラスト・トークンのドリフト）を、«デバッグ» はクラッシュ・再現バグ・回帰を優先します。今回の収集にのみ適用されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "수집을 맡길 전문가를 골라요. 고른 전문가가 그 관점으로 신호를 모아 «직접» 브리프를 써요 — 예를 들어 «보안» 은 노출·악용 위험을, «디자인» 은 디자인 부채(접근성·대비·토큰 드리프트)를, «디버깅» 은 크래시·재현 버그·회귀를 우선 봐요. 이번 수집에만 적용돼요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolha o especialista para esta coleta. O especialista escolhido reúne sinais pela própria perspectiva e escreve os briefs «diretamente» — por exemplo, «Segurança» foca em riscos de exposição e exploração, «Design» na dívida de design (acessibilidade, contraste, desvio de tokens) e «Depuração» em falhas, bugs reproduzíveis e regressões. Aplica-se apenas a esta coleta."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите эксперта для этого сбора. Выбранный эксперт собирает сигналы со своей точки зрения и «сам» пишет брифы — например, «Безопасность» уделяет внимание рискам раскрытия и эксплуатации, «Дизайн» — дизайн-долгу (доступность, контраст, дрейф токенов), а «Отладка» — сбоям, воспроизводимым багам и регрессиям. Применяется только к этому сбору."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择负责本次收集的专家。所选专家会以自己的视角收集信号并«直接»撰写简报——例如，«安全»侧重暴露与被利用风险，«设计»侧重设计债务（无障碍、对比度、令牌漂移），«调试»侧重崩溃、可复现缺陷与回归。仅适用于本次收集。"
+          }
+        }
+      }
+    },
+    "주기 수집이 매일 어느 전문가의 관점으로 신호를 모아 브리프를 쓸지 정해요. 프로젝트에 저장돼요 — 수동 수집은 시작할 때 따로 고른 전문가가 우선해요.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يحدد منظور أي خبير يستخدمه التجميع المجدول كل يوم لجمع الإشارات وكتابة الملخصات. يُحفظ في المشروع — تكون الأولوية للخبير الذي تختاره عند بدء تجميع يدوي."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sets which expert's lens the scheduled collection uses each day to gather signals and write briefs. Saved to the project — an expert you pick when starting a manual collection takes precedence."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Define con qué perspectiva de experto la recolección programada reúne señales y escribe briefs cada día. Se guarda en el proyecto; el experto que elijas al iniciar una recolección manual tiene prioridad."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Définit selon le regard de quel expert la collecte planifiée rassemble les signaux et rédige les briefs chaque jour. Enregistré dans le projet — un expert choisi au lancement d'une collecte manuelle est prioritaire."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "तय करता है कि निर्धारित संग्रह हर दिन किस विशेषज्ञ के दृष्टिकोण से संकेत इकट्ठा करके ब्रीफ़ लिखेगा। प्रोजेक्ट में सहेजा जाता है — मैन्युअल संग्रह शुरू करते समय अलग से चुना गया विशेषज्ञ प्राथमिकता पाता है।"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "定期収集が毎日どの専門家の視点でシグナルを集めてブリーフを書くかを決めます。プロジェクトに保存されます — 手動収集では開始時に選んだ専門家が優先されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주기 수집이 매일 어느 전문가의 관점으로 신호를 모아 브리프를 쓸지 정해요. 프로젝트에 저장돼요 — 수동 수집은 시작할 때 따로 고른 전문가가 우선해요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Define pela perspectiva de qual especialista a coleta programada reúne sinais e escreve briefs a cada dia. Salvo no projeto — um especialista escolhido ao iniciar uma coleta manual tem prioridade."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Определяет, с точки зрения какого эксперта запланированный сбор каждый день собирает сигналы и пишет брифы. Сохраняется в проекте — приоритет имеет эксперт, выбранный при запуске ручного сбора."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置定时收集每天以哪位专家的视角收集信号并撰写简报。保存在项目中——手动收集时启动时另选的专家优先。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

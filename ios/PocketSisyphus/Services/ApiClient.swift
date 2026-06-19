@@ -699,6 +699,10 @@ struct PoBrief: Codable, Identifiable, Equatable, Hashable {
     /// 정리 에이전트 ID (po_agent_echo_v1) — cleanup 응답과 브리프 목록에 포함. 구 daemon 응답엔
     /// 없음 → nil.
     let cleanupAgentId: String?
+    /// 이 브리프를 «쓴 전문가» 렌즈 (po_brief_lens_v1) — 수집/리서치가 고른 lens
+    /// (default/design/bug/qa/security/pm/marketing/analytics/ops/logic/ux). 카드가 전문가 배지로 노출
+    /// (default 면 배지 숨김). 구 daemon 응답엔 없음 → nil (배지 숨김으로 회귀 0).
+    let lens: String?
 }
 
 /// 일괄 결재 (po_bulk_decide_v1) 에서 «적용 못 한» 한 건. reason="not_found"(사라짐) |

@@ -195,6 +195,7 @@ struct BacklogView: View {
                 supportsDesignBootstrap: capabilities.contains("po_design_bootstrap_v1"),
                 supportsCollectLens: capabilities.contains("po_collect_lens_v1"),
                 supportsSecurityCollectLens: capabilities.contains("po_collect_lens_v2"),
+                supportsAllExpertsCollectLens: capabilities.contains("po_collect_lens_v3"),
                 agents: supportsAgentChoice ? agents : [],
             ) { repoPath, instruction, agent, lens in
                 showCollectSheet = false
@@ -832,6 +833,25 @@ private struct PoAgentChip: View {
     }
 }
 
+/// 브리프를 «쓴 전문가» 칩 (po_brief_lens_v1) — 어느 전문가 관점으로 만들어졌는지 카드에 노출.
+/// 표시명은 픽커·리서치 칩과 «같은» poResearchLensName 카탈로그 키를 재사용한다(중복 정의 금지·신규 문자열 0).
+/// 색은 중립(.secondary) — 렌즈는 «분류 라벨» 이라 pro(주황)·status 색을 빌려쓰지 않는다(색 정책).
+/// "default"(전방위)·nil 은 호출부에서 거른다 (칩 자체를 안 띄움 → 구 daemon·전방위 브리프 회귀 0).
+private struct PoLensChip: View {
+    let lens: String
+
+    var body: some View {
+        Label {
+            Text(poResearchLensName(lens))
+        } icon: {
+            Image(systemName: "eyeglasses")
+        }
+        .font(.caption2.weight(.medium))
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
+    }
+}
+
 private struct BriefRow: View {
     let brief: PoBrief
     var showRepo = true
@@ -850,6 +870,10 @@ private struct BriefRow: View {
                 Label("노력 \(brief.effort)", systemImage: "hammer")
                 Label("근거 \(brief.evidence.count)", systemImage: "link")
                 Spacer(minLength: 0)
+                // 이 브리프를 «쓴 전문가» (po_brief_lens_v1) — 전방위/구 daemon(nil)은 숨김.
+                if let lens = brief.lens, lens != "default", !lens.isEmpty {
+                    PoLensChip(lens: lens)
+                }
                 // 실행 에이전트 (po_agent_echo_v1) — 결재된 브리프엔 «실제로 돌린» 도구가 실린다.
                 // 카드는 후보 목록을 안 받으므로 AgentKind 브랜드명만으로 표시.
                 if let agentId = brief.execAgentId {
@@ -1376,13 +1400,18 @@ private struct PoStatsSheet: View {
 // MARK: - 리서치
 
 /// 수집 «전문가 관점» 렌즈가 노출하는 집합 — v1(po_collect_lens_v1)에선 전방위·디자인·디버깅 3개,
-/// v2(po_collect_lens_v2)면 «보안» 까지 추가된다. capability 로 한 단계씩 게이팅하는 이유: security 를
-/// 모르는 옛 daemon(v1 만)에 보내면 collectLensHeadmatter 가 빈 문자열을 돌려 parseLens 가 통과시킨
-/// security 가 전방위로 조용히 폴백 → «거짓 UI» 가 된다 (리서치 렌즈 v2~v9 게이팅과 동형). design 은
-/// 디자인 부채 발굴(옛 designer 페르소나와 동치), bug 는 디버깅·신뢰성, security 는 인증·키 취급·노출면·
-/// 자격증명·위협모델 신호 우선 — 리서치의 같은 렌즈(lens.ts SSOT)와 의미 일치. (qa/pm/… 은 후속 단계.)
-/// 표시명은 poResearchLensName 을 그대로 재사용해 리서치와 «같은 명칭·같은 카탈로그 키» 로 통일한다.
-private func poCollectLenses(security: Bool) -> [String] {
+/// v2(po_collect_lens_v2)면 «보안» 추가, v3(po_collect_lens_v3)면 리서치와 «같은» 전문가 11종 전체
+/// (qa/pm/marketing/analytics/ops/logic/ux 까지). capability 로 한 단계씩 게이팅하는 이유: 그 렌즈를
+/// 모르는 옛 daemon 에 보내면 collectLensHeadmatter 가 빈 문자열을 돌려 parseLens 가 통과시킨 값이
+/// 전방위로 조용히 폴백 → «거짓 UI» 가 된다 (리서치 렌즈 v2~v9 게이팅과 동형). 표시명은
+/// poResearchLensName 을 그대로 재사용해 리서치와 «같은 명칭·같은 카탈로그 키» 로 통일하고, v3 의 11종
+/// 순서도 poResearchLenses 의 canonical 순서를 그대로 쓴다 (중복 정의 금지).
+private func poCollectLenses(security: Bool, allExperts: Bool) -> [String] {
+    if allExperts {
+        return poResearchLenses(
+            qa: true, security: true, pm: true, marketing: true, analytics: true, ops: true,
+            logic: true, ux: true)
+    }
     var lenses = ["default", "design", "bug"]
     if security { lenses.append("security") }
     return lenses
@@ -2733,6 +2762,9 @@ private struct CollectRepoSheet: View {
     /// daemon 이 «보안» 수집 렌즈(po_collect_lens_v2)까지 지원하는가 — 미지원이면 security 옵션을 빼서
     /// 거짓 UI 방지(옛 daemon 에 security 를 보내면 머리말 없이 전방위로 조용히 폴백한다).
     let supportsSecurityCollectLens: Bool
+    /// daemon 이 수집 전문가 «11종 전체»(po_collect_lens_v3)를 지원하는가 — true 면 픽커가 리서치와
+    /// 같은 11종(qa/pm/marketing/analytics/ops/logic/ux 추가), false 면 v1/v2 수준(3종+보안).
+    let supportsAllExpertsCollectLens: Bool
     /// 에이전트 후보 (po_agent_v1) — 비어 있으면 픽커를 숨기고 daemon 기본으로 돈다.
     let agents: [AgentInfo]
     /// (repoPath, instruction?, agent?, lens?) — instruction/lens 는 비우면 nil. 프로필 저장은 2단계가 처리.
@@ -2782,6 +2814,7 @@ private struct CollectRepoSheet: View {
                     supportsDesignBootstrap: supportsDesignBootstrap,
                     supportsCollectLens: supportsCollectLens,
                     supportsSecurityCollectLens: supportsSecurityCollectLens,
+                    supportsAllExpertsCollectLens: supportsAllExpertsCollectLens,
                     agents: agents, onStart: onPick)
             }
             .toolbar {
@@ -2812,6 +2845,8 @@ private struct CollectProfileForm: View {
     let supportsCollectLens: Bool
     /// daemon 이 «보안» 수집 렌즈(po_collect_lens_v2)까지 지원하는가 — security 옵션 게이팅.
     let supportsSecurityCollectLens: Bool
+    /// daemon 이 수집 전문가 «11종 전체»(po_collect_lens_v3)를 지원하는가 — 11종 노출 게이팅.
+    let supportsAllExpertsCollectLens: Bool
     let agents: [AgentInfo]
     let onStart: (String, String?, String?, String?) -> Void
 
@@ -2832,7 +2867,11 @@ private struct CollectProfileForm: View {
                     // 기본 컨트롤 — 색 안 정함 → AccentColor(보라) 자동. 콘텐츠에 .tint() 안 건다.
                     // «보안» 도 다른 렌즈와 같은 시각 위계(중립 칩 + accent 선택 체크) — 경고/위험색 안 씀.
                     Picker(selection: $lens) {
-                        ForEach(poCollectLenses(security: supportsSecurityCollectLens), id: \.self) { id in
+                        ForEach(
+                            poCollectLenses(
+                                security: supportsSecurityCollectLens,
+                                allExperts: supportsAllExpertsCollectLens), id: \.self
+                        ) { id in
                             Text(poResearchLensName(id)).tag(id)
                         }
                     } label: {
@@ -2844,7 +2883,9 @@ private struct CollectProfileForm: View {
                 } header: {
                     Text("전문가 관점")
                 } footer: {
-                    if supportsSecurityCollectLens {
+                    if supportsAllExpertsCollectLens {
+                        Text("수집을 맡길 전문가를 골라요. 고른 전문가가 그 관점으로 신호를 모아 «직접» 브리프를 써요 — 예를 들어 «보안» 은 노출·악용 위험을, «디자인» 은 디자인 부채(접근성·대비·토큰 드리프트)를, «디버깅» 은 크래시·재현 버그·회귀를 우선 봐요. 이번 수집에만 적용돼요.")
+                    } else if supportsSecurityCollectLens {
                         Text("수집을 맡길 전문가 관점을 골라요. «디자인» 은 코드 기능 대신 이 레포 UI 의 디자인 부채(접근성·대비·토큰 드리프트·패턴 불일치)를, «디버깅» 은 크래시·실패 로그·재현 버그·회귀 같은 신뢰성 신호를, «보안» 은 인증·키 취급·네트워크 노출면·자격증명 흐름·위협모델 대비 같은 보안 신호를 우선 모아 증거와 함께 브리프로 올려요. 이번 수집에만 적용돼요.")
                     } else {
                         Text("수집을 맡길 전문가 관점을 골라요. «디자인» 은 코드 기능 대신 이 레포 UI 의 디자인 부채(접근성·대비·토큰 드리프트·패턴 불일치)를, «디버깅» 은 크래시·실패 로그·재현 버그·회귀 같은 신뢰성 신호를 우선 모아 증거와 함께 브리프로 올려요. 이번 수집에만 적용돼요.")
@@ -2879,7 +2920,8 @@ private struct CollectProfileForm: View {
                         supportsAsc: supportsAsc, supportsFeedbackRepo: supportsFeedbackRepo,
                         supportsDesignBootstrap: supportsDesignBootstrap,
                         supportsCollectLens: supportsCollectLens,
-                        supportsSecurityCollectLens: supportsSecurityCollectLens)
+                        supportsSecurityCollectLens: supportsSecurityCollectLens,
+                        supportsAllExpertsCollectLens: supportsAllExpertsCollectLens)
                 } label: {
                     Label {
                         Text("이 레포 조사 설정")
@@ -2943,6 +2985,8 @@ private struct CollectRepoSettingsView: View {
     /// daemon 이 «보안» 수집 렌즈(po_collect_lens_v2)까지 지원하는가 — 주기 수집 렌즈 픽커의 security
     /// 옵션 게이팅. 미지원이면 security 를 빼서 거짓 UI 방지(저장돼 있어도 daemon 이 전방위로 폴백).
     let supportsSecurityCollectLens: Bool
+    /// daemon 이 수집 전문가 «11종 전체»(po_collect_lens_v3)를 지원하는가 — 주기 수집 픽커 11종 게이팅.
+    let supportsAllExpertsCollectLens: Bool
 
     @State private var profile = ""
     @State private var profileLoaded = false
@@ -3140,7 +3184,11 @@ private struct CollectRepoSettingsView: View {
                 // 기본 컨트롤 — 색 안 정함 → AccentColor(보라) 자동. 콘텐츠에 .tint() 안 건다.
                 // «보안» 도 다른 렌즈와 같은 시각 위계(중립 칩 + accent 선택 체크) — 경고/위험색 안 씀.
                 Picker(selection: $lens) {
-                    ForEach(poCollectLenses(security: supportsSecurityCollectLens), id: \.self) { id in
+                    ForEach(
+                        poCollectLenses(
+                            security: supportsSecurityCollectLens,
+                            allExperts: supportsAllExpertsCollectLens), id: \.self
+                    ) { id in
                         Text(poResearchLensName(id)).tag(id)
                     }
                 } label: {
@@ -3152,7 +3200,9 @@ private struct CollectRepoSettingsView: View {
             } header: {
                 Text("전문가 관점")
             } footer: {
-                if supportsSecurityCollectLens {
+                if supportsAllExpertsCollectLens {
+                    Text("주기 수집이 매일 어느 전문가의 관점으로 신호를 모아 브리프를 쓸지 정해요. 프로젝트에 저장돼요 — 수동 수집은 시작할 때 따로 고른 전문가가 우선해요.")
+                } else if supportsSecurityCollectLens {
                     Text("주기 수집이 매일 어느 관점으로 신호를 모을지 정해요. «디자인» 은 UI 디자인 부채를, «디버깅» 은 크래시·신뢰성 신호를, «보안» 은 인증·키 취급·노출면·자격증명 흐름·위협모델 대비 신호를 우선 모아요. 프로젝트에 저장돼요 — 수동 수집은 시작할 때 따로 고른 관점이 우선해요.")
                 } else {
                     Text("주기 수집이 매일 어느 관점으로 신호를 모을지 정해요. «디자인» 은 UI 디자인 부채를, «디버깅» 은 크래시·신뢰성 신호를 우선 모아요. 프로젝트에 저장돼요 — 수동 수집은 시작할 때 따로 고른 관점이 우선해요.")

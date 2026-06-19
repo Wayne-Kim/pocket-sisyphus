@@ -379,7 +379,13 @@ async function finalizeCollection(
     // 브리프 0건» 을 만들었다 (산출 파일만 /tmp 에 잔존·미-ingest). xhigh effort 처럼 한 턴이 길어지는
     // 설정에선 settle 상한을 넘기기 쉬워 이 유실이 자주 난다. ingestBriefs/ingestVerdicts 는 파일 없음/
     // 깨진 JSON/부분 산출에 모두 안전([] / 0)이라 status 무관하게 거둬도 손해가 없다.
-    const insertedIds = ingestBriefs(sessionId, repoPath, outFile);
+    const insertedIds = ingestBriefs(
+      sessionId,
+      repoPath,
+      outFile,
+      undefined,
+      promptOpts.lens ?? "default",
+    );
     const verdicts = ingestVerdicts(repoPath, verdictFile);
     console.log(
       `[po] collect done session=${sessionId} status=${result.status} briefs=${insertedIds.length} verdicts=${verdicts} signals=store:${signals.store.state}/crash:${signals.crash.state}`,
@@ -476,6 +482,9 @@ export function ingestBriefs(
   repoPath: string,
   outFile: string,
   researchId?: string,
+  // 이 배치를 «쓴 전문가» 렌즈 (po_brief_lens_v1) — 수집(collectLens)/리서치(research.lens)가 고른 값.
+  // 생략/전방위는 'default' → iOS 카드 배지 숨김(회귀 0). 호출부가 명시 전달한다.
+  lens: PoLens = "default",
 ): string[] {
   let raw: string;
   try {
@@ -510,8 +519,8 @@ export function ingestBriefs(
   const now = Date.now();
   const insertedIds: string[] = [];
   const insert = db().prepare(
-    `INSERT INTO po_briefs (id, repo_path, title, problem, evidence, impact, effort, score, scope, spec, status, created_at, updated_at, collect_session_id, research_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'proposed', ?, ?, ?, ?)`,
+    `INSERT INTO po_briefs (id, repo_path, title, problem, evidence, impact, effort, score, scope, spec, status, created_at, updated_at, collect_session_id, research_id, lens)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'proposed', ?, ?, ?, ?, ?)`,
   );
 
   for (const item of (parsed as unknown[]).slice(0, MAX_BRIEFS_PER_RUN)) {
@@ -546,6 +555,7 @@ export function ingestBriefs(
       now,
       sessionId,
       researchId ?? null,
+      lens,
     );
     corpus.push({ title: draft.title, problem: draft.problem });
     insertedIds.push(id);
@@ -687,7 +697,16 @@ export function startPoResearch(
   console.log(
     `[po] research start id=${researchId} session=${sessionId} repo=${repoPath} agent=${agentId} lens=${lens} scope=${scope ?? "web_repo"} screens=${screens === true}`,
   );
-  void finalizeResearch(researchId, sessionId, repoPath, reportFile, briefsFile, prompt, agentId).catch(
+  void finalizeResearch(
+    researchId,
+    sessionId,
+    repoPath,
+    reportFile,
+    briefsFile,
+    prompt,
+    agentId,
+    lens,
+  ).catch(
     (e) => console.warn(`[po] research finalize failed id=${researchId}:`, (e as Error).message),
   );
   return { status: "running", researchId, sessionId, agentId };
@@ -702,6 +721,8 @@ async function finalizeResearch(
   briefsFile: string,
   prompt: string,
   agentId: string,
+  // 이 리서치를 «쓴 전문가» 렌즈 — 브리프에 직접 박아 카드가 JOIN 없이 배지를 띄운다 (po_research.lens 와 동치).
+  lens: PoLens,
 ): Promise<void> {
   markCronSession(sessionId);
   try {
@@ -734,7 +755,7 @@ async function finalizeResearch(
     // 에이전트가 이미 쓴 보고서·브리프를 버리지 않는다 (수집 finalize 와 동형). 조기 실패로 보고서
     // 자체가 없을 때만 failed. ingestBriefs 는 파일 없음/깨진 JSON 에 [] 로 안전.
     const ok = report.length > 0;
-    const insertedIds = ok ? ingestBriefs(sessionId, repoPath, briefsFile, researchId) : [];
+    const insertedIds = ok ? ingestBriefs(sessionId, repoPath, briefsFile, researchId, lens) : [];
 
     db()
       .prepare(

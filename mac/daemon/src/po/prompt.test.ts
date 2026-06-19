@@ -15,7 +15,9 @@ import { buildPoFallbackDef } from "./workflow-exec.js";
 import {
   SECURITY_LENS_FOCUS,
   collectLensHeadmatter,
+  lensPersona,
   researchLensHeadmatter,
+  type PoLens,
 } from "./lens.js";
 
 /** 수집 프롬프트의 최소 필수 입력 — 나머지(이력·지시·리뷰 등)는 선택. */
@@ -257,17 +259,25 @@ describe("buildPoCollectPrompt — 전문가 관점 렌즈 (po_collect_lens_v1/v
     expect(baseline).toContain("## 1단계 — 신호 수집");
   });
 
-  // 픽커에 노출하지 않는 렌즈(qa/pm/…)는 머리말 없이 default 와 byte-identical — 옛 daemon 에
-  // security 가 와도(parseLens 통과) 이 폴백을 타기 전 collectLensHeadmatter 가 빈 문자열을 돌린다.
-  it("픽커 밖 렌즈(qa)는 머리말 없이 default 수집과 byte-identical (안전 폴백)", () => {
-    const baseline = buildPoCollectPrompt(base);
-    expect(buildPoCollectPrompt({ ...base, lens: "qa" })).toBe(baseline);
+  // qa/pm/marketing/analytics/ops/logic/ux 는 po_collect_lens_v3 로 «실제» 전문가가 됐다 — 각자
+  // 페르소나(lensPersona) + 수집 머리말(collectLensHeadmatter)을 가진다. (옛 daemon 이 모르는 lens 를
+  // 받아도 collectLensHeadmatter 가 빈 문자열로 떨어져 머리말 없는 default 로 안전 폴백하는 가드는
+  // 그대로 — 단 페르소나는 lens.ts 가 알면 바뀐다.)
+  it("lens=\"qa\" 이면 «QA 전문가» 페르소나 + 수집 머리말 (po_collect_lens_v3)", () => {
+    const out = buildPoCollectPrompt({ ...base, lens: "qa" });
+    expect(out).toContain("너는 이 저장소의 «QA(품질 보증) 전문가» 다");
+    expect(out).not.toContain("프로덕트 오너(PO)");
+    expect(out).toContain("## 수집 관점 — QA(품질 보증) 전문가");
+    // 일반 수집 골격 유지 (디자인 부채 재구성이 아니다).
+    expect(out).toContain("## 1단계 — 신호 수집");
+    expect(out).not.toContain("## 1단계 — UI 표면 스캔");
   });
 
-  it("lens=\"design\" 이면 옛 designer 페르소나와 같은 미션·스캔·부채 종합으로 재구성된다 (designer→design 동치)", () => {
+  it("lens=\"design\" 이면 «디자인 전문가» 정체성으로 UI 표면 스캔·부채 종합으로 재구성된다 (po_brief_lens_v1 — PO 가 아니라 그 전문가가 직접 쓴다)", () => {
     const out = buildPoCollectPrompt({ ...base, lens: "design" });
-    // 디자이너 미션 — 디자인을 «1급 주제» 로.
-    expect(out).toContain("«디자이너» 페르소나");
+    // 정체성이 PO 가 아니라 «디자인 전문가» 다 (lensPersona) — 디자인을 «1급 주제» 로.
+    expect(out).toContain("너는 이 저장소의 «디자인 전문가» 다");
+    expect(out).not.toContain("프로덕트 오너(PO)");
     expect(out).toContain("«1급 주제»");
     // 1단계가 신호 수집이 아니라 «UI 표면 스캔(design SSOT 대비)» 으로 바뀐다.
     expect(out).toContain("## 1단계 — UI 표면 스캔 (design SSOT 대비, 가능한 것만)");
@@ -401,6 +411,74 @@ describe("buildPoCollectPrompt — 전문가 관점 렌즈 (po_collect_lens_v1/v
     // 리뷰가 없으면 asc_review kind 는 빠진다.
     const without = buildPoCollectPrompt({ ...base, lens: "design" });
     expect(without).not.toContain("asc_review");
+  });
+});
+
+describe("전문가 페르소나 (po_brief_lens_v1) — PO 가 아니라 각 전문가가 «직접» 쓴다", () => {
+  const researchBaseLocal = {
+    repoPath: "/repo",
+    topic: "음성 메모",
+    reportFile: "/tmp/r.md",
+    briefsFile: "/tmp/r.json",
+    existingBriefs: [] as PoExistingBrief[],
+  };
+  // [lens, 정체성 문장에 들어갈 전문가명].
+  const experts: Array<[PoLens, string]> = [
+    ["bug", "«디버깅·신뢰성 전문가»"],
+    ["qa", "«QA(품질 보증) 전문가»"],
+    ["security", "«보안 전문가»"],
+    ["pm", "«기획(PM/제품) 전문가»"],
+    ["marketing", "«마케팅 전문가»"],
+    ["analytics", "«분석(analytics) 전문가»"],
+    ["ops", "«운영(ops) 전문가»"],
+    ["logic", "«로직(도메인·정합성) 전문가»"],
+    ["ux", "«UX(사용성) 전문가»"],
+  ];
+
+  it("default 수집·리서치는 PO 정체성 유지 (회귀 0)", () => {
+    expect(buildPoCollectPrompt(base)).toContain("너는 이 저장소의 프로덕트 오너(PO) 에이전트다");
+    expect(buildPoResearchPrompt(researchBaseLocal)).toContain(
+      "너는 이 저장소의 프로덕트 오너(PO) 에이전트다",
+    );
+  });
+
+  it("비-default 수집은 정체성이 그 전문가로 바뀐다 (PO 아님)", () => {
+    for (const [lens, persona] of experts) {
+      const out = buildPoCollectPrompt({ ...base, lens });
+      expect(out).toContain(`너는 이 저장소의 ${persona} 다`);
+      expect(out).not.toContain("프로덕트 오너(PO)");
+    }
+    // design 은 수집 전용 분기 — 정체성도 그 전문가.
+    const design = buildPoCollectPrompt({ ...base, lens: "design" });
+    expect(design).toContain("너는 이 저장소의 «디자인 전문가» 다");
+    expect(design).not.toContain("프로덕트 오너(PO)");
+  });
+
+  it("비-default 리서치도 정체성이 그 전문가로 바뀐다 (PO 아님)", () => {
+    for (const [lens, persona] of [...experts, ["design", "«디자인 전문가»"] as [PoLens, string]]) {
+      const out = buildPoResearchPrompt({ ...researchBaseLocal, lens });
+      expect(out).toContain(`너는 이 저장소의 ${persona} 다`);
+      expect(out).not.toContain("프로덕트 오너(PO)");
+    }
+  });
+
+  it("수집이 7개 신규 전문가(po_collect_lens_v3) 머리말을 깐다 (일반 수집 골격 유지)", () => {
+    const headers: Array<[PoLens, string]> = [
+      ["qa", "## 수집 관점 — QA(품질 보증) 전문가"],
+      ["pm", "## 수집 관점 — 기획(PM/제품) 전문가"],
+      ["marketing", "## 수집 관점 — 마케팅 전문가"],
+      ["analytics", "## 수집 관점 — 분석(analytics) 전문가"],
+      ["ops", "## 수집 관점 — 운영(ops) 전문가"],
+      ["logic", "## 수집 관점 — 로직(도메인·정합성) 전문가"],
+      ["ux", "## 수집 관점 — UX(사용성) 전문가"],
+    ];
+    for (const [lens, header] of headers) {
+      const out = buildPoCollectPrompt({ ...base, lens });
+      expect(out).toContain(header);
+      // 디자인 부채 재구성이 아니라 일반 수집(신호 수집·종합) 골격 유지.
+      expect(out).toContain("## 1단계 — 신호 수집");
+      expect(out).not.toContain("## 1단계 — UI 표면 스캔");
+    }
   });
 });
 
