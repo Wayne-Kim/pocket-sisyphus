@@ -112,6 +112,25 @@ export const localLlmAdapter: AgentAdapter = {
 
   // usage 생략 — 로컬 서버는 rate limit 윈도우 개념이 없음 (iOS 가 UI 를 숨긴다).
 
+  /**
+   * 「중지」 제어 byte — ESC(\x1b). 명시적이지만 «기본값과 동일» 한 키를 광고한다.
+   *
+   * local_llm 의 에이전트 CLI 는 qwen(Qwen Code) — Gemini CLI 의 포크다. 진행 중 요청의 취소
+   * 키는 ESC 다(qwen-code 소스의 tips: 「Press Esc to cancel an in-flight request」,
+   * AppContainer 의 escape 핸들러가 스트림을 cancel; 답변 중 푸터 「Press Escape, Ctrl+C, or
+   * Ctrl+D to cancel」). ESC 는 진행 turn 만 끊고 세션은 살린다 — Ctrl-C/Ctrl-D 는 종료까지
+   * 가므로 1회로 세션을 죽일 위험이 있어 피한다(가장 안전한 중단 = ESC).
+   *
+   * 백엔드 주의: qwen 은 llama-server(51100)를 백엔드로 쓴다 — 이 ESC 는 PTY stdin 에만
+   * 흘러가(writePtyRaw) qwen 의 진행 turn 만 끊고, 백엔드 프로세스 수명(supervisor 소유)엔
+   * 영향이 없다.
+   *
+   * 미정의면 어차피 ESC 폴백이라 동작은 같지만(회귀 0), 명시해 어댑터별 단위 테스트로 못박는다.
+   */
+  interruptBytes(): Buffer {
+    return Buffer.from([0x1b]); // ESC — Qwen Code(Gemini CLI 포크)의 in-flight 취소 키
+  },
+
   capabilities(): string[] {
     // install_runtime_v1: 런타임 구성요소(llama-server/qwen)를 폰에서 한 탭으로 Mac 에
     // 설치하는 라우트(POST /api/admin/install-agent { component }) 지원. 옛 daemon 은 이

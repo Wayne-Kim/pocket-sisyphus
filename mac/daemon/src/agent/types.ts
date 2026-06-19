@@ -171,6 +171,9 @@ export interface AgentAdapter {
    * 「중지」(진행 중 turn 중단) 가 PTY 에 흘려보낼 제어 byte. 미정의면 ESC(\x1b) —
    * claude/codex REPL 의 취소 키. 에이전트마다 취소 키가 다르므로 어댑터가 광고한다:
    *   - claude_code / codex : ESC(\x1b) — 진행 turn 을 끊는다 (기본값, 메서드 생략).
+   *   - agy / opencode / local_llm : ESC(\x1b) — 모두 Gemini CLI 계보(agy·qwen) 또는 TUI
+   *     (opencode)의 «진행 turn 취소» 키가 ESC 라 명시적으로 광고한다. 폴백과 같은 키지만
+   *     어댑터별 테스트로 못박아 폴백 의존을 끊는다 (각 어댑터 interruptBytes 주석에 출처).
    *   - copilot            : Ctrl-C(\x03) — GitHub Copilot CLI 는 ESC 가 «다이얼로그 닫기/
    *     큐 비우기» 같은 선택적 개입이라 진행 작업이 안 멈춘다(공식 문서 + github/copilot-cli
    *     #1422·#2681). 하드 스톱은 Ctrl-C 1회 — 진행 작업을 즉시 취소하되 종료는 2회라 세션은 산다.

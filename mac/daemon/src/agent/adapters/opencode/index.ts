@@ -146,6 +146,26 @@ export const opencodeAdapter: AgentAdapter = {
 
   // usage 생략 — 로컬 서버는 rate limit 윈도우 개념이 없음 (iOS 가 UI 를 숨긴다).
 
+  /**
+   * 「중지」 제어 byte — ESC(\x1b). 명시적이지만 «기본값과 동일» 한 키를 광고한다.
+   *
+   * opencode TUI 의 공식 기본 키맵에서 진행 중 세션의 취소는 `session_interrupt: "escape"` 다
+   * (https://opencode.ai/docs/keybinds — SSOT). ESC 가 다이얼로그 닫기/포커스로만 쓰일까 봐
+   * 우려했지만(엣지케이스), 실측 키맵상 자동완성 팝업이 열려 있을 때만 ESC 가 그쪽
+   * (`prompt.autocomplete.hide`)으로 가고 — 그 외엔 항상 세션 인터럽트다. 진행 turn 이 도는
+   * 「중지」 상황엔 팝업이 없으므로 ESC 가 정확히 중단으로 작동한다. 종료는 Ctrl-C(`app_exit`)
+   * 라 ESC 1회로는 세션이 산다.
+   *
+   * 백엔드 주의: opencode 는 llama-server(51100)를 local_llm 과 공유한다 — 이 ESC 는 PTY
+   * stdin 에만 흘러가(writePtyRaw) TUI 의 진행 turn 만 끊고, 백엔드 프로세스 수명(supervisor
+   * 소유)엔 일절 영향이 없다.
+   *
+   * 미정의면 어차피 ESC 폴백이라 동작은 같지만(회귀 0), 명시해 어댑터별 단위 테스트로 못박는다.
+   */
+  interruptBytes(): Buffer {
+    return Buffer.from([0x1b]); // ESC — opencode 의 session_interrupt 기본 키
+  },
+
   capabilities(): string[] {
     // cron_eligible_v1 미포함 — 로컬 추론은 콜드스타트가 과다해 무인 예약 실행에 부적합
     // (local_llm 과 같은 정책). 1차는 대화형 PTY 세션만.
