@@ -92,6 +92,17 @@ export const DESIGN_LENS_FOCUS =
   "토큰 드리프트(의미 토큰 우회 리터럴·하드코딩)·색 의미 혼동/겸용·접근성(라벨·대비·동적 타입·터치 타깃)·패턴 불일치(간격/모서리/상태 누락)·i18n 표면";
 
 /**
+ * «보안» 렌즈의 초점 — 무엇을 우선 보고 어떤 신호/근거를 모을지의 한 줄 요약. 수집의 security
+ * 머리말(collectLensHeadmatter)과 리서치의 security 렌즈(researchLensHeadmatter)가 «같은 의미» 를
+ * 쓰도록 여기 «한 곳» 에서 정의한다 (DESIGN_LENS_FOCUS ↔ design/designer 정합과 동형 — 중복 정의
+ * 금지, 두 경로가 따로 정의돼 의미가 갈리는 걸 막는다). 특정 스택/팔레트를 박지 않는다(레포-무관)
+ * — 인증·키·노출면·자격증명·신뢰 경계의 «의미» 가 기준이라 «렌더되는 UI 표면» 이 없어도(daemon/
+ * CLI 전용) 그대로 동작한다.
+ */
+export const SECURITY_LENS_FOCUS =
+  "인증·인가 흐름, 키·시크릿 취급(생성·저장·회전·폐기), 네트워크 노출면(열린 포트·바인딩·전송 암호화), 자격증명 흐름(로컬 보관·전달·페어링), 신뢰 경계와 위협모델 대비(가정·완화책·잔여 위험)";
+
+/**
  * UX 렌즈의 «화면 포함» 추가 머리말 — ux 리서치가 «렌더된 화면» 을 1급 근거로 쓰게 한다
  * (po_research_ux_screens_v1).
  *
@@ -152,7 +163,7 @@ export function researchLensHeadmatter(
   if (lens === "security") {
     return `## 조사 관점 — 보안 전문가
 이 리서치는 «보안» 전문가 관점으로 수행한다. 주제를 «무엇이 노출되고 어떻게 악용될 수 있는가» 의 눈으로 우선 조사하라 (디버깅이 «왜 깨지나», QA 가 «어떻게 깨지지 않음을 보증하나» 라면, 보안은 «어떻게 악용될 수 있고 어떻게 막나»).
-- **우선 조사**: 인증·인가 흐름, 키·시크릿 취급(생성·저장·회전·폐기), 네트워크 노출면(열린 포트·바인딩·전송 암호화), 자격증명 흐름(로컬 보관·전달·페어링), 신뢰 경계와 위협모델 대비(가정·완화책·잔여 위험). 주제와 관련된 «알려진 취약점과 그 악용·완화».
+- **우선 조사**: ${SECURITY_LENS_FOCUS}. 주제와 관련된 «알려진 취약점과 그 악용·완화».
 - **근거 강조**: 레포 근거는 «파일:라인 + 신뢰 경계(어디서 신뢰 수준이 바뀌나)·입력 검증·시크릿 취급», 웹 근거는 CVE·보안 권고·보안 모범 사례(URL). 추정보다 «구체적 악용 시나리오와 그 완화책» 으로 판정하고, 각 브리프의 spec 에 «위협(무엇을·누가) / 완화책 / 검증(안전을 어떻게 확인)» 을 담아라.
 - 대상 레포에 «보안 관련 표면» 이 없으면 그 사실을 보고서에 명시하고 보안 브리프 0건(빈 배열)도 정답이다.`;
   }
@@ -209,8 +220,13 @@ export function researchLensHeadmatter(
  * "design" 은 머리말이 아니라 수집의 «디자이너» 페르소나(buildPoCollectPrompt 의 design 분기)가
  * 통째로 처리하므로 여기선 빈 문자열을 돌려준다 (design 렌즈 = 기존 designer 동작, byte-identical).
  * "bug" 는 일반 수집 경로에 «디버깅·신뢰성» 머리말을 주입해 크래시·실패 로그·재현 버그·회귀를
- * 우선 신호로 모으게 한다. "default"(전방위)·qa·security 는 빈 문자열 → 일반 수집과 byte-identical
- * (수집 픽커는 default/design/bug 만 노출 — qa/security 는 별도 브리프). 보고서/브리프 스키마는
+ * 우선 신호로 모으게 한다. "security" 는 일반 수집 경로에 «보안» 머리말을 주입해 인증·키 취급·네트워크
+ * 노출면·자격증명 흐름·위협모델 대비 신호를 우선 모으게 한다 (SECURITY_LENS_FOCUS 를 리서치의 security
+ * 렌즈와 «공유» — 두 경로의 의미가 갈리지 않게, design/designer 정합과 동형). "security" 는 수집 픽커가
+ * po_collect_lens_v2 capability 로 게이팅해 노출하고, 옛 daemon(이 코드 없음)엔 빈 문자열로 떨어져
+ * parseLens 가 통과시킨 security 가 «머리말 없는 default 수집» 으로 안전 폴백한다 (거짓 UI·거짓 동작 방지).
+ * "default"(전방위)·qa·pm·marketing·analytics·ops·logic·ux 는 빈 문자열 → 일반 수집과 byte-identical
+ * (수집 픽커는 default/design/bug/security 만 노출 — 나머지는 후속 단계). 보고서/브리프 스키마는
  * 건드리지 않는다 (신호 수집·종합 «방향» 만 바꾼다).
  */
 export function collectLensHeadmatter(lens: PoLens): string {
@@ -220,5 +236,11 @@ export function collectLensHeadmatter(lens: PoLens): string {
 - **우선 신호**: 크래시·예외·실패 로그, 재현되는 버그 리포트, 회귀(전엔 되던 게 안 됨), 신뢰성 결함(타임아웃·경합·데이터 유실·엣지케이스). 이슈·리뷰·크래시 신호에서 «안정성» 불만을 먼저 골라라.
 - **종합**: 기능 제안보다 «앱이 깨지거나 불안정한» 문제를 우선해 브리프로 올리고, 각 브리프 spec 에 «재현 방법 / 수정 후 확인(회귀 테스트) 방법» 을 담아라. evidence 의 ref 에 재현 단계·로그·이슈/크래시 참조를 적어라.`;
   }
-  return ""; // default(전방위)·design(designer 분기가 처리)·qa·security — 머리말 없음, 일반 수집과 byte-identical
+  if (lens === "security") {
+    return `## 수집 관점 — 보안 전문가
+이 수집은 «보안» 전문가 관점으로 수행한다. 신호를 «무엇이 노출되고 어떻게 악용될 수 있는가» 의 눈으로 우선 모아라 (리서치의 «보안» 렌즈와 같은 초점 — lens.ts SSOT).
+- **우선 신호**: ${SECURITY_LENS_FOCUS}. 코드·설정·자격증명 흐름에서 이 신호를 먼저 골라라 — 보안은 코드·자격증명 흐름 신호라 «렌더되는 UI 표면» 이 없어도(daemon/CLI 전용) 그대로 동작한다.
+- **종합**: 기능 제안보다 «보안 부채»(노출면·취약한 자격증명/네트워크 흐름·위협모델 미대비)를 우선해 브리프로 올리고, 각 브리프 spec 에 «위협(무엇을·누가) / 완화책 / 검증(안전을 어떻게 확인)» 을 담아라 (리서치 security 렌즈의 spec 과 같은 형). evidence 의 ref 에 신뢰 경계·시크릿 취급이 보이는 «파일:라인»·커밋을 적어라. 보안 부채를 자동 «차단» 하지 마라 — 판정·결재는 사람 몫이다(같은 백로그에 다른 브리프와 나란히 올려 결재받는다).`;
+  }
+  return ""; // default(전방위)·design(designer 분기가 처리)·qa·pm·marketing·analytics·ops·logic·ux — 머리말 없음, 일반 수집과 byte-identical
 }

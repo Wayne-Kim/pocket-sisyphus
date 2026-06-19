@@ -194,6 +194,7 @@ struct BacklogView: View {
                 supportsFeedbackRepo: capabilities.contains("po_feedback_repo_v1"),
                 supportsDesignBootstrap: capabilities.contains("po_design_bootstrap_v1"),
                 supportsCollectLens: capabilities.contains("po_collect_lens_v1"),
+                supportsSecurityCollectLens: capabilities.contains("po_collect_lens_v2"),
                 agents: supportsAgentChoice ? agents : [],
             ) { repoPath, instruction, agent, lens in
                 showCollectSheet = false
@@ -1374,11 +1375,18 @@ private struct PoStatsSheet: View {
 
 // MARK: - 리서치
 
-/// 수집 «전문가 관점» 렌즈가 노출하는 집합 (po_collect_lens_v1) — 리서치 v1 과 같은 전방위·디자인·
-/// 디버깅 3개. 수집은 qa/security 를 노출하지 않는다(별도 브리프) — design 은 디자인 부채 발굴(옛
-/// designer 페르소나와 동치), bug 는 디버깅·신뢰성 신호 우선. 표시명은 poResearchLensName 을 그대로
-/// 재사용해 리서치와 «같은 명칭·같은 카탈로그 키»(전방위/디자인/디버깅)로 통일한다 (중복 정의 금지).
-private let poCollectLenses = ["default", "design", "bug"]
+/// 수집 «전문가 관점» 렌즈가 노출하는 집합 — v1(po_collect_lens_v1)에선 전방위·디자인·디버깅 3개,
+/// v2(po_collect_lens_v2)면 «보안» 까지 추가된다. capability 로 한 단계씩 게이팅하는 이유: security 를
+/// 모르는 옛 daemon(v1 만)에 보내면 collectLensHeadmatter 가 빈 문자열을 돌려 parseLens 가 통과시킨
+/// security 가 전방위로 조용히 폴백 → «거짓 UI» 가 된다 (리서치 렌즈 v2~v9 게이팅과 동형). design 은
+/// 디자인 부채 발굴(옛 designer 페르소나와 동치), bug 는 디버깅·신뢰성, security 는 인증·키 취급·노출면·
+/// 자격증명·위협모델 신호 우선 — 리서치의 같은 렌즈(lens.ts SSOT)와 의미 일치. (qa/pm/… 은 후속 단계.)
+/// 표시명은 poResearchLensName 을 그대로 재사용해 리서치와 «같은 명칭·같은 카탈로그 키» 로 통일한다.
+private func poCollectLenses(security: Bool) -> [String] {
+    var lenses = ["default", "design", "bug"]
+    if security { lenses.append("security") }
+    return lenses
+}
 
 /// 리서치 «전문가 관점» 렌즈가 노출하는 집합 — id 순서 고정. default(전방위)가 기본/baseline.
 /// v1(렌즈 픽커 존재)에선 전방위·디자인·디버깅 3개, v2면 «QA», v3면 «보안», v4면 «기획», v5면
@@ -2722,6 +2730,9 @@ private struct CollectRepoSheet: View {
     /// daemon 이 수집 «전문가 관점» 렌즈(po_collect_lens_v1)를 지원하는가 — «전문가 관점» 픽커 노출 분기.
     /// 미지원(옛 daemon)이면 픽커를 숨기고 전방위 수집으로 동작한다(리서치 렌즈 게이팅과 동형).
     let supportsCollectLens: Bool
+    /// daemon 이 «보안» 수집 렌즈(po_collect_lens_v2)까지 지원하는가 — 미지원이면 security 옵션을 빼서
+    /// 거짓 UI 방지(옛 daemon 에 security 를 보내면 머리말 없이 전방위로 조용히 폴백한다).
+    let supportsSecurityCollectLens: Bool
     /// 에이전트 후보 (po_agent_v1) — 비어 있으면 픽커를 숨기고 daemon 기본으로 돈다.
     let agents: [AgentInfo]
     /// (repoPath, instruction?, agent?, lens?) — instruction/lens 는 비우면 nil. 프로필 저장은 2단계가 처리.
@@ -2769,7 +2780,9 @@ private struct CollectRepoSheet: View {
                     repoPath: repoPath, supportsSchedule: supportsSchedule,
                     supportsAsc: supportsAsc, supportsFeedbackRepo: supportsFeedbackRepo,
                     supportsDesignBootstrap: supportsDesignBootstrap,
-                    supportsCollectLens: supportsCollectLens, agents: agents, onStart: onPick)
+                    supportsCollectLens: supportsCollectLens,
+                    supportsSecurityCollectLens: supportsSecurityCollectLens,
+                    agents: agents, onStart: onPick)
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -2797,14 +2810,17 @@ private struct CollectProfileForm: View {
     let supportsFeedbackRepo: Bool
     let supportsDesignBootstrap: Bool
     let supportsCollectLens: Bool
+    /// daemon 이 «보안» 수집 렌즈(po_collect_lens_v2)까지 지원하는가 — security 옵션 게이팅.
+    let supportsSecurityCollectLens: Bool
     let agents: [AgentInfo]
     let onStart: (String, String?, String?, String?) -> Void
 
     @State private var agentId = AgentInfo.claudeCodeFallback.id
-    /// 전문가 관점 (po_collect_lens_v1) — "default" 전방위 / "design" UI 디자인 부채 발굴 / "bug"
-    /// 디버깅·신뢰성 신호 우선. 리서치 픽커와 «같은 명칭·같은 카탈로그 키»(전문가 관점)를 써 사용자가
-    /// 하나의 전문가 개념으로 인지한다. 이번 수집에만 적용되는 일회성 선택이라 프로필에 저장하지 않는다
-    /// (에이전트 픽커와 동형 — 주기 수집의 고정 렌즈는 «이 레포 조사 설정» 에서 따로 정한다).
+    /// 전문가 관점 — "default" 전방위 / "design" UI 디자인 부채 발굴 / "bug" 디버깅·신뢰성 신호 우선 /
+    /// "security" 인증·키 취급·노출면·자격증명·위협모델 신호 우선(po_collect_lens_v2). 리서치 픽커와
+    /// «같은 명칭·같은 카탈로그 키»(전문가 관점)를 써 사용자가 하나의 전문가 개념으로 인지한다. 이번
+    /// 수집에만 적용되는 일회성 선택이라 프로필에 저장하지 않는다 (에이전트 픽커와 동형 — 주기 수집의
+    /// 고정 렌즈는 «이 레포 조사 설정» 에서 따로 정한다).
     @State private var lens = "default"
     @State private var instruction = ""
     @State private var starting = false
@@ -2814,8 +2830,9 @@ private struct CollectProfileForm: View {
             if supportsCollectLens {
                 Section {
                     // 기본 컨트롤 — 색 안 정함 → AccentColor(보라) 자동. 콘텐츠에 .tint() 안 건다.
+                    // «보안» 도 다른 렌즈와 같은 시각 위계(중립 칩 + accent 선택 체크) — 경고/위험색 안 씀.
                     Picker(selection: $lens) {
-                        ForEach(poCollectLenses, id: \.self) { id in
+                        ForEach(poCollectLenses(security: supportsSecurityCollectLens), id: \.self) { id in
                             Text(poResearchLensName(id)).tag(id)
                         }
                     } label: {
@@ -2827,7 +2844,11 @@ private struct CollectProfileForm: View {
                 } header: {
                     Text("전문가 관점")
                 } footer: {
-                    Text("수집을 맡길 전문가 관점을 골라요. «디자인» 은 코드 기능 대신 이 레포 UI 의 디자인 부채(접근성·대비·토큰 드리프트·패턴 불일치)를, «디버깅» 은 크래시·실패 로그·재현 버그·회귀 같은 신뢰성 신호를 우선 모아 증거와 함께 브리프로 올려요. 이번 수집에만 적용돼요.")
+                    if supportsSecurityCollectLens {
+                        Text("수집을 맡길 전문가 관점을 골라요. «디자인» 은 코드 기능 대신 이 레포 UI 의 디자인 부채(접근성·대비·토큰 드리프트·패턴 불일치)를, «디버깅» 은 크래시·실패 로그·재현 버그·회귀 같은 신뢰성 신호를, «보안» 은 인증·키 취급·네트워크 노출면·자격증명 흐름·위협모델 대비 같은 보안 신호를 우선 모아 증거와 함께 브리프로 올려요. 이번 수집에만 적용돼요.")
+                    } else {
+                        Text("수집을 맡길 전문가 관점을 골라요. «디자인» 은 코드 기능 대신 이 레포 UI 의 디자인 부채(접근성·대비·토큰 드리프트·패턴 불일치)를, «디버깅» 은 크래시·실패 로그·재현 버그·회귀 같은 신뢰성 신호를 우선 모아 증거와 함께 브리프로 올려요. 이번 수집에만 적용돼요.")
+                    }
                 }
             }
             Section {
@@ -2857,7 +2878,8 @@ private struct CollectProfileForm: View {
                         repoPath: repoPath, supportsSchedule: supportsSchedule,
                         supportsAsc: supportsAsc, supportsFeedbackRepo: supportsFeedbackRepo,
                         supportsDesignBootstrap: supportsDesignBootstrap,
-                        supportsCollectLens: supportsCollectLens)
+                        supportsCollectLens: supportsCollectLens,
+                        supportsSecurityCollectLens: supportsSecurityCollectLens)
                 } label: {
                     Label {
                         Text("이 레포 조사 설정")
@@ -2918,6 +2940,9 @@ private struct CollectRepoSettingsView: View {
     /// daemon 이 수집 «전문가 관점» 렌즈(po_collect_lens_v1)를 지원하는가 — 주기 수집의 고정 렌즈
     /// 픽커 노출 분기. 미지원이면 픽커를 숨기고 전방위로 동작한다.
     let supportsCollectLens: Bool
+    /// daemon 이 «보안» 수집 렌즈(po_collect_lens_v2)까지 지원하는가 — 주기 수집 렌즈 픽커의 security
+    /// 옵션 게이팅. 미지원이면 security 를 빼서 거짓 UI 방지(저장돼 있어도 daemon 이 전방위로 폴백).
+    let supportsSecurityCollectLens: Bool
 
     @State private var profile = ""
     @State private var profileLoaded = false
@@ -3113,8 +3138,9 @@ private struct CollectRepoSettingsView: View {
         if supportsCollectLens {
             Section {
                 // 기본 컨트롤 — 색 안 정함 → AccentColor(보라) 자동. 콘텐츠에 .tint() 안 건다.
+                // «보안» 도 다른 렌즈와 같은 시각 위계(중립 칩 + accent 선택 체크) — 경고/위험색 안 씀.
                 Picker(selection: $lens) {
-                    ForEach(poCollectLenses, id: \.self) { id in
+                    ForEach(poCollectLenses(security: supportsSecurityCollectLens), id: \.self) { id in
                         Text(poResearchLensName(id)).tag(id)
                     }
                 } label: {
@@ -3126,7 +3152,11 @@ private struct CollectRepoSettingsView: View {
             } header: {
                 Text("전문가 관점")
             } footer: {
-                Text("주기 수집이 매일 어느 관점으로 신호를 모을지 정해요. «디자인» 은 UI 디자인 부채를, «디버깅» 은 크래시·신뢰성 신호를 우선 모아요. 프로젝트에 저장돼요 — 수동 수집은 시작할 때 따로 고른 관점이 우선해요.")
+                if supportsSecurityCollectLens {
+                    Text("주기 수집이 매일 어느 관점으로 신호를 모을지 정해요. «디자인» 은 UI 디자인 부채를, «디버깅» 은 크래시·신뢰성 신호를, «보안» 은 인증·키 취급·노출면·자격증명 흐름·위협모델 대비 신호를 우선 모아요. 프로젝트에 저장돼요 — 수동 수집은 시작할 때 따로 고른 관점이 우선해요.")
+                } else {
+                    Text("주기 수집이 매일 어느 관점으로 신호를 모을지 정해요. «디자인» 은 UI 디자인 부채를, «디버깅» 은 크래시·신뢰성 신호를 우선 모아요. 프로젝트에 저장돼요 — 수동 수집은 시작할 때 따로 고른 관점이 우선해요.")
+                }
             }
         }
         if supportsAsc {

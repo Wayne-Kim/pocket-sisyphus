@@ -415,9 +415,13 @@ export function buildPoCollectPrompt(opts: {
    * «제약» 으로만 따라붙던 것을 «1급 주제» 로 올려, UI 표면을 위 「디자인 제약」 이 선언/발견한 디자인
    * SSOT 대비로 스캔해 토큰 드리프트·접근성·대비·패턴 불일치를 «디자인 부채» 브리프로 발굴한다 (옛
    * "designer" 페르소나와 «같은» 동작 — designer→design 동치). "bug" 면 일반 수집 경로에 «디버깅·
-   * 신뢰성» 머리말을 주입해 크래시·실패 로그·재현 버그·회귀를 우선 신호로 모은다 (lens.ts SSOT —
-   * 리서치의 같은 렌즈와 의미 일치). 산출 스키마/저장소는 모든 렌즈에서 동일 — 같은 백로그에 나란히
-   * 들어간다. 픽커는 default/design/bug 만 노출하므로 qa/security 는 머리말 없는 일반 수집으로 폴백한다.
+   * 신뢰성» 머리말을, "security"(po_collect_lens_v2) 면 «보안» 머리말(인증·키 취급·네트워크 노출면·
+   * 자격증명 흐름·위협모델 대비 신호 우선)을 주입한다 — 둘 다 lens.ts SSOT 의 SECURITY_LENS_FOCUS/
+   * 디버깅 초점을 리서치의 같은 렌즈와 «공유» 해 두 경로의 의미가 갈리지 않는다. 산출 스키마/저장소는
+   * 모든 렌즈에서 동일 — 같은 백로그에 나란히 들어간다. 픽커는 default/design/bug/security 만 노출하므로
+   * (security 는 po_collect_lens_v2 게이팅) qa/pm/marketing/analytics/ops/logic/ux 는 머리말 없는 일반
+   * 수집으로 폴백한다. 옛 daemon(po_collect_lens_v2 없음)에 security 가 와도 collectLensHeadmatter 가
+   * 빈 문자열을 돌려 전방위 수집으로 안전 폴백한다.
    */
   lens?: PoLens;
   /**
@@ -595,8 +599,9 @@ ${DEDUP_SCHEMA_FIELD}
   }
 
   // 프롬프트는 한국어 — 사용자 세션 transcript 로 그대로 보이므로 제품 언어와 일치시킨다.
-  // 렌즈 머리말 — "bug" 면 디버깅·신뢰성 신호를 우선 모으게 하는 머리말을 주입한다. 전방위(default)·
-  // qa·security 는 빈 문자열 → lensBlock 이 통째로 사라져 기존 수집 프롬프트와 byte-identical (회귀 0).
+  // 렌즈 머리말 — "bug"(디버깅·신뢰성)·"security"(인증·키·노출면·자격증명·위협모델) 면 그 신호를
+  // 우선 모으게 하는 머리말을 주입한다. 전방위(default)·qa·pm·marketing·analytics·ops·logic·ux 는 빈
+  // 문자열 → lensBlock 이 통째로 사라져 기존 수집 프롬프트와 byte-identical (회귀 0).
   const collectHeadmatter = collectLensHeadmatter(opts.lens ?? "default");
   const lensBlock = collectHeadmatter ? `\n${collectHeadmatter}\n` : "";
   return `너는 이 저장소의 프로덕트 오너(PO) 에이전트다. 이 레포의 «다음에 만들 가치 있는 일» 을 찾아 기회 브리프로 정리하는 것이 임무다. 코드를 수정하지 마라 — 읽기/조사만 한다.

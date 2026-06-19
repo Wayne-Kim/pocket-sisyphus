@@ -123085,6 +123085,136 @@
           }
         }
       }
+    },
+    "수집을 맡길 전문가 관점을 골라요. «디자인» 은 코드 기능 대신 이 레포 UI 의 디자인 부채(접근성·대비·토큰 드리프트·패턴 불일치)를, «디버깅» 은 크래시·실패 로그·재현 버그·회귀 같은 신뢰성 신호를, «보안» 은 인증·키 취급·네트워크 노출면·자격증명 흐름·위협모델 대비 같은 보안 신호를 우선 모아 증거와 함께 브리프로 올려요. 이번 수집에만 적용돼요.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختر منظور الخبير لهذه المجموعة. يُبرز «التصميم» ديون تصميم واجهة هذا المستودع (إمكانية الوصول، التباين، انحراف الرموز، عدم تطابق الأنماط) بدلاً من ميزات الكود؛ ويعطي «التصحيح» الأولوية لإشارات الموثوقية مثل الأعطال وسجلات الفشل والأخطاء القابلة لإعادة الإنتاج والانحدارات؛ ويعطي «الأمان» الأولوية لإشارات الأمان مثل المصادقة والتعامل مع المفاتيح وسطح التعرض الشبكي وتدفقات بيانات الاعتماد والاستعداد لنموذج التهديد، وتُرفع كموجز مع الأدلة. ينطبق على هذه المجموعة فقط."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick the expert lens for this collection. «Design» surfaces this repo's UI design debt (accessibility, contrast, token drift, pattern mismatches) instead of code features; «Debugging» prioritizes reliability signals like crashes, failure logs, repro bugs, and regressions; «Security» prioritizes security signals like authentication, key handling, network exposure surface, credential flows, and threat-model coverage — each raised as a brief with evidence. Applies to this collection only."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige la perspectiva experta para esta recolección. «Diseño» revela la deuda de diseño de la interfaz de este repositorio (accesibilidad, contraste, deriva de tokens, inconsistencias de patrones) en lugar de funciones de código; «Depuración» prioriza señales de fiabilidad como fallos, registros de errores, errores reproducibles y regresiones; «Seguridad» prioriza señales de seguridad como autenticación, gestión de claves, superficie de exposición de red, flujos de credenciales y preparación frente al modelo de amenazas, presentadas como briefs con evidencia. Solo se aplica a esta recolección."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez le regard d'expert pour cette collecte. «Design» fait remonter la dette de design de l'interface de ce dépôt (accessibilité, contraste, dérive des jetons, incohérences de motifs) au lieu des fonctionnalités de code ; «Débogage» privilégie les signaux de fiabilité comme les plantages, journaux d'erreurs, bugs reproductibles et régressions ; «Sécurité» privilégie les signaux de sécurité comme l'authentification, la gestion des clés, la surface d'exposition réseau, les flux d'identifiants et la préparation au modèle de menace, présentés en briefs avec preuves. S'applique uniquement à cette collecte."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "इस संग्रह के लिए विशेषज्ञ दृष्टिकोण चुनें। «डिज़ाइन» कोड सुविधाओं के बजाय इस रिपॉज़िटरी के UI की डिज़ाइन ऋण (अभिगम्यता, कंट्रास्ट, टोकन ड्रिफ्ट, पैटर्न बेमेल) सामने लाता है; «डिबगिंग» क्रैश, विफलता लॉग, पुनरुत्पादनीय बग और रिग्रेशन जैसे विश्वसनीयता संकेतों को प्राथमिकता देता है; «सुरक्षा» प्रमाणीकरण, कुंजी प्रबंधन, नेटवर्क एक्सपोज़र सतह, क्रेडेंशियल प्रवाह और खतरा-मॉडल तैयारी जैसे सुरक्षा संकेतों को प्राथमिकता देता है, जिन्हें साक्ष्य के साथ ब्रीफ़ के रूप में दर्ज किया जाता है। केवल इस संग्रह पर लागू होता है।"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今回の収集を任せる専門家の視点を選びます。«デザイン» はコード機能の代わりにこのリポジトリ UI のデザイン負債（アクセシビリティ・コントラスト・トークンのドリフト・パターンの不一致）を、«デバッグ» はクラッシュ・失敗ログ・再現バグ・回帰といった信頼性シグナルを、«セキュリティ» は認証・鍵の取り扱い・ネットワーク露出面・認証情報フロー・脅威モデルへの備えといったセキュリティシグナルを優先的に集め、証拠とともにブリーフとして起票します。今回の収集にのみ適用されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "수집을 맡길 전문가 관점을 골라요. «디자인» 은 코드 기능 대신 이 레포 UI 의 디자인 부채(접근성·대비·토큰 드리프트·패턴 불일치)를, «디버깅» 은 크래시·실패 로그·재현 버그·회귀 같은 신뢰성 신호를, «보안» 은 인증·키 취급·네트워크 노출면·자격증명 흐름·위협모델 대비 같은 보안 신호를 우선 모아 증거와 함께 브리프로 올려요. 이번 수집에만 적용돼요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolha a perspectiva especialista para esta coleta. «Design» revela a dívida de design da interface deste repositório (acessibilidade, contraste, desvio de tokens, inconsistências de padrões) em vez de recursos de código; «Depuração» prioriza sinais de confiabilidade como falhas, registros de erro, bugs reproduzíveis e regressões; «Segurança» prioriza sinais de segurança como autenticação, manuseio de chaves, superfície de exposição de rede, fluxos de credenciais e preparação para o modelo de ameaças, levantados como briefs com evidências. Aplica-se apenas a esta coleta."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите экспертный взгляд для этого сбора. «Дизайн» выявляет дизайн-долг интерфейса этого репозитория (доступность, контраст, дрейф токенов, несоответствия паттернов) вместо функций кода; «Отладка» отдаёт приоритет сигналам надёжности — сбоям, журналам ошибок, воспроизводимым багам и регрессиям; «Безопасность» отдаёт приоритет сигналам безопасности — аутентификации, обращению с ключами, поверхности сетевого воздействия, потокам учётных данных и готовности к модели угроз, оформляя их как брифы с доказательствами. Применяется только к этому сбору."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为本次收集选择专家视角。«设计» 会呈现此仓库 UI 的设计欠债（无障碍、对比度、令牌漂移、模式不一致），而非代码功能；«调试» 优先收集崩溃、失败日志、可复现缺陷和回归等可靠性信号；«安全» 优先收集身份验证、密钥处理、网络暴露面、凭据流和威胁模型应对等安全信号，并附带证据作为简报提交。仅对本次收集生效。"
+          }
+        }
+      }
+    },
+    "주기 수집이 매일 어느 관점으로 신호를 모을지 정해요. «디자인» 은 UI 디자인 부채를, «디버깅» 은 크래시·신뢰성 신호를, «보안» 은 인증·키 취급·노출면·자격증명 흐름·위협모델 대비 신호를 우선 모아요. 프로젝트에 저장돼요 — 수동 수집은 시작할 때 따로 고른 관점이 우선해요.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يحدد المنظور الذي يجمع به التحصيل المجدول الإشارات كل يوم. يعطي «التصميم» الأولوية لديون تصميم الواجهة؛ ويعطي «التصحيح» الأولوية لإشارات الأعطال والموثوقية؛ ويعطي «الأمان» الأولوية لإشارات الأمان مثل المصادقة والتعامل مع المفاتيح وسطح التعرض وتدفقات بيانات الاعتماد والاستعداد لنموذج التهديد. يُحفظ في المشروع — المنظور الذي تختاره عند بدء تحصيل يدوي له الأولوية."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sets which lens the scheduled collection gathers signals through each day. «Design» prioritizes UI design debt; «Debugging» prioritizes crash and reliability signals; «Security» prioritizes security signals like authentication, key handling, exposure surface, credential flows, and threat-model coverage. Saved to the project — a lens you pick when starting a manual collection takes precedence."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Define con qué perspectiva la recolección programada reúne señales cada día. «Diseño» prioriza la deuda de diseño de la interfaz; «Depuración» prioriza señales de fallos y fiabilidad; «Seguridad» prioriza señales de seguridad como autenticación, gestión de claves, superficie de exposición, flujos de credenciales y preparación frente al modelo de amenazas. Se guarda en el proyecto; la perspectiva que elijas al iniciar una recolección manual tiene prioridad."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Définit le regard avec lequel la collecte planifiée rassemble les signaux chaque jour. «Design» privilégie la dette de design de l'interface ; «Débogage» privilégie les signaux de plantage et de fiabilité ; «Sécurité» privilégie les signaux de sécurité comme l'authentification, la gestion des clés, la surface d'exposition, les flux d'identifiants et la préparation au modèle de menace. Enregistré dans le projet — un regard choisi au lancement d'une collecte manuelle est prioritaire."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "तय करता है कि निर्धारित संग्रह हर दिन किस दृष्टिकोण से संकेत एकत्र करे। «डिज़ाइन» UI डिज़ाइन ऋण को प्राथमिकता देता है; «डिबगिंग» क्रैश और विश्वसनीयता संकेतों को प्राथमिकता देता है; «सुरक्षा» प्रमाणीकरण, कुंजी प्रबंधन, एक्सपोज़र सतह, क्रेडेंशियल प्रवाह और खतरा-मॉडल तैयारी जैसे सुरक्षा संकेतों को प्राथमिकता देता है। प्रोजेक्ट में सहेजा जाता है — मैन्युअल संग्रह शुरू करते समय चुना गया दृष्टिकोण प्राथमिकता लेता है।"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "定期収集が毎日どの視点でシグナルを集めるかを決めます。«デザイン» は UI のデザイン負債を、«デバッグ» はクラッシュや信頼性のシグナルを、«セキュリティ» は認証・鍵の取り扱い・露出面・認証情報フロー・脅威モデルへの備えといったセキュリティシグナルを優先します。プロジェクトに保存されます — 手動収集では開始時に選んだ視点が優先されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주기 수집이 매일 어느 관점으로 신호를 모을지 정해요. «디자인» 은 UI 디자인 부채를, «디버깅» 은 크래시·신뢰성 신호를, «보안» 은 인증·키 취급·노출면·자격증명 흐름·위협모델 대비 신호를 우선 모아요. 프로젝트에 저장돼요 — 수동 수집은 시작할 때 따로 고른 관점이 우선해요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Define com qual perspectiva a coleta agendada reúne sinais a cada dia. «Design» prioriza a dívida de design da interface; «Depuração» prioriza sinais de falha e confiabilidade; «Segurança» prioriza sinais de segurança como autenticação, manuseio de chaves, superfície de exposição, fluxos de credenciais e preparação para o modelo de ameaças. Salvo no projeto — a perspectiva que você escolhe ao iniciar uma coleta manual tem prioridade."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Определяет, через какой взгляд запланированный сбор собирает сигналы каждый день. «Дизайн» отдаёт приоритет дизайн-долгу интерфейса; «Отладка» — сигналам сбоев и надёжности; «Безопасность» — сигналам безопасности: аутентификации, обращению с ключами, поверхности воздействия, потокам учётных данных и готовности к модели угроз. Сохраняется в проекте — взгляд, выбранный при запуске ручного сбора, имеет приоритет."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设定定时收集每天以哪种视角采集信号。«设计» 优先 UI 设计欠债；«调试» 优先崩溃和可靠性信号；«安全» 优先身份验证、密钥处理、暴露面、凭据流和威胁模型应对等安全信号。保存在项目中——手动收集时另行选择的视角优先。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

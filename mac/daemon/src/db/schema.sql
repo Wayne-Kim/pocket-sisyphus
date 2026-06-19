@@ -321,10 +321,12 @@ CREATE TABLE IF NOT EXISTS po_profiles (
   design_directive_draft TEXT,
   design_directive_draft_session_id TEXT,
   design_directive_draft_at INTEGER,
-  -- 주기 수집 «전문가 관점» 렌즈 (po_collect_lens_v1) — 'default'(전방위)|'design'(디자인 부채)|
-  -- 'bug'(디버깅·신뢰성). 주기 수집(scheduler)이 매일 어느 초점으로 신호를 모을지 «고정»해 둔다.
-  -- 수동 수집은 회차 인자가 이 값보다 우선(instruction↔directive 와 동형). 옛 row 는 DEFAULT
-  -- 'default' 로 채워져 회귀 0 (렌즈 미선택 = 머리말 없는 전방위 수집). lens.ts 가 SSOT.
+  -- 주기 수집 «전문가 관점» 렌즈 (po_collect_lens_v1, +'security' 는 po_collect_lens_v2) —
+  -- 'default'(전방위)|'design'(디자인 부채)|'bug'(디버깅·신뢰성)|'security'(인증·키·노출면·자격증명·
+  -- 위협모델). 주기 수집(scheduler)이 매일 어느 초점으로 신호를 모을지 «고정»해 둔다. 수동 수집은
+  -- 회차 인자가 이 값보다 우선(instruction↔directive 와 동형). 옛 row 는 DEFAULT 'default' 로 채워져
+  -- 회귀 0 (렌즈 미선택 = 머리말 없는 전방위 수집). 자유 텍스트라 마이그레이션 불필요(parseLens 가
+  -- 화이트리스트 검증·폴백). lens.ts 가 SSOT.
   lens TEXT NOT NULL DEFAULT 'default',
   -- 직전 수집의 «App Store 신호원 실행 상태» (po_signal_status_v1) — store/crash 가 실제 반영됐는지
   -- (used/empty)·꺼짐(off)·실패(key_missing/auth/app_id/network)를 신호원별로 담은 JSON. iOS 백로그가
