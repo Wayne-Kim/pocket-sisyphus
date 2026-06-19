@@ -26,6 +26,27 @@ interface Client {
 
 const clients = new Map<ClientId, Client>();
 
+/**
+ * 한 소켓에 best-effort 로 send 한다. ws 의 send() 는 콜백 없이 부르면 소켓이 OPEN 이 아닌
+ * 경계 상태(CLOSING·전송 오류)에서 동기 throw 한다 — readyState 체크와 send 사이의 TOCTOU 로
+ * 충분히 발생한다. broadcast 루프가 한 클라이언트의 throw 로 중단되면 (1) 그 뒤 같은 세션
+ * 구독자들이 이번 메시지를 못 받고(부분 유실), (2) 예외가 호출자로 샌다. 여기서 per-client
+ * 로 격리해 둘 다 막는다 — 실패는 조용히 삼키되 디버그 로깅으로 흔적만 남긴다.
+ * 콜백 경로(비동기 오류)는 현재 미사용이라 동기 throw 만 잡으면 충분하다.
+ */
+function safeSend(
+  ws: WebSocket,
+  data: string | Buffer,
+  options?: { binary: boolean },
+): void {
+  try {
+    if (options) ws.send(data, options);
+    else ws.send(data);
+  } catch (e) {
+    console.warn("[ws] send failed:", (e as Error).message);
+  }
+}
+
 export function registerClient(id: ClientId, ws: WebSocket): void {
   clients.set(id, { id, ws, sessionId: null, active: true });
 }
@@ -98,7 +119,8 @@ export function replayPtyChunksSince(
       // 없으면 stripTerminalQueries 가 동일 버퍼를 반환해 base64 재인코딩을 건너뛴다.
       const raw = Buffer.from(b64, "base64");
       const clean = stripTerminalQueries(raw);
-      ws.send(
+      safeSend(
+        ws,
         JSON.stringify({
           type: "pty_output",
           sessionId,
@@ -119,7 +141,7 @@ export function broadcastToSession(
   const payload = JSON.stringify(message);
   for (const c of clients.values()) {
     if (c.sessionId === sessionId && c.ws.readyState === c.ws.OPEN) {
-      c.ws.send(payload);
+      safeSend(c.ws, payload);
     }
   }
 }
@@ -130,7 +152,7 @@ export function broadcastToSession(
 export function broadcastBinaryToSession(sessionId: string, data: Buffer): void {
   for (const c of clients.values()) {
     if (c.sessionId === sessionId && c.ws.readyState === c.ws.OPEN) {
-      c.ws.send(data, { binary: true });
+      safeSend(c.ws, data, { binary: true });
     }
   }
 }
@@ -166,7 +188,7 @@ export function broadcastScreenFrameToSession(
   });
   for (const c of clients.values()) {
     if (c.sessionId === sessionId && c.ws.readyState === c.ws.OPEN) {
-      c.ws.send(payload);
+      safeSend(c.ws, payload);
     }
   }
 }
@@ -174,7 +196,7 @@ export function broadcastScreenFrameToSession(
 export function broadcastAll(message: unknown): void {
   const payload = JSON.stringify(message);
   for (const c of clients.values()) {
-    if (c.ws.readyState === c.ws.OPEN) c.ws.send(payload);
+    if (c.ws.readyState === c.ws.OPEN) safeSend(c.ws, payload);
   }
 }
 
