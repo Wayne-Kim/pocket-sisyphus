@@ -27,6 +27,7 @@ import {
 } from "../mcp/store.js";
 import { registerNative, unregisterNative } from "../mcp/native.js";
 import { healthOf, probeServer } from "../mcp/health.js";
+import type { McpHealth } from "../mcp/health.js";
 import type { McpServerConfig } from "../config.js";
 
 export const mcp = new Hono();
@@ -39,6 +40,11 @@ function nonEmptyString(v: unknown): string | null {
 /** 응답용 서버 뷰 — 토큰/오류 본문은 빼고 custody 헬스 상태를 합친다(폰 평문 안전). */
 function toView(server: McpServerConfig, now = Date.now()) {
   const h = healthOf(server, now);
+  return baseView(server, h);
+}
+
+/** 공통 직렬화 — 헬스(custody-only 또는 probed)를 합쳐 폰 안전 뷰로. */
+function baseView(server: McpServerConfig, h: McpHealth) {
   return {
     id: server.id,
     catalogId: server.catalogId,
@@ -49,19 +55,35 @@ function toView(server: McpServerConfig, now = Date.now()) {
     scopes: server.scopes,
     writeEnabled: server.writeEnabled,
     status: h.status,
+    // 도달성 신호(신규 옵셔널 필드 — 옛 클라는 무시). 색은 status 로 이미 하위호환.
+    reachable: h.reachable ?? null,
+    detail: h.detail ?? null,
     createdAt: server.createdAt,
     connectedAt: server.connectedAt ?? null,
     tokenExpiresAt: server.tokenExpiresAt ?? null,
   };
 }
 
+/**
+ * 프로브를 반영한 서버 뷰 — 목록·디테일에서 «거짓 초록» 제거용. custody=connected 인 서버만
+ * 실제 네트워크 프로브를 타고(나머지는 즉시 custody 헬스 반환), 확정 음성이면 status 를 강등한다.
+ */
+async function toProbedView(server: McpServerConfig, now = Date.now()) {
+  const h = await probeServer(server, fetch, 4000, now);
+  return baseView(server, h);
+}
+
 mcp.get("/catalog", (c) => {
   return c.json({ catalog: MCP_CATALOG });
 });
 
-mcp.get("/", (c) => {
+mcp.get("/", async (c) => {
   const now = Date.now();
-  return c.json({ servers: listServers().map((s) => toView(s, now)) });
+  // 목록 표시에도 프로브 반영 — connected 서버만 실제로 네트워크를 타고(병렬), 확정 음성은 강등.
+  const servers = await Promise.all(
+    listServers().map((s) => toProbedView(s, now)),
+  );
+  return c.json({ servers });
 });
 
 mcp.post("/", async (c) => {
@@ -130,7 +152,8 @@ mcp.get("/:id", async (c) => {
   const server = getServer(c.req.param("id"));
   if (!server) return c.json({ error: "not_found" }, 404);
   const health = await probeServer(server);
-  return c.json({ server: toView(server), health });
+  // server.status 도 프로브 반영(거짓 초록 제거) — health 와 동일 신호.
+  return c.json({ server: baseView(server, health), health });
 });
 
 // OAuth 동의 트리거 — 실제 인가 흐름(401→PRM 자동발견→PKCE 동의)은 에이전트 CLI 네이티브 MCP 가

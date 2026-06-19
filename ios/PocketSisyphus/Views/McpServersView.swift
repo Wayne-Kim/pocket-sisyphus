@@ -256,7 +256,7 @@ private struct McpServerRow: View {
             .controlSize(.small)
             .disabled(busy)
             .accessibilityLabel(Text("\(displayName) 연결 해제"))
-        case .unconfigured, .expired, .error:
+        case .unconfigured, .expired, .error, .unreachable:
             Button {
                 onConnect()
             } label: {
@@ -272,7 +272,7 @@ private struct McpServerRow: View {
     private var statusColor: Color {
         switch server.statusValue {
         case .connected: return Theme.success
-        case .expired, .error: return Theme.danger
+        case .expired, .error, .unreachable: return Theme.danger
         case .unconfigured: return Theme.warning
         }
     }
@@ -282,6 +282,7 @@ private struct McpServerRow: View {
         case .connected: return String(localized: "연결됨")
         case .expired: return String(localized: "토큰 만료 — 다시 연결 필요")
         case .error: return String(localized: "연결 오류")
+        case .unreachable: return String(localized: "서버에 도달할 수 없음")
         case .unconfigured: return String(localized: "연결 필요")
         }
     }
