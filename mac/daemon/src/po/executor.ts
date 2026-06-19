@@ -373,14 +373,23 @@ async function finalizeCollection(
       .prepare(`UPDATE sessions SET status = ?, ended_at = ? WHERE id = ?`)
       .run(result.status === "error" ? "error" : "completed", endedAt, sessionId);
 
-    const insertedIds = result.status === "ok" ? ingestBriefs(sessionId, repoPath, outFile) : [];
-    const verdicts = result.status === "ok" ? ingestVerdicts(repoPath, verdictFile) : 0;
+    // 산출 파일은 «쓰였으면 거둔다» — settle 가 ok 가 아니어도(turn_complete 미검출, 또는 느린
+    // 에이전트가 MAX_RUNTIME_MS(30분) 상한을 쳐 timeout) 에이전트가 이미 쓴 유효 브리프를 버리지
+    // 않는다. 옛 «status===ok 일 때만 ingest» 게이트는 산출 파일이 멀쩡해도 통째로 버려 «수집했는데
+    // 브리프 0건» 을 만들었다 (산출 파일만 /tmp 에 잔존·미-ingest). xhigh effort 처럼 한 턴이 길어지는
+    // 설정에선 settle 상한을 넘기기 쉬워 이 유실이 자주 난다. ingestBriefs/ingestVerdicts 는 파일 없음/
+    // 깨진 JSON/부분 산출에 모두 안전([] / 0)이라 status 무관하게 거둬도 손해가 없다.
+    const insertedIds = ingestBriefs(sessionId, repoPath, outFile);
+    const verdicts = ingestVerdicts(repoPath, verdictFile);
     console.log(
       `[po] collect done session=${sessionId} status=${result.status} briefs=${insertedIds.length} verdicts=${verdicts} signals=store:${signals.store.state}/crash:${signals.crash.state}`,
     );
     void dispatchPoNotification({
       sessionId,
-      status: result.status,
+      // 브리프를 실제로 거뒀으면 «성공(po_briefs)» 으로 알린다 — settle 가 timeout 이어도 산출이
+      // 도착한 건 사실이라 status 를 ok 로 맞춰 «결재할 것이 생겼다» 알림이 울리게 한다(알림 게이트는
+      // ok+briefCount>0 만 발사). 0건이면 settle 결과 그대로 — ok 0건은 침묵, timeout/error 는 실패 알림.
+      status: insertedIds.length > 0 ? "ok" : result.status,
       briefCount: insertedIds.length,
       // 새 브리프가 정확히 1건이면 알림 딥링크가 그 브리프 상세로 바로 착지한다.
       briefId: insertedIds.length === 1 ? insertedIds[0] : undefined,
@@ -721,7 +730,10 @@ async function finalizeResearch(
     } catch {
       /* 보고서 미산출 */
     }
-    const ok = result.status === "ok" && report.length > 0;
+    // 보고서가 «쓰였으면» 완료로 본다 — settle 가 ok 가 아니어도(turn_complete 미검출/timeout)
+    // 에이전트가 이미 쓴 보고서·브리프를 버리지 않는다 (수집 finalize 와 동형). 조기 실패로 보고서
+    // 자체가 없을 때만 failed. ingestBriefs 는 파일 없음/깨진 JSON 에 [] 로 안전.
+    const ok = report.length > 0;
     const insertedIds = ok ? ingestBriefs(sessionId, repoPath, briefsFile, researchId) : [];
 
     db()
@@ -856,32 +868,33 @@ async function finalizeRevision(
       .prepare(`UPDATE sessions SET status = ?, ended_at = ? WHERE id = ?`)
       .run(result.status === "error" ? "error" : "completed", endedAt, sessionId);
 
+    // 갱신본도 «쓰였으면 적용» — settle 가 ok 가 아니어도(turn_complete 미검출/timeout) 에이전트가
+    // 이미 쓴 재종합 결과를 버리지 않는다 (수집/리서치 finalize 와 동형). 파일 없음/깨진 JSON 은
+    // 아래 try/catch 가 흡수해 원형 유지 — status 게이트 없이도 안전.
     let applied = false;
-    if (result.status === "ok") {
-      try {
-        const draft = parseBriefDraft(JSON.parse(fs.readFileSync(outFile, "utf8")));
-        if (draft) {
-          db()
-            .prepare(
-              `UPDATE po_briefs SET title = ?, problem = ?, evidence = ?, impact = ?, effort = ?, score = ?, scope = ?, spec = ?, updated_at = ? WHERE id = ?`,
-            )
-            .run(
-              draft.title,
-              draft.problem,
-              draft.evidence,
-              draft.impact,
-              draft.effort,
-              draft.score,
-              draft.scope,
-              draft.spec,
-              endedAt,
-              briefId,
-            );
-          applied = true;
-        }
-      } catch (e) {
-        console.warn(`[po] revise ingest failed brief=${briefId}:`, (e as Error).message);
+    try {
+      const draft = parseBriefDraft(JSON.parse(fs.readFileSync(outFile, "utf8")));
+      if (draft) {
+        db()
+          .prepare(
+            `UPDATE po_briefs SET title = ?, problem = ?, evidence = ?, impact = ?, effort = ?, score = ?, scope = ?, spec = ?, updated_at = ? WHERE id = ?`,
+          )
+          .run(
+            draft.title,
+            draft.problem,
+            draft.evidence,
+            draft.impact,
+            draft.effort,
+            draft.score,
+            draft.scope,
+            draft.spec,
+            endedAt,
+            briefId,
+          );
+        applied = true;
       }
+    } catch (e) {
+      console.warn(`[po] revise ingest failed brief=${briefId}:`, (e as Error).message);
     }
     console.log(`[po] revise done brief=${briefId} status=${result.status} applied=${applied}`);
   } finally {
