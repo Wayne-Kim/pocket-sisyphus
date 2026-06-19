@@ -38,7 +38,7 @@ import { checkAscForCollect } from "../po/asc-check.js";
 import { parseSignals } from "../po/signals.js";
 import { getPoScheduler } from "../po/scheduler.js";
 import { validateSchedule } from "../cron/schedule.js";
-import { buildPoExecPrompt, buildPoCleanupPrompt } from "../po/prompt.js";
+import { buildPoExecPrompt, buildPoCleanupPrompt, normalizePoLocale } from "../po/prompt.js";
 import { createWorktree } from "../git/worktree.js";
 import { validateAscKey, verifyAscConnection } from "../po/asc.js";
 import { readConfig, writeConfig, type AscConfig } from "../config.js";
@@ -520,6 +520,7 @@ po.post("/collect", async (c) => {
     agent?: unknown;
     persona?: unknown;
     lens?: unknown;
+    locale?: unknown;
   };
   try {
     body = await c.req.json();
@@ -544,8 +545,12 @@ po.post("/collect", async (c) => {
       : body.persona === "designer"
         ? ("design" as const)
         : ("default" as const);
+  // 산출 언어 (po_locale_v1) — iOS 가 실은 앱 표시 언어. 지원 집합의 비-ko 면 브리프를 그 언어로
+  // 산출하게 빌더가 지시를 붙인다. 누락(옛 클라이언트)/ko/미지원은 normalizePoLocale 이 undefined
+  // 로 떨궈 한국어 산출(byte-identical) — parseLens 와 같은 경계 화이트리스트 검증.
+  const locale = normalizePoLocale(body.locale);
 
-  const result = startPoCollection(repoPath, instruction || undefined, agent, lens);
+  const result = startPoCollection(repoPath, instruction || undefined, agent, lens, locale);
   if (result.status === "error") {
     return c.json({ error: "collect_failed", message: result.error }, 400);
   }
@@ -904,6 +909,7 @@ po.post("/research", async (c) => {
     lens?: unknown;
     scope?: unknown;
     screens?: unknown;
+    locale?: unknown;
   };
   try {
     body = await c.req.json();
@@ -927,8 +933,11 @@ po.post("/research", async (c) => {
   // «렌더된 화면을 캡처해 그 화면으로 휴리스틱 판정» 블록을 추가한다(화면 못 얻으면 코드+웹
   // graceful fallback). 누락/false·ux 외 렌즈는 buildPoResearchPrompt 가 무시 → 기존 동작(회귀 0).
   const screens = body.screens === true;
+  // 산출 언어 (po_locale_v1) — 수집과 동형. 비-ko 지원 로케일이면 보고서·브리프를 그 언어로.
+  // 누락/ko/미지원은 undefined → 한국어 산출(byte-identical).
+  const locale = normalizePoLocale(body.locale);
 
-  const result = startPoResearch(repoPath, topic, agent, lens, scope, screens);
+  const result = startPoResearch(repoPath, topic, agent, lens, scope, screens, locale);
   if (result.status === "error") {
     return c.json({ error: "research_failed", message: result.error }, 400);
   }
@@ -1250,7 +1259,7 @@ po.post("/asc-key/verify", async (c) => {
 // 브리프 «수정 지시» — 티켓 코멘트처럼 한 줄 지시로 재종합. 결재 전(proposed/held)에만.
 po.post("/briefs/:id/revise", async (c) => {
   const id = c.req.param("id");
-  let body: { comment?: unknown };
+  let body: { comment?: unknown; locale?: unknown };
   try {
     body = await c.req.json();
   } catch {
@@ -1258,6 +1267,9 @@ po.post("/briefs/:id/revise", async (c) => {
   }
   const comment = typeof body.comment === "string" ? body.comment.trim().slice(0, 2000) : "";
   if (!comment) return c.json({ error: "missing_comment" }, 400);
+  // 산출 언어 (po_locale_v1) — 비-ko 지원 로케일이면 갱신본을 그 언어로 재종합. 누락/ko/미지원은
+  // undefined → 한국어 산출(byte-identical).
+  const locale = normalizePoLocale(body.locale);
 
   const row = db().prepare(`SELECT status, revising_session_id FROM po_briefs WHERE id = ?`).get(id) as
     | { status: string; revising_session_id: string | null }
@@ -1270,7 +1282,7 @@ po.post("/briefs/:id/revise", async (c) => {
     return c.json({ error: "revision_in_progress" }, 409);
   }
 
-  const result = startPoRevision(id, comment);
+  const result = startPoRevision(id, comment, locale);
   if (result.status === "error") {
     return c.json({ error: "revise_failed", message: result.error }, 400);
   }

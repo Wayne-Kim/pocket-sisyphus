@@ -130,6 +130,73 @@ const DECISION_LABEL: Record<PoDecisionRecord["status"], string> = {
 };
 
 /**
+ * PO 산출 «언어» — collect/research/revise 가 만드는 «사람이 읽는» 산출(리서치 보고서 본문,
+ * 브리프의 title·problem·scope·spec·evidence summary)을 «사용자 앱 언어» 로 쓰게 하는 i18n 축.
+ *
+ * 배경: 프롬프트의 «지시 본문» 은 한국어다(제품 언어·세션 transcript 와 일치). 그래서 비-한국어
+ * 사용자가 백로그를 쓰면 에이전트가 한국어로 산출하고 iOS 가 그걸 그대로 그려 결과가 안 읽혔다.
+ * iOS 가 «실제 표시 중인» 앱 언어(Bundle.main.preferredLocalizations.first)를 요청에 실어 보내면
+ * 빌더가 프롬프트 끝에 «산출을 그 언어로 써라» 한 줄을 덧붙인다 — «지시 본문» 은 한국어 유지,
+ * 산출(사람이 읽는 값)만 앱 언어로 (이 브리프 범위).
+ *
+ * 지원 집합은 이 레포가 «선언한» 10개(iOS/Mac Localizable.xcstrings 와 동일). 소스 언어는 ko —
+ * locale 이 ko / 누락(옛 클라이언트) / 미지원이면 지시를 «붙이지 않아» 기존 한국어 산출과
+ * byte-identical 하게 graceful fallback 한다(회귀 0). 키는 정규화된 canonical 표기, 값은 에이전트가
+ * 헷갈리지 않게 endonym + 영어 이름을 함께 적는다.
+ */
+const PO_OUTPUT_LANGUAGE: Record<string, string> = {
+  ar: "العربية (Arabic)",
+  en: "English",
+  es: "Español (Spanish)",
+  fr: "Français (French)",
+  hi: "हिन्दी (Hindi)",
+  ja: "日本語 (Japanese)",
+  "pt-BR": "Português do Brasil (Brazilian Portuguese)",
+  ru: "Русский (Russian)",
+  "zh-Hans": "简体中文 (Simplified Chinese)",
+  // ko 는 의도적으로 제외 — 소스 언어라 지시 없이 기존 산출과 동일(no-op).
+};
+
+/**
+ * 들어온 locale 문자열을 이 레포의 지원 집합 canonical 표기로 정규화한다 (네트워크 경계 방어 —
+ * iOS 가 이미 표시 언어를 정규화해 보내지만 daemon 도 그대로 믿지 않고 한 번 더 거른다). 매칭
+ * 실패는 undefined → 빌더가 산출 언어 지시를 안 붙여 한국어 산출로 폴백. parseLens/parseAgent
+ * 와 같은 «경계에서 화이트리스트 검증» 패턴.
+ */
+export function normalizePoLocale(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const s = raw.trim();
+  if (!s) return undefined;
+  const supported = [...Object.keys(PO_OUTPUT_LANGUAGE), "ko"];
+  // 정확 매치 (canonical 표기, 대소문자 무시 — "PT-br" → "pt-BR").
+  const exact = supported.find((c) => c.toLowerCase() === s.toLowerCase());
+  if (exact) return exact;
+  // 지역/스크립트 꼬리표 폴백 — "en-US" → en, "pt"/"pt-PT" → pt-BR, "zh"/"zh-Hans-CN" → zh-Hans.
+  const base = (s.split(/[-_]/)[0] ?? "").toLowerCase();
+  if (["ar", "en", "es", "fr", "hi", "ja", "ko", "ru"].includes(base)) return base;
+  if (base === "pt") return "pt-BR";
+  if (base === "zh") {
+    // 번체(zh-Hant/TW/HK/MO)는 지원 집합에 없다 → undefined(한국어 폴백). 그 외 zh 는 간체로.
+    return /hant|tw|hk|mo/.test(s.toLowerCase()) ? undefined : "zh-Hans";
+  }
+  return undefined;
+}
+
+/**
+ * 산출 언어 지시 블록 — locale 이 지원 집합의 «비-ko» 면 «사람이 읽는 산출을 그 언어로 써라» 를
+ * 만들어 프롬프트 «끝» 에 덧붙인다. ko/누락/미지원이면 빈 문자열 → 프롬프트가 기존과
+ * byte-identical (회귀 0, graceful fallback). 앞의 «지시 본문» 은 한국어 유지.
+ */
+function localeOutputDirective(locale?: string): string {
+  const lang = PO_OUTPUT_LANGUAGE[normalizePoLocale(locale) ?? ""];
+  if (!lang) return "";
+  return `
+
+## 산출 언어 (사용자 앱 언어 — 필수)
+사용자의 앱 표시 언어는 «${lang}» 다. 위에서 산출하는 «사람이 읽는» 텍스트 — 리서치 보고서 본문, 그리고 각 브리프의 title·problem·scope·spec 과 evidence 의 summary — 를 반드시 ${lang} 로 작성하라. 사용자 입력(주제·지시)이 다른 언어여도 이해는 하되, 산출은 ${lang} 로 쓴다. JSON 키·enum 값(kind·relation 등)·파일 경로·식별자·코드/명령·URL 은 번역하지 말고 그대로 둔다.`;
+}
+
+/**
  * «디자인 제약» 섹션 — 수집·리서치·워크플로우 설계 프롬프트 공통.
  *
  * 왜: PO 가 만드는 spec 은 코드/문서/웹 신호만 보고 «색 의미·i18n·상호작용 상태·접근성» 을
@@ -353,6 +420,12 @@ export function buildPoCollectPrompt(opts: {
    * 들어간다. 픽커는 default/design/bug 만 노출하므로 qa/security 는 머리말 없는 일반 수집으로 폴백한다.
    */
   lens?: PoLens;
+  /**
+   * 산출 언어 (선택, po_locale_v1) — iOS 가 실은 «앱 표시 언어». 지원 집합의 비-ko 면 «브리프
+   * title·problem·scope·spec·evidence summary 를 그 언어로 써라» 지시가 프롬프트 끝에 붙는다.
+   * ko/누락(옛 클라이언트)/미지원이면 지시가 없어 기존 한국어 산출과 byte-identical (회귀 0).
+   */
+  locale?: string;
 }): string {
   const backlog = renderBacklogAnchor(opts.existingBriefs);
 
@@ -518,7 +591,7 @@ ${opts.outFile}
 ${DEDUP_SCHEMA_FIELD}
 }
 
-제안할 디자인 부채가 정말 없으면 빈 배열 [] 을 써라. 파일을 쓴 뒤 «디자인 부채 N건 작성 완료» 한 줄로 끝내라.`;
+제안할 디자인 부채가 정말 없으면 빈 배열 [] 을 써라. 파일을 쓴 뒤 «디자인 부채 N건 작성 완료» 한 줄로 끝내라.${localeOutputDirective(opts.locale)}`;
   }
 
   // 프롬프트는 한국어 — 사용자 세션 transcript 로 그대로 보이므로 제품 언어와 일치시킨다.
@@ -559,7 +632,7 @@ ${opts.outFile}
 ${DEDUP_SCHEMA_FIELD}
 }
 
-제안할 것이 정말 없으면 빈 배열 [] 을 써라. 파일을 쓴 뒤 «브리프 N건 작성 완료» 한 줄로 끝내라.`;
+제안할 것이 정말 없으면 빈 배열 [] 을 써라. 파일을 쓴 뒤 «브리프 N건 작성 완료» 한 줄로 끝내라.${localeOutputDirective(opts.locale)}`;
 }
 
 /**
@@ -604,6 +677,12 @@ export function buildPoResearchPrompt(opts: {
    * 생략/false 거나 ux 외 렌즈면 머리말이 byte-identical (회귀 0). 옛 클라이언트는 안 보냄 → false.
    */
   screens?: boolean;
+  /**
+   * 산출 언어 (선택, po_locale_v1) — 수집과 동형. 지원 집합의 비-ko 면 보고서 본문·브리프
+   * title/problem/spec 을 그 언어로 쓰라는 지시가 끝에 붙는다. ko/누락/미지원이면 기존 한국어
+   * 산출과 byte-identical (회귀 0).
+   */
+  locale?: string;
 }): string {
   const backlog = renderBacklogAnchor(opts.existingBriefs);
   const repoOnly = opts.scope === "repo_only";
@@ -667,7 +746,7 @@ ${DEDUP_INSTRUCTION}
 
 ${backlog}
 
-두 파일을 모두 쓴 뒤 «리서치 완료 — 브리프 N건» 한 줄로 끝내라.`;
+두 파일을 모두 쓴 뒤 «리서치 완료 — 브리프 N건» 한 줄로 끝내라.${localeOutputDirective(opts.locale)}`;
 }
 
 /**
@@ -687,6 +766,12 @@ export function buildPoRevisePrompt(opts: {
   };
   comment: string;
   outFile: string;
+  /**
+   * 산출 언어 (선택, po_locale_v1) — 수집/리서치와 동형. 지원 집합의 비-ko 면 갱신본의
+   * title/problem/spec 을 그 언어로 쓰라는 지시가 끝에 붙는다(원형 한국어 브리프라도 앱 언어로
+   * 재종합). ko/누락/미지원이면 기존 한국어 산출과 byte-identical (회귀 0).
+   */
+  locale?: string;
 }): string {
   return `너는 이 저장소의 프로덕트 오너(PO) 에이전트다. 아래 기회 브리프에 사용자가 수정 지시를 남겼다. 지시를 반영해 브리프를 «재종합» 하라. 코드를 수정하지 마라 — 필요하면 레포를 읽어 근거를 보강하는 조사만 한다.
 
@@ -709,7 +794,7 @@ ${opts.outFile}
 스키마는 수집 때와 동일: { "title", "problem", "evidence": [{"kind","ref","summary"}], "impact": 1-5, "effort": 1-5, "scope", "spec" }.
 - 지시가 닿지 않는 필드는 원형을 유지하라 (불필요한 재작성 금지).
 - 근거 역추적 원칙 유지 — 지시로 근거가 약해지면 레포에서 보강하거나 user_directive 근거를 추가.
-파일을 쓴 뒤 «재종합 완료» 한 줄로 끝내라.`;
+파일을 쓴 뒤 «재종합 완료» 한 줄로 끝내라.${localeOutputDirective(opts.locale)}`;
 }
 
 /**

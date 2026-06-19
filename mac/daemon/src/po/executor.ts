@@ -164,12 +164,16 @@ function decisionHistory(repoPath: string): PoDecisionRecord[] {
  * 디자인 SSOT 대비로 발굴(옛 designer 페르소나와 동치), "bug" 면 디버깅·신뢰성 신호를 우선 모은다.
  * 생략(주기 수집/옛 클라이언트)이면 프로필의 저장된 렌즈(po_profiles.lens)로 폴백 — 회차 인자가
  * 프로필보다 우선한다 (instruction↔directive 와 동형). 프로필도 비면 "default"(전방위 수집).
+ * `locale` — 산출 언어 (po_locale_v1, 선택). iOS 가 실은 «앱 표시 언어». 지원 집합의 비-ko 면
+ * 브리프 산출을 그 언어로 쓰게 프롬프트에 지시가 붙는다. 생략(주기 수집/옛 클라이언트)/ko/미지원은
+ * 한국어 산출(byte-identical) — route 에서 normalizePoLocale 로 이미 정규화돼 들어온다.
  */
 export function startPoCollection(
   repoPathRaw: string,
   instruction?: string,
   agentIdRaw?: string,
   lens?: PoLens,
+  locale?: string,
 ): PoCollectResult {
   const dir = resolveAndEnsureRepoDir(repoPathRaw);
   if ("error" in dir) return { status: "error", error: dir.error };
@@ -233,6 +237,9 @@ export function startPoCollection(
     designDirective: profileRow?.design_directive ?? undefined,
     // 렌즈 — "design" 면 디자인 부채 발굴, "bug" 면 디버깅·신뢰성 우선. 생략/그 외는 기본 전방위 수집.
     lens: collectLens,
+    // 산출 언어 — iOS 가 실은 앱 표시 언어. 비-ko 지원 로케일이면 브리프를 그 언어로 산출하게
+    // 지시가 붙는다. 누락(주기 수집/옛 클라이언트)/ko/미지원은 한국어 산출(byte-identical).
+    locale,
   };
 
   console.log(`[po] collect start session=${sessionId} repo=${repoPath} agent=${agentId}`);
@@ -612,6 +619,8 @@ export type PoResearchResult =
  * `screens` — UX 렌즈 «화면 포함» (po_research_ux_screens_v1). ux 렌즈에서만 의미 — true 면
  *   프롬프트에 «렌더된 화면을 캡처해 그 화면으로 휴리스틱을 판정» 하는 블록을 추가한다(화면 못
  *   얻으면 코드+웹으로 graceful fallback). 생략/false·ux 외 렌즈면 프롬프트가 byte-identical (회귀 0).
+ * `locale` — 산출 언어 (po_locale_v1, 선택). 비-ko 지원 로케일이면 보고서·브리프를 그 언어로
+ *   산출하게 지시가 붙는다. 생략(옛 클라이언트)/ko/미지원은 한국어 산출(byte-identical).
  */
 export function startPoResearch(
   repoPathRaw: string,
@@ -620,6 +629,7 @@ export function startPoResearch(
   lens: PoLens = "default",
   scope?: "web_repo" | "repo_only",
   screens?: boolean,
+  locale?: string,
 ): PoResearchResult {
   const dir = resolveAndEnsureRepoDir(repoPathRaw);
   if ("error" in dir) return { status: "error", error: dir.error };
@@ -653,6 +663,8 @@ export function startPoResearch(
     lens,
     scope,
     screens,
+    // 산출 언어 — 비-ko 지원 로케일이면 보고서·브리프를 그 언어로. 누락/ko/미지원은 한국어(회귀 0).
+    locale,
   });
 
   const now = Date.now();
@@ -771,8 +783,10 @@ export type PoReviseResult =
 /**
  * 브리프 «수정 지시» 재종합을 시작하고 «즉시» 반환. 갱신은 백그라운드 —
  * po_briefs.revising_session_id 가 진행 중 표시이고, 끝나면 NULL 로 돌아온다.
+ * `locale` — 산출 언어 (po_locale_v1, 선택). 비-ko 지원 로케일이면 갱신본을 그 언어로 재종합하게
+ * 지시가 붙는다(원형이 한국어여도 앱 언어로). 생략/ko/미지원은 한국어 산출(byte-identical).
  */
-export function startPoRevision(briefId: string, comment: string): PoReviseResult {
+export function startPoRevision(briefId: string, comment: string, locale?: string): PoReviseResult {
   const row = db().prepare(`SELECT * FROM po_briefs WHERE id = ?`).get(briefId) as
     | {
         id: string;
@@ -800,7 +814,7 @@ export function startPoRevision(briefId: string, comment: string): PoReviseResul
     "claude_code",
   );
   const outFile = path.join(os.tmpdir(), `ps-po-revise-${sessionId}.json`);
-  const prompt = buildPoRevisePrompt({ brief: row, comment, outFile });
+  const prompt = buildPoRevisePrompt({ brief: row, comment, outFile, locale });
 
   const now = Date.now();
   db()

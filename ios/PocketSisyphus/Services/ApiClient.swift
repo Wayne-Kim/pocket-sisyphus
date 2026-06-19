@@ -1712,6 +1712,17 @@ final class ApiClient {
 
     // MARK: - PO 루프 (백로그)
 
+    /// PO 산출(브리프·리서치 보고서)을 «사용자 앱 언어» 로 받기 위해 collect/research/revise 요청
+    /// body 에 싣는 로케일 코드 (po_locale_v1). `preferredLocalizations` 는 사용자 선호 언어와
+    /// «번들에 실제 있는 로컬라이제이션» 의 교집합 최선값이라, 자연히 이 앱이 지원하는 10개 집합
+    /// (ar/en/es/fr/hi/ja/ko/pt-BR/ru/zh-Hans) 중 «지금 표시 중인» 하나로 정규화된다
+    /// (WhisperSpeechRecognizer.appLocale 의 preferredLanguages 패턴과 같은 의도 — 표시 언어 기준).
+    /// daemon 이 normalizePoLocale 로 한 번 더 거르므로, ko/누락/미지원이면 한국어 산출로 graceful
+    /// fallback (회귀 0). ko 도 그대로 보낸다 — daemon 이 ko 와 누락을 동일하게 한국어 산출로 취급.
+    static func appOutputLocale() -> String? {
+        Bundle.main.preferredLocalizations.first
+    }
+
     /// `GET /api/po/briefs` — 기회 브리프 목록. po_loop_v1 미지원 daemon 은 404 — 백로그 탭
     /// 자체가 capability 게이트로 숨겨지므로 정상 경로에선 도달하지 않는다.
     func listPoBriefs(label: String? = nil) async throws -> [PoBrief] {
@@ -1762,6 +1773,7 @@ final class ApiClient {
             let instruction: String?
             let agent: String?
             let lens: String?
+            let locale: String?
         }
         struct Resp: Decodable {
             let sessionId: String
@@ -1770,7 +1782,9 @@ final class ApiClient {
         }
         let resp: Resp = try await send(
             "POST", "/api/po/collect",
-            body: Req(repoPath: repoPath, instruction: instruction, agent: agent, lens: lens),
+            body: Req(
+                repoPath: repoPath, instruction: instruction, agent: agent, lens: lens,
+                locale: Self.appOutputLocale()),
             label: label)
         return PoCollectStart(sessionId: resp.sessionId, gh: resp.gh, asc: resp.asc)
     }
@@ -1903,13 +1917,14 @@ final class ApiClient {
             let lens: String?
             let scope: String?
             let screens: Bool?
+            let locale: String?
         }
         struct Resp: Decodable { let researchId: String; let sessionId: String }
         let resp: Resp = try await send(
             "POST", "/api/po/research",
             body: Req(
                 repoPath: repoPath, topic: topic, agent: agent, lens: lens, scope: scope,
-                screens: screens),
+                screens: screens, locale: Self.appOutputLocale()),
             label: label)
         return (resp.researchId, resp.sessionId)
     }
@@ -2023,10 +2038,14 @@ final class ApiClient {
         comment: String,
         label: String? = String(localized: "수정 지시"),
     ) async throws -> String {
-        struct Req: Encodable { let comment: String }
+        struct Req: Encodable {
+            let comment: String
+            let locale: String?
+        }
         struct Resp: Decodable { let sessionId: String }
         let resp: Resp = try await send(
-            "POST", "/api/po/briefs/\(id)/revise", body: Req(comment: comment), label: label)
+            "POST", "/api/po/briefs/\(id)/revise",
+            body: Req(comment: comment, locale: Self.appOutputLocale()), label: label)
         return resp.sessionId
     }
 

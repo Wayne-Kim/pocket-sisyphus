@@ -5,7 +5,9 @@ import {
   buildPoCollectPrompt,
   buildPoExecPrompt,
   buildPoResearchPrompt,
+  buildPoRevisePrompt,
   buildPoWorkflowDesignPrompt,
+  normalizePoLocale,
   type PoDecisionRecord,
   type PoExistingBrief,
 } from "./prompt.js";
@@ -806,4 +808,122 @@ describe("레포-무관 — pocket-sisyphus 전용 컨벤션이 사용자 레포
       expect(text).not.toContain("daemon / iOS");
     });
   }
+});
+
+describe("normalizePoLocale — 지원 집합 경계 정규화 (po_locale_v1)", () => {
+  it("지원 집합의 canonical 표기는 그대로 통과한다", () => {
+    for (const c of ["ar", "en", "es", "fr", "hi", "ja", "ko", "pt-BR", "ru", "zh-Hans"]) {
+      expect(normalizePoLocale(c)).toBe(c);
+    }
+  });
+
+  it("대소문자/공백을 정규화한다 (canonical 로 수렴)", () => {
+    expect(normalizePoLocale("EN")).toBe("en");
+    expect(normalizePoLocale("  ko  ")).toBe("ko");
+    expect(normalizePoLocale("pt-br")).toBe("pt-BR");
+    expect(normalizePoLocale("ZH-HANS")).toBe("zh-Hans");
+  });
+
+  it("지역/스크립트 꼬리표는 베이스/canonical 로 폴백한다", () => {
+    expect(normalizePoLocale("en-US")).toBe("en");
+    expect(normalizePoLocale("es-419")).toBe("es");
+    expect(normalizePoLocale("pt")).toBe("pt-BR"); // 지원하는 유일한 pt 변형
+    expect(normalizePoLocale("pt-PT")).toBe("pt-BR");
+    expect(normalizePoLocale("zh")).toBe("zh-Hans");
+    expect(normalizePoLocale("zh-Hans-CN")).toBe("zh-Hans");
+  });
+
+  it("미지원/이상값/비-문자열은 undefined (한국어 폴백 신호)", () => {
+    expect(normalizePoLocale("zh-Hant")).toBeUndefined(); // 번체는 지원 집합에 없다
+    expect(normalizePoLocale("zh-TW")).toBeUndefined();
+    expect(normalizePoLocale("de")).toBeUndefined();
+    expect(normalizePoLocale("")).toBeUndefined();
+    expect(normalizePoLocale("   ")).toBeUndefined();
+    expect(normalizePoLocale(undefined)).toBeUndefined();
+    expect(normalizePoLocale(null)).toBeUndefined();
+    expect(normalizePoLocale(42)).toBeUndefined();
+  });
+});
+
+describe("산출 언어 지시 (po_locale_v1) — collect/research/revise", () => {
+  const reviseBase = {
+    brief: {
+      title: "T",
+      problem: "P",
+      evidence: "[]",
+      impact: 3,
+      effort: 2,
+      scope: "S",
+      spec: "SPEC",
+    },
+    comment: "이 부분을 더 구체적으로",
+    outFile: "/tmp/rev.json",
+  };
+  const researchBase = {
+    repoPath: "/repo",
+    topic: "음성 메모",
+    reportFile: "/tmp/r.md",
+    briefsFile: "/tmp/b.json",
+    existingBriefs: [] as PoExistingBrief[],
+  };
+
+  it("locale 누락이면 세 빌더 모두 기존과 byte-identical (옛 클라이언트 — 회귀 0)", () => {
+    expect(buildPoCollectPrompt({ ...base, locale: undefined })).toBe(buildPoCollectPrompt(base));
+    expect(buildPoResearchPrompt({ ...researchBase, locale: undefined })).toBe(
+      buildPoResearchPrompt(researchBase),
+    );
+    expect(buildPoRevisePrompt({ ...reviseBase, locale: undefined })).toBe(
+      buildPoRevisePrompt(reviseBase),
+    );
+  });
+
+  it("locale='ko'(소스 언어) 면 byte-identical — 산출 언어 지시 없음", () => {
+    expect(buildPoCollectPrompt({ ...base, locale: "ko" })).toBe(buildPoCollectPrompt(base));
+    expect(buildPoResearchPrompt({ ...researchBase, locale: "ko" })).toBe(
+      buildPoResearchPrompt(researchBase),
+    );
+    expect(buildPoRevisePrompt({ ...reviseBase, locale: "ko" })).toBe(buildPoRevisePrompt(reviseBase));
+  });
+
+  it("미지원 코드(zh-Hant·de)도 byte-identical — graceful fallback", () => {
+    expect(buildPoCollectPrompt({ ...base, locale: "zh-Hant" })).toBe(buildPoCollectPrompt(base));
+    expect(buildPoCollectPrompt({ ...base, locale: "de" })).toBe(buildPoCollectPrompt(base));
+    expect(buildPoResearchPrompt({ ...researchBase, locale: "de" })).toBe(
+      buildPoResearchPrompt(researchBase),
+    );
+  });
+
+  it("비-ko 지원 로케일이면 산출 언어 지시를 «끝» 에 덧붙인다 (English)", () => {
+    const out = buildPoCollectPrompt({ ...base, locale: "en" });
+    expect(out).toContain("## 산출 언어 (사용자 앱 언어 — 필수)");
+    expect(out).toContain("English");
+    // 지시는 프롬프트 «끝» 에 붙는다 — 기존 본문(브리프 N건 작성 완료)은 그 앞에 그대로 있다.
+    expect(out.indexOf("브리프 N건 작성 완료")).toBeLessThan(out.indexOf("## 산출 언어"));
+  });
+
+  it("각 로케일이 자기 언어 이름으로 들어간다 (research 보고서/브리프)", () => {
+    expect(buildPoResearchPrompt({ ...researchBase, locale: "ja" })).toContain("日本語 (Japanese)");
+    expect(buildPoResearchPrompt({ ...researchBase, locale: "pt-BR" })).toContain(
+      "Português do Brasil",
+    );
+    // 지역 꼬리표 입력도 정규화돼 같은 지시를 만든다.
+    expect(buildPoResearchPrompt({ ...researchBase, locale: "fr-CA" })).toContain(
+      "Français (French)",
+    );
+  });
+
+  it("design 렌즈 수집도 산출 언어 지시를 받는다 (디자인 부채 브리프도 앱 언어로)", () => {
+    const out = buildPoCollectPrompt({ ...base, lens: "design", locale: "es" });
+    expect(out).toContain("## 산출 언어 (사용자 앱 언어 — 필수)");
+    expect(out).toContain("Español (Spanish)");
+    // 디자인 렌즈 본문은 유지 — 지시는 그 뒤에 붙는다.
+    expect(out.indexOf("디자인 부채 N건 작성 완료")).toBeLessThan(out.indexOf("## 산출 언어"));
+  });
+
+  it("revise 도 비-ko 면 갱신본을 앱 언어로 쓰라는 지시를 받는다", () => {
+    const out = buildPoRevisePrompt({ ...reviseBase, locale: "ru" });
+    expect(out).toContain("## 산출 언어 (사용자 앱 언어 — 필수)");
+    expect(out).toContain("Русский (Russian)");
+    expect(out.indexOf("재종합 완료")).toBeLessThan(out.indexOf("## 산출 언어"));
+  });
 });
