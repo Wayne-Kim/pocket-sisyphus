@@ -574,6 +574,87 @@ export function prunePtyChunks(sessionId: string, retain = PTY_CHUNK_RETAIN): nu
 }
 
 /**
+ * 연속 insert 실패 로그 스팸 억제 윈도우(ms). 한 세션이 디스크 풀/락 경합으로 매 flush 마다
+ * 실패하면 15ms 마다 console.warn 이 쏟아질 수 있어, 세션당 최대 이 간격에 1회만 요약 출력한다.
+ */
+const INSERT_FAIL_LOG_INTERVAL_MS = 5_000;
+
+/**
+ * PtyChunkBuffer.onFlush 핸들러 팩토리 — 세션 1개의 coalesced 출력 청크를 받아
+ * (1) 위험 OSC/REP 정화 → (2) messages 테이블에 pty_chunk 저장 → (3) 같은 id 로 WS broadcast
+ * → (4) 주기적 compaction 을 수행한다. 세션별 카운터(flush/실패)는 클로저에 캡슐화.
+ *
+ * ## 신뢰성 — flush 타이머 루프를 절대 죽이지 않는다
+ *
+ * cron·workflow·다중 PTY 세션이 같은 SQLite messages 테이블에 동시에 쓰므로 SQLITE_BUSY·
+ * 디스크 풀 같은 «일시» 오류가 충분히 가능하다. insert/broadcast 를 try/catch 로 격리하지
+ * 않으면, throw 가 flush 타이머 콜백 밖으로 새어 (1) 같은 콜백의 broadcast 가 실행되지 않아
+ * 출력이 유실되고 (2) 타이머 루프가 죽어 세션 터미널이 영영 멎는다. 여기서:
+ *   - SQLITE_BUSY 단발 경합은 db() 의 busy_timeout 이 동기 대기로 흡수(파일: db/index.ts).
+ *   - 그래도 throw 하면 격리·로깅하고 «다음 flush 는 계속» — 콜백은 죽지 않는다.
+ *
+ * ## insert/broadcast 의 원자성
+ *
+ * WS broadcast 와 messages insert 는 «같은 messageId» 를 공유해야 iOS 가 WS push 1회 +
+ * polling history 1회를 dedup 한다. 따라서 insert 가 실패하면 broadcast 도 «반드시» 스킵한다
+ * — 안 그러면 id 없는(혹은 어긋난) chunk 가 WS 로만 흘러 polling 본과 정합이 깨지고 ANSI
+ * cursor 가 어긋난다. 반대로 insert 성공 후 broadcast 만 실패하면, 청크는 이미 DB 에 있어
+ * iOS polling/catch-up 이 복구하므로(유실 아님) 로그만 남기고 넘어간다.
+ */
+export function createPtyFlushHandler(sessionId: string): (merged: Buffer) => void {
+  let flushCount = 0;
+  let insertFailCount = 0;
+  let lastInsertFailLogAt = 0;
+  return (merged: Buffer): void => {
+    // 위험 OSC/REP 중화 — 신뢰 못 할 콘텐츠(cat/fetch/LLM 응답)가 폰 SwiftTerm 을 공격면으로
+    // 삼는 걸 막는다. broadcast 와 저장(replay) 둘 다 정화본을 쓰게 해 진입 이후 표면을 닫는다.
+    const safe = ALLOW_UNSAFE_OSC ? merged : sanitizeLivePtyOutput(merged);
+    const b64 = safe.toString("base64");
+
+    // (2) insert — 실패 시 격리·로깅 후 «return» 하여 broadcast 까지 스킵(원자성).
+    let messageId: string;
+    try {
+      messageId = insertMessage(sessionId, "assistant", "pty_chunk", { bytes_b64: b64 });
+    } catch (e) {
+      insertFailCount++;
+      const now = Date.now();
+      // 로그 스팸 억제 — 폭주 시 INSERT_FAIL_LOG_INTERVAL_MS 마다 1회만 누적 요약.
+      if (now - lastInsertFailLogAt >= INSERT_FAIL_LOG_INTERVAL_MS) {
+        console.warn(
+          `[pty-runner] pty_chunk insert 실패 session=${sessionId} (누적 ${insertFailCount}회): ${(e as Error).message} — 이 청크 출력 유실, 다음 flush 는 계속`,
+        );
+        lastInsertFailLogAt = now;
+      }
+      return;
+    }
+
+    // (3) broadcast — insert 와 같은 id. 실패해도 청크는 이미 DB 에 있어 polling 이 복구.
+    try {
+      broadcastToSession(sessionId, {
+        type: "pty_output",
+        sessionId,
+        id: messageId,
+        bytes_b64: b64,
+      });
+    } catch (e) {
+      console.warn(
+        `[pty-runner] pty_chunk broadcast 실패 session=${sessionId} (DB 저장됨, polling 복구): ${(e as Error).message}`,
+      );
+    }
+
+    // (4) compaction — 매 512 flush 마다 한 번만 (핫패스 부담 최소화). 오래된 pty_chunk 를
+    // 잘라 messages 테이블 무한 증식 방지. 모든 reader 윈도우보다 retain 이 커 손실 없음.
+    if ((++flushCount & 0x1ff) === 0) {
+      try {
+        prunePtyChunks(sessionId);
+      } catch (e) {
+        console.warn(`[pty-runner] prune failed session=${sessionId}`, (e as Error).message);
+      }
+    }
+  };
+}
+
+/**
  * PTY 프로세스를 lazy 하게 spawn 한다. 이미 살아있으면 그걸 재사용. spawn 세부 (binary
  * 경로 / args / env) 는 모두 ctx.adapter 가 결정 — runner 는 agent 무관 transport.
  */
@@ -637,35 +718,10 @@ function ensurePty(ctx: SessionContext, bypassPermissions: boolean): PtySession 
   // PTY 출력 청크 coalescing — 15ms 윈도우. ANSI redraw burst 가 5~20개 청크로 쪼개져
   // 들어오는 케이스에서 SQLite INSERT + JSON.stringify + ws.send + Tor onion 암호화를
   // 모두 1회로 압축. 사용자 입력 echo (단발 청크) 는 ~14ms 추가 latency 만 — 1 프레임 미만.
-  let flushCount = 0;
   const outputBuffer = new PtyChunkBuffer({
     delayMs: 15,
     maxBytes: 16 * 1024,
-    onFlush: (merged) => {
-      // 위험 OSC/REP 중화 — 신뢰 못 할 콘텐츠(cat/fetch/LLM 응답)가 폰 SwiftTerm 을 공격면으로
-      // 삼는 걸 막는다. broadcast 와 저장(replay) 둘 다 정화본을 쓰게 해 진입 이후 표면을 닫는다.
-      const safe = ALLOW_UNSAFE_OSC ? merged : sanitizeLivePtyOutput(merged);
-      const b64 = safe.toString("base64");
-      // WS broadcast 와 messages 테이블 insert 둘 다 같은 id 를 공유시켜야 iOS 가
-      // dedup 가능 — 안 그러면 같은 chunk 가 WS push 한 번 + polling history 한 번
-      // 총 두 번 SwiftTerm 에 feed 되어 ANSI cursor up/clear 가 어긋나며 라인이 밀려 보인다.
-      const messageId = insertMessage(ctx.sessionId, "assistant", "pty_chunk", { bytes_b64: b64 });
-      broadcastToSession(ctx.sessionId, {
-        type: "pty_output",
-        sessionId: ctx.sessionId,
-        id: messageId,
-        bytes_b64: b64,
-      });
-      // compaction — 매 512 flush 마다 한 번만 (핫패스 부담 최소화). 오래된 pty_chunk 를
-      // 잘라 messages 테이블 무한 증식 방지. 모든 reader 윈도우보다 retain 이 커 손실 없음.
-      if ((++flushCount & 0x1ff) === 0) {
-        try {
-          prunePtyChunks(ctx.sessionId);
-        } catch (e) {
-          console.warn(`[pty-runner] prune failed session=${ctx.sessionId}`, (e as Error).message);
-        }
-      }
-    },
+    onFlush: createPtyFlushHandler(ctx.sessionId),
   });
 
   const session: PtySession = {
