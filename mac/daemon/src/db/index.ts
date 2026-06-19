@@ -14,6 +14,12 @@ export function db(): Database.Database {
   ensureConfigDir();
   _db = new Database(DB_FILE);
   _db.pragma("journal_mode = WAL");
+  // SQLITE_BUSY 흡수 — cron·workflow·다중 PTY 세션이 같은 DB 파일에 동시에 쓰면 쓰기 락
+  // 경합으로 일시 SQLITE_BUSY 가 난다. better-sqlite3 는 «동기» 라 busy_timeout 동안 write 가
+  // 락을 얻을 때까지 블로킹 대기하므로, 단발 경합으로 INSERT 가 throw 해 PTY 출력이 유실되는
+  // 걸 막는다(핫패스: pty-runner 의 pty_chunk insert). 5초면 정상 경합엔 충분, 진짜 데드락만
+  // 그 뒤 throw 되어 상위에서 격리·로깅된다.
+  _db.pragma("busy_timeout = 5000");
   _db.pragma("foreign_keys = ON");
   const schema = fs.readFileSync(SCHEMA_PATH, "utf8");
   _db.exec(schema);
