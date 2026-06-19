@@ -310,6 +310,8 @@ struct ChatView: View {
             // 크롬 숨김 토글이 ON 이면 하단 컨트롤(구분선·입력바·상태바)을 통째로 숨긴다 — FAB 로 복구.
             if !hideChrome {
                 Divider()
+                // 입력 전송 실패/연결 끊김 표면화 — fire-and-forget 키 입력이 silent drop 됐을 때.
+                inputDeliveryBanner
                 // «에이전트가 나를 기다리는 중» 배너 — 딥링크/목록에서 들어왔을 때 스크롤백을
                 // 뒤지지 않아도 «지금 내 차례» 임을 즉시 알 수 있게. ChatVM 이 WS turn_complete
                 // (즉시) + 폴링 waiting_since (fallback) 로 켜고, 출력 재개/전송/exit 로 끈다.
@@ -337,6 +339,7 @@ struct ChatView: View {
         // 버튼이 받아야 하므로 HUD 는 hit-testing 을 끈다(터치 통과).
         .overlay(alignment: .top) { recordingHUD }
         .animation(.easeInOut(duration: 0.2), value: speech.isRecording)
+        .animation(.easeInOut(duration: 0.2), value: vm.ptyInputDelivery)
         .inFlightBanner()
         // 키보드 언어 변경 감지 — 사용자가 globe 키로 영문↔한글 토글 시 fire.
         // 활성 first responder 의 textInputMode 검사 → isAsciiKeyboard 갱신 → UI 자동 swap.
@@ -1021,6 +1024,54 @@ struct ChatView: View {
             return String(localized: "출처 브리프") + " · " + sb.briefKind.label
         }
         return String(localized: "출처 브리프") + " · " + sb.briefKind.label + " · " + title
+    }
+
+    /// PTY 입력 전송 실패/연결 끊김 표면화 배너 — fire-and-forget 키 입력(터미널/REPL 타이핑)이
+    /// WS 끊김으로 silent drop 됐을 때 «입력이 안 갔음» 을 즉시 알리고 재시도를 유도한다.
+    /// 색은 의미 토큰: 끊김/실패=danger(빨강), 재연결/복구 안내=secondary(중립). warning(노랑)·
+    /// pro(주황) 을 끌어다 쓰지 않는다. 빠른 끊김↔복구에서 깜빡이지 않게 ChatVM 이 최소 표시시간
+    /// 히스테리시스로 상태를 눌러 준다.
+    @ViewBuilder
+    private var inputDeliveryBanner: some View {
+        switch vm.ptyInputDelivery {
+        case .ok:
+            EmptyView()
+        case .failed:
+            HStack(spacing: 6) {
+                Image(systemName: "wifi.slash")
+                    .font(.caption2.weight(.semibold))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("연결이 끊겨 입력이 전송되지 않았어요")
+                        .font(.caption)
+                    Text("다시 연결되면 한 번 더 입력해 주세요")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(Theme.danger)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .background(Theme.danger.opacity(Theme.Opacity.fill))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text("연결이 끊겨 입력이 전송되지 않았어요. 다시 연결되면 한 번 더 입력해 주세요."))
+            .transition(.opacity)
+        case .reconnecting:
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.caption2.weight(.semibold))
+                Text("다시 연결됐어요 — 입력을 다시 시도해 주세요")
+                    .font(.caption)
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .background(Color.secondary.opacity(0.10))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text("다시 연결됐어요. 입력을 다시 시도해 주세요."))
+            .transition(.opacity)
+        }
     }
 
     private var agentWaitingBanner: some View {

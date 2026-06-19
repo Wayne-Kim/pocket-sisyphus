@@ -108,6 +108,12 @@ final class WSClient {
     /// session-scoped 인 경우 해당 sessionId 로 attachToSession 등록.
     private let sessionId: String?
     private let onEvent: EventHandler
+    /// WS 연결/끊김 전이를 알리는 선택적 콜백. ChatViewModel 이 «입력 전송 실패» 배너를
+    /// 재연결 성공 시 자동 해제하는 데 쓴다(나머지 소비자는 nil — 동작 영향 없음).
+    /// connected=true 는 subscribe 까지 성공해 송신 가능한 상태, false 는 끊김/재연결 진입.
+    private let onConnectionChange: (@MainActor (Bool) -> Void)?
+    /// onConnectionChange 중복 발화 방지 — 같은 값 연속 통보를 누른다.
+    private var lastReportedConnected: Bool?
 
     private var task: URLSessionWebSocketTask?
     /// reconnect 루프 동작 중인지. stop() 으로만 false 가 된다.
@@ -162,13 +168,22 @@ final class WSClient {
         conn: ConnectionManager,
         sessionId: String?,
         sinceProvider: (() -> Int64?)? = nil,
+        onConnectionChange: (@MainActor (Bool) -> Void)? = nil,
         onEvent: @escaping EventHandler,
     ) {
         self.auth = auth
         self.conn = conn
         self.sessionId = sessionId
         self.sinceProvider = sinceProvider
+        self.onConnectionChange = onConnectionChange
         self.onEvent = onEvent
+    }
+
+    /// 연결 상태 전이를 한 번만 통보 — 같은 값 연속 호출은 무시(깜빡임 유발 방지).
+    private func reportConnection(_ connected: Bool) {
+        guard lastReportedConnected != connected else { return }
+        lastReportedConnected = connected
+        onConnectionChange?(connected)
     }
 
     func start() {
@@ -185,6 +200,7 @@ final class WSClient {
         pingTask = nil
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
+        reportConnection(false)
         // 백오프 sleep 에 잠들어 있다면 깨워 runLoop 가 빠져나가게 한다.
         wakeBox.wake()
         // sharedSession 은 의도적으로 invalidate 하지 않음 — 다른 WSClient 인스턴스나
@@ -260,6 +276,7 @@ final class WSClient {
 
             NSLog("[WSClient] connected session=\(sessionId ?? "<global>")")
             reconnectAttempt = 0  // 성공 — 백오프 리셋
+            reportConnection(true)
 
             // 30s 주기 ping — Tor 회로의 idle 끊김 + iOS suspend 직후의 좀비 socket 을
             // 빨리 탐지하기 위함. ping 실패는 receive 루프가 곧 receive 에러로 잡으므로
@@ -319,18 +336,21 @@ final class WSClient {
     /// 의 raw byte 를 받아 호출. base64 인코딩 후 `{type: "pty_input", sessionId, bytes_b64}`
     /// 로 WS 송신.
     ///
-    /// fire-and-forget. WS 가 끊겨있으면 silent drop — task nil 체크로 race 안전.
+    /// fire-and-forget 이었으나, 송신 실패/끊김을 호출부(ChatViewModel)가 «입력이 안 갔음»
+    /// 배너로 표면화할 수 있도록 성공 여부를 반환한다. true = WS 로 송신 성공, false = task nil
+    /// (끊김) / sessionId nil (prewarm) / 인코딩 실패 / send throw. task nil 체크로 race 안전.
     ///
     /// `agent` 는 KS-TRACE 진단(`PS_KS_TRACE=1`)에만 쓰인다 — 송신측 로그에 에이전트 id 를
     /// 실어 daemon `writePtyRaw` 의 recv 라인과 짝지을 수 있게 한다(전송 동작엔 영향 없음).
-    func sendPtyInput(_ data: Data, agent: String? = nil) async {
+    @discardableResult
+    func sendPtyInput(_ data: Data, agent: String? = nil) async -> Bool {
         guard let t = task else {
             KSTrace.log("send", session: sessionId, agent: agent, bytes: data, note: "SKIP task=nil")
-            return
+            return false
         }
         guard let sid = sessionId else {
             KSTrace.log("send", session: nil, agent: agent, bytes: data, note: "SKIP sessionId=nil")
-            return
+            return false
         }
         KSTrace.log("send", session: sid, agent: agent, bytes: data)
         let b64 = data.base64EncodedString()
@@ -342,12 +362,18 @@ final class WSClient {
         guard let json = try? JSONSerialization.data(withJSONObject: msg),
               let text = String(data: json, encoding: .utf8) else {
             KSTrace.log("send", session: sid, agent: agent, bytes: data, note: "SKIP JSON-encode-failed")
-            return
+            return false
         }
         do {
             try await t.send(.string(text))
+            return true
         } catch {
             KSTrace.log("send", session: sid, agent: agent, bytes: data, note: "WS.send FAILED: \(error.localizedDescription)")
+            // send 실패 = 소켓이 죽었을 가능성 — 끊김으로 통보해 receive 루프 reconnect 전에도
+            // 배너가 뜨게 한다. runLoop 가 곧 backoffAndCleanup 로 같은 false 를 통보해도
+            // reportConnection 이 중복을 누른다.
+            reportConnection(false)
+            return false
         }
     }
 
@@ -606,6 +632,8 @@ final class WSClient {
         pingTask = nil
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
+        // 끊김 진입을 소비자에게 통보 — 입력 전송이 더는 안 닿는 상태.
+        reportConnection(false)
         // sharedSession 은 의도적으로 유지 — reconnect 가 같은 connection pool 재사용.
         guard running else { return }
 
