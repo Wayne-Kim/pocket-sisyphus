@@ -176,18 +176,100 @@ describe("OAuth 트리거 / 취소 / 삭제 라이프사이클", () => {
 });
 
 describe("GET /:id 헬스 프로브", () => {
-  it("도달 가능한 서버는 reachable=true 를 보고한다", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 401 }));
+  async function makeConnected(url = "https://gmail.example.com/mcp") {
     const res = await req("POST", "/api/mcp", {
       catalogId: "gmail",
       agent: "claude_code",
       repoPath: H.repoDir,
-      url: "https://gmail.example.com/mcp",
+      url,
     });
     const id = ((await res.json()) as { server: { id: string } }).server.id;
+    await req("POST", `/api/mcp/${id}/oauth`, { tokenExpiresAt: Date.now() + 3600_000 });
+    return id;
+  }
+
+  it("도달 가능한(200/401) connected 서버는 reachable=true 를 보고한다", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 401 }));
+    const id = await makeConnected();
     const probe = await req("GET", `/api/mcp/${id}`);
-    const { health } = (await probe.json()) as { health: { reachable: boolean } };
+    const { server, health } = (await probe.json()) as {
+      server: { status: string };
+      health: { reachable: boolean | null; status: string };
+    };
     expect(health.reachable).toBe(true);
+    expect(health.status).toBe("connected");
+    expect(server.status).toBe("connected");
+    fetchSpy.mockRestore();
+  });
+
+  it("깨진 응답(404/5xx)은 확정 음성 → status 를 unreachable 로 강등한다", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 500 }));
+    const id = await makeConnected("https://broken.example.com/mcp");
+    const probe = await req("GET", `/api/mcp/${id}`);
+    const { server, health } = (await probe.json()) as {
+      server: { status: string };
+      health: { reachable: boolean | null; status: string; detail: string | null };
+    };
+    expect(health.reachable).toBe(false);
+    expect(health.status).toBe("unreachable");
+    expect(server.status).toBe("unreachable");
+    expect(health.detail).toContain("500");
+    fetchSpy.mockRestore();
+  });
+
+  it("타임아웃/오프라인은 «확인 불가» — 강등하지 않고 connected 유지", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(
+      Object.assign(new Error("aborted"), { name: "AbortError" }),
+    );
+    const id = await makeConnected("https://slow.example.com/mcp");
+    const probe = await req("GET", `/api/mcp/${id}`);
+    const { server, health } = (await probe.json()) as {
+      server: { status: string };
+      health: { reachable: boolean | null; status: string; detail: string | null };
+    };
+    expect(health.reachable == null).toBe(true);
+    expect(health.status).toBe("connected");
+    expect(server.status).toBe("connected");
+    expect(health.detail).toContain("확인 불가");
+    fetchSpy.mockRestore();
+  });
+
+  it("연결 거부(ECONNREFUSED)는 서버 죽음 확정 → unreachable", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(
+      Object.assign(new TypeError("fetch failed"), { cause: { code: "ECONNREFUSED" } }),
+    );
+    const id = await makeConnected("https://dead.example.com/mcp");
+    const probe = await req("GET", `/api/mcp/${id}`);
+    const { health } = (await probe.json()) as { health: { reachable: boolean | null; status: string } };
+    expect(health.reachable).toBe(false);
+    expect(health.status).toBe("unreachable");
+    fetchSpy.mockRestore();
+  });
+
+  it("목록(GET /)도 프로브를 반영해 거짓 초록을 강등한다", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 503 }));
+    const id = await makeConnected("https://listbroken.example.com/mcp");
+    const res = await req("GET", "/api/mcp");
+    const { servers } = (await res.json()) as { servers: Array<{ id: string; status: string }> };
+    expect(servers.find((s) => s.id === id)!.status).toBe("unreachable");
+    fetchSpy.mockRestore();
+  });
+
+  it("만료가 도달불가보다 우선 — 프로브 없이 expired 유지", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 500 }));
+    const res = await req("POST", "/api/mcp", {
+      catalogId: "gmail",
+      agent: "claude_code",
+      repoPath: H.repoDir,
+      url: "https://expired.example.com/mcp",
+    });
+    const id = ((await res.json()) as { server: { id: string } }).server.id;
+    await req("POST", `/api/mcp/${id}/oauth`, { tokenExpiresAt: Date.now() - 1000 });
+    const probe = await req("GET", `/api/mcp/${id}`);
+    const { health } = (await probe.json()) as { health: { status: string; reachable: boolean | null } };
+    expect(health.status).toBe("expired");
+    // custody 가 connected 가 아니므로 프로브(fetch)를 타지 않는다.
+    expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });
 });
