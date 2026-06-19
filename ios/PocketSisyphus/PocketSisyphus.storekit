@@ -1,0 +1,106 @@
+{
+  "identifier" : "B2E3C1A0-1111-4A2B-9C3D-000000000001",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "250000",
+      "familyShareable" : false,
+      "internalID" : "C0FFEE00-0000-4000-8000-00000000A001",
+      "localizations" : [
+        {
+          "description" : "한 번 구매로 평생 사용",
+          "displayName" : "평생 이용권",
+          "locale" : "ko"
+        },
+        {
+          "description" : "One-time purchase. Yours forever.",
+          "displayName" : "Lifetime",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "pe.wayne.pocketsisyphus.lifetime",
+      "referenceName" : "Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_developerTeamID" : "AZ9NKP8D9G",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "ko_KR",
+    "_storefront" : "KOR",
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "D1A2B3C4-0000-4000-8000-00000000B001",
+      "localizations" : [],
+      "name" : "pocketsisyphus.pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "5000",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "E1A2B3C4-0000-4000-8000-00000000C001",
+          "introductoryOffer" : {
+            "internalID" : "F1A2B3C4-0000-4000-8000-00000000D001",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "매월 자동 갱신",
+              "displayName" : "프로 (월간)",
+              "locale" : "ko"
+            },
+            {
+              "description" : "Renews monthly",
+              "displayName" : "Pro (Monthly)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "pe.wayne.pocketsisyphus.sub.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Pro Monthly",
+          "subscriptionGroupID" : "D1A2B3C4-0000-4000-8000-00000000B001",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "50000",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "E1A2B3C4-0000-4000-8000-00000000C002",
+          "introductoryOffer" : {
+            "internalID" : "F1A2B3C4-0000-4000-8000-00000000D002",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "매년 자동 갱신 — 가장 알뜰",
+              "displayName" : "프로 (연간)",
+              "locale" : "ko"
+            },
+            {
+              "description" : "Renews yearly — best value",
+              "displayName" : "Pro (Yearly)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "pe.wayne.pocketsisyphus.sub.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Pro Yearly",
+          "subscriptionGroupID" : "D1A2B3C4-0000-4000-8000-00000000B001",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

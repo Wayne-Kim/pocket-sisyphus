@@ -1,0 +1,25 @@
+name: gitleaks
+
+# 비밀 유출 가드 — main push + 모든 PR 에서 «전체 히스토리» 를 스캔한다.
+# 공개 전환·기여자 PR 모델 대비: 기여자가 실수로 키/토큰을 커밋하면 머지 전에 잡는다.
+# 오탐 allowlist 는 저장소 루트 .gitleaks.toml 이 SSOT.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 전체 히스토리 스캔
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml

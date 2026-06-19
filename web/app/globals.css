@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+/*
+ * Pocket Sisyphus 브랜드 토큰 — SSOT 정합
+ * iOS DesignTokens.swift 의 Theme 색상 정책을 미러한다 (lib/tokens.ts 참고).
+ * 색은 «의미»다: accent=보라(브랜드/선택), success=초록, danger=빨강,
+ * warning=노랑(진짜 경고 전용), info=파랑, pro=주황(프리미엄/고급).
+ * 장식·강조에 warning/pro 색을 빌려쓰지 말 것.
+ */
+@theme {
+  /* 브랜드 보라 — iOS Theme.accent = #9A5ABF */
+  --color-accent: #9a5abf;
+  --color-accent-soft: #a77cff; /* landing hero highlight */
+  --color-purple-lt: #966de2;
+  --color-purple-md: #6c3fa8;
+
+  /* 의미 상태색 (iOS Theme 미러) */
+  --color-success: #34c759;
+  --color-danger: #ff3b30;
+  --color-warning: #ffcc00;
+  --color-info: #0a84ff;
+  --color-pro: #ff9500;
+
+  /* 워크플로우 노드색 (iOS Theme.Node) */
+  --color-node-start: #34c759; /* 시작=초록 */
+  --color-node-task: #ff6fae; /* 작업=분홍 */
+  --color-node-end: #0a84ff; /* 종료=파랑 */
+
+  /* 다크 배경/잉크 (landing/index.html 톤) */
+  --color-ink: #ece4fc;
+  --color-muted: #b9a9e0;
+  --color-base: #08060f;
+  --color-surface: #110a1f;
+  --color-line: rgba(167, 124, 255, 0.18);
+
+  --font-sans: var(--font-geist-sans), -apple-system, "SF Pro Text", system-ui,
+    sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-base);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* 선택 하이라이트도 브랜드 보라로 */
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 38%, transparent);
+}

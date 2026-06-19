@@ -1,0 +1,331 @@
+name: PocketSisyphus
+options:
+  bundleIdPrefix: pe.wayne
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: ko
+  # 다국어 — 한국어 source + 화자 수 상위 8개 + 일본어 (총 10개).
+  # Localizable.xcstrings 는 sources 안에 있어 자동으로 리소스로 포함된다.
+  knownRegions: [ko, en, zh-Hans, hi, es, fr, ar, pt-BR, ru, ja, Base]
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+  schemePathPrefix: ../  # workspace 에 노출
+  # xcodegen 후 자동으로 CocoaPods 통합
+  postGenCommand: pod install
+
+schemes:
+  PocketSisyphus:
+    build:
+      targets:
+        # PocketSisyphus 메인 앱은 test 액션에는 빌드하지 않는다. 빌드하면
+        # 의존성 그래프상 Tor.framework 가 끌려와 Xcode 26 + Tor 409 의
+        # «can't link a dylib with itself» (EagerLinkingTBDs self-collision)
+        # 으로 simulator 빌드가 깨진다. PocketSisyphusTests 는 host-less
+        # 「Library tests」 패턴이라 메인 앱 없이도 독립 실행 가능.
+        PocketSisyphus: [run, archive, profile, analyze]
+        PocketSisyphusTests: [test]
+    run:
+      config: Debug
+      # 로컬 StoreKit 테스트 — 시뮬레이터/실기기에서 ASC 없이 3개 IAP(월·년 구독 + 평생)
+      # 구매·무료체험 흐름을 검증. 프로덕션 빌드엔 영향 없음(Release archive 는 무시).
+      # 게이트(EntitlementDecision.iapEnabled)가 false 면 앱이 StoreKit 을 안 켜므로,
+      # 로컬 검증 시에만 임시로 true 로 두고 이 설정으로 상품을 로드한다.
+      storeKitConfiguration: PocketSisyphus/PocketSisyphus.storekit
+    archive:
+      config: Release
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - PocketSisyphusTests
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # PocketSisyphusE2E — 실기기 (iPhone 13 mini, 케이블) 풀스택 XCUITest 전용 스킴.
+  #
+  # 유닛 테스트 스킴(PocketSisyphus)과 의도적으로 분리한다:
+  #   - 유닛: host-less, 시뮬레이터, 메인 앱 빌드 안 함 (Tor 셀프링크 회피).
+  #   - e2e : 메인 앱을 호스트로 빌드 + UITest 러너. 오직 *실기기 (device)* destination
+  #           에서만 돌린다 — Tor eager-linking 셀프충돌은 simulator 빌드에서만 터지고
+  #           device 빌드(아카이브와 동일 경로)는 정상이므로 메인 앱을 끌어와도 안전.
+  #
+  # 카메라 QR 페어링은 자동화 대상 아님 (사용자 영역, 이미 동작). 이 e2e 는 *이미 페어링된*
+  # 기기를 전제로, 콜드런치 → 실제 Tor+SSH 연결 → 세션 → 명령 → daemon 출력의 iOS 화면
+  # 반영까지를 검증한다. 러너: scripts/run-ios-e2e.sh.
+  # ──────────────────────────────────────────────────────────────────────────
+  PocketSisyphusE2E:
+    build:
+      targets:
+        PocketSisyphus: [run]
+        PocketSisyphusUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - PocketSisyphusUITests
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    # Xcode 26+ CocoaPods 동적 프레임워크 eager linking 이슈 회피
+    EAGER_LINKING: NO
+    EAGER_LINKING_TBDS: NO
+    # 빌드 시 외부에서 override 가능 (TestFlight 스크립트가 git commit count 로 덮어씀)
+    MARKETING_VERSION: "2.19.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+# Tor.framework SPM 미지원 — CocoaPods 로 통합 (Podfile 참고).
+# SwiftTerm — claude REPL 의 TUI (color/cursor/spinner/wizard 등) 를 iOS 에 정확히 그리는
+# xterm-호환 터미널 에뮬레이터. raw PTY bytes 를 TerminalView.feed() 로 흘리면 알아서 렌더.
+# Citadel — Swift native SSH client (swift-nio 기반). 듀얼 채널 모델의 SSH 채택 + direct-tcpip
+# 채널 매핑. NMSSH 의 vendored libcrypto alignment 문제 회피.
+# Runestone + TreeSitterLanguages — diff 뷰어의 syntax highlighting.
+# Runestone 의 StringSyntaxHighlighter (TextView 없이 문자열 → NSAttributedString) 만 쓰고,
+# 언어 grammar 는 TreeSitterLanguages 에서 필요한 것만 product 단위로 골라 의존한다
+# (전부 끌어오면 바이너리가 수십 MB 커진다 — 새 언어는 dependencies 에 product 추가 +
+# DiffSyntaxHighlighter.swift 의 import/확장자 매핑에 같이 등록).
+# WhisperKit — 온디바이스 음성→텍스트(STT). OpenAI Whisper 를 CoreML 로 돌려 입력바의
+# 푸시-투-토크 받아쓰기에 쓴다. 인식은 100% 온디바이스(외부 STT SaaS 0 원칙 유지) —
+# 모델 가중치만 첫 사용 시 HuggingFace 에서 1회 다운로드해 캐시한다. 작은 온디바이스
+# SFSpeechRecognizer 모델 대비 문맥/정확도가 훨씬 높다 (저화질 발음·CJK 보정).
+packages:
+  WhisperKit:
+    url: https://github.com/argmaxinc/WhisperKit
+    from: 0.9.0
+  SwiftTerm:
+    url: https://github.com/migueldeicaza/SwiftTerm
+    exactVersion: 1.13.0
+  Citadel:
+    url: https://github.com/orlandos-nl/Citadel
+    from: 0.12.1
+  Runestone:
+    url: https://github.com/simonbs/Runestone
+    from: 0.5.2
+  TreeSitterLanguages:
+    url: https://github.com/simonbs/TreeSitterLanguages
+    from: 0.1.10
+
+targets:
+  PocketSisyphus:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    attributes:
+      DevelopmentTeam: AZ9NKP8D9G
+      ProvisioningStyle: Automatic
+    sources:
+      - PocketSisyphus
+      # Shared/ 는 듀얼 채널 모델 전환 후 PairConfig 만 남는다 (IPC/SharedAuth 제거).
+      - Shared
+    dependencies:
+      # 온디바이스 STT — WhisperKit 라이브러리 product 만 링크 (모노레포의 TTS/Speaker 등은 제외).
+      - package: WhisperKit
+        product: WhisperKit
+      - package: SwiftTerm
+      - package: Citadel
+      - package: Runestone
+      # diff 뷰어 하이라이트 언어 — DiffSyntaxHighlighter.swift 의 확장자 매핑과 1:1.
+      - package: TreeSitterLanguages
+        product: TreeSitterSwiftRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterTypeScriptRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterTSXRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterJavaScriptRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterPythonRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterJSONRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterYAMLRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterTOMLRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterMarkdownRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterHTMLRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterCSSRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterBashRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterCRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterCPPRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterGoRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterRustRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterRubyRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterJavaRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterPHPRunestone
+      - package: TreeSitterLanguages
+        product: TreeSitterSQLRunestone
+    info:
+      path: PocketSisyphus/Info.plist
+      properties:
+        CFBundleDisplayName: Pocket Sisyphus
+        # 실제 값은 build settings(MARKETING_VERSION / CURRENT_PROJECT_VERSION)에서 주입.
+        # 빌드 번호는 git commit count 로 자동 증가한다(메인테이너 배포 절차).
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen:
+          UIColorName: ""
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        NSCameraUsageDescription: 페어링 QR 코드를 스캔하기 위해 카메라 사용 권한이 필요합니다.
+        # Secure Enclave 기기 인증(LockView)에서 Face ID/Touch ID 를 쓰므로 «필수». 없으면 생체
+        # 프롬프트 시 앱이 크래시한다. (옛날엔 Info.plist 에만 직접 박혀 있어 regen 시 사라지는
+        # 시한폭탄이었음 — project.yml 에 두어 재생성에도 보존되게 한다.)
+        NSFaceIDUsageDescription: 이 기기를 Mac에 안전하게 인증하기 위해 Face ID를 사용합니다.
+        # 음성 입력(STT) — 입력바의 푸시-투-토크 마이크. WhisperKit 온디바이스 인식이라 음성은
+        # 기기를 떠나지 않는다(Speech.framework 미사용 → NSSpeechRecognitionUsageDescription 불필요,
+        # 마이크 권한만 필요). 없으면 권한 프롬프트 시 앱이 크래시하므로 «필수». 10개 언어 번역은
+        # InfoPlist.xcstrings 가 덮어쓴다(여기 값은 ko 원문/폴백).
+        NSMicrophoneUsageDescription: 음성으로 명령을 입력하기 위해 마이크를 사용합니다.
+        # LAN 전용(사설망 직결) 모드 — 같은 Wi‑Fi 의 Mac 에 사설/링크로컬·mDNS(.local) 주소로
+        # 직접 SSH 하려면 iOS 14+ 의 로컬 네트워크 권한이 필요하다. 없으면 «LAN 전용» 다이얼이
+        # 조용히 실패한다. 10개 언어 번역은 InfoPlist.xcstrings 가 덮어쓴다(여기 값은 ko 원문/폴백).
+        NSLocalNetworkUsageDescription: 같은 Wi-Fi의 Mac에 직접 연결하기 위해 로컬 네트워크 접근이 필요합니다.
+        # 커스텀 URL scheme — daemon 의 Discord 알림이 박는 pocketsisyphus://session/<id>
+        # 딥링크를 탭하면 앱이 해당 세션으로 진입한다. scheme 문자열은 daemon 의
+        # notify/discord.ts(APP_DEEP_LINK_SCHEME) + iOS DeepLinkRouter 와 일치해야 한다.
+        CFBundleURLTypes:
+          - CFBundleTypeRole: Viewer
+            CFBundleURLName: pe.wayne.pocketsisyphus.deeplink
+            CFBundleURLSchemes:
+              - pocketsisyphus
+        # ATS 예외 — 모든 트래픽은 Tor onion routing 안에서 흐름 (3겹 암호화 + 공개키 인증).
+        # iOS의 HTTPS 강제는 인터넷 평문 HTTP 보호 목적인데, 우리 트래픽은
+        # 절대 평문으로 인터넷에 노출되지 않음 (Tor가 emit하기 전에 onion-encrypt함).
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+        # UIBackgroundModes/BGTaskSchedulerPermittedIdentifiers 제거 — 알림 기능
+        # (BGAppRefreshTask 폴링 + 로컬 푸시) 전체 제거됨. iOS 의 알림 지연(15min~수시간)
+        # 이 실용성보다 사용자 혼란이 더 컸음. 메인 앱이 fetch 모드로 깨어날 일 없음.
+        UIRequiredDeviceCapabilities:
+          - arm64
+        # iPhone-only (TARGETED_DEVICE_FAMILY=1). 가로 모드는 화이트리스트에 포함하되,
+        # 실제 회전은 AppDelegate.supportedInterfaceOrientationsFor 가 사용자 설정
+        # (@AppStorage "ui.allowLandscape") 에 따라 동적으로 잠근다 — 기기 자동 회전이
+        # 켜진 환경에서 사용자가 토글로 가로 모드 ON/OFF 를 직접 통제.
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        ITSAppUsesNonExemptEncryption: false
+    # 듀얼 채널 모델 — NetworkExtension entitlement + App Group 제거. Keychain 만 유지.
+    # 메인 앱이 Tor.framework 를 in-process 로 직접 운용, SSH 는 NMSSH 로 직접 연결.
+    entitlements:
+      path: PocketSisyphus/PocketSisyphus.entitlements
+      properties:
+        # Keychain — PairConfig + EndpointCache 영속화 자기 그룹.
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)pe.wayne.pocketsisyphus
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: "1"
+        # 개인 Apple Developer (KimEunChan) — iOS 프로비저닝 프로파일 발급 팀
+        DEVELOPMENT_TEAM: AZ9NKP8D9G
+        CODE_SIGN_STYLE: Automatic
+        PRODUCT_BUNDLE_IDENTIFIER: pe.wayne.pocketsisyphus
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # 앱 전역 액센트 = AccentColor 에셋(보라). 이게 없으면 시스템 기본 액센트가 «파랑» 이라
+        # 색 안 정한 모든 컨트롤(파일/경로 탐색기 아이콘·버튼, 설정 아이콘 등)이 파랑으로 뜬다.
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_ENTITLEMENTS: PocketSisyphus/PocketSisyphus.entitlements
+      configs:
+        Debug:
+          CODE_SIGN_STYLE: Automatic
+          CODE_SIGN_IDENTITY: "Apple Development"
+        Release:
+          # 두 Apple ID 가 같은 팀(AZ9NKP8D9G) 멤버라서 automatic signing 이 development cert
+          # 를 잘못 골라 export 단계에서 mismatch 가 난다. Release 는 manual signing 으로
+          # 고정해서 우리가 만든 App Store 프로파일과 새 Apple Distribution cert 를 강제한다.
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "Apple Distribution"
+          PROVISIONING_PROFILE_SPECIFIER: "PocketSisyphus AppStore"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # PocketTunnel 익스텐션은 듀얼 채널 모델 전환과 함께 제거됨 (2026-05-27).
+  # NetworkExtension entitlement / App Group / VPN 권한 동의 모두 사라짐 →
+  # ASC 5.4 (VPN apps must be from organization account) 트리거 조건 해소.
+  # Tor 는 메인 앱 프로세스 내 Tor.framework 로 lazy 운용 + SSH 직접 채택.
+  # ──────────────────────────────────────────────────────────────────────────
+  # PocketSisyphusTests — XCTest 유닛 테스트 타겟.
+  #
+  # 회귀 차단을 위한 단위 테스트 모음. 첫 번째 회귀 차단 대상: PtyByteBuffer 의
+  # incremental replay 계약 (2026-05-23 의 UI 중복 회귀에서 분리).
+  #
+  # ApiClient / TunnelManager 등 네트워크 의존 컴포넌트는 직접 테스트 안 함 —
+  # 큰 dependency mocking refactor 없이 가능한 «pure» struct/value type 단위만
+  # 다룬다. 통합 / e2e 테스트는 별도 e2e 사이클에서.
+  # ──────────────────────────────────────────────────────────────────────────
+  PocketSisyphusTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    # «Library tests» 패턴 — host app 없이 standalone. 필요한 source 파일만 직접
+    # 다시 컴파일해서 테스트 번들 안에 박는다. host 가 있으면 Tor.framework 같은
+    # Pods 의존성까지 끌려와 Xcode 26 의 eager linking 과 «can't link a dylib with
+    # itself» 충돌이 난다. 어차피 단위 테스트라 호스트가 필요 없다 — 순수 struct
+    # 단위만 검증.
+    sources:
+      - PocketSisyphusTests
+      # 테스트가 직접 import 할 단일 파일들. 의존성이 큰 (NetworkExtension / SwiftTerm /
+      # Tor) 파일은 절대 끌어오지 말 것.
+      - path: PocketSisyphus/Services/PtyByteBuffer.swift
+      - path: PocketSisyphus/Services/EntitlementDecision.swift
+      - path: PocketSisyphus/Services/DeepLinkRouter.swift
+      - path: PocketSisyphus/Services/DeepLinkConsumeGate.swift
+      - path: PocketSisyphus/Services/ProductCatalog.swift
+      - path: PocketSisyphus/Services/PaywallCopy.swift
+      - path: PocketSisyphus/Models/AgentKind.swift
+      # LAN 전용(사설망 직결) fail-closed 정책 + 그 후보 타입(EndpointEntry). 둘 다 순수 값
+      # 로직이라 host-less 번들에 안전하게 컴파일된다 (Tor/SSH/Keychain 의존 없음).
+      - path: PocketSisyphus/Services/LanOnlyPolicy.swift
+      - path: PocketSisyphus/Services/EndpointCache.swift
+      # 워크플로우 공유 엣지 라우터 — 순수 기하(SwiftUI Path 만 의존, Tor/SSH 없음).
+      # 곡선 베지어 + 중간 노드 자동 우회의 동작 계약을 회귀 차단으로 박는다.
+      - path: PocketSisyphus/Views/Workflow/WorkflowEdgeRouter.swift
+    settings:
+      base:
+        DEVELOPMENT_TEAM: AZ9NKP8D9G
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: pe.wayne.pocketsisyphus.tests
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # PocketSisyphusUITests — 실기기 풀스택 XCUITest 타겟.
+  #
+  # 유닛 타겟과 달리 메인 앱(PocketSisyphus)을 test host 로 끌어온다 (UI 자동화는
+  # 실제 앱 프로세스를 띄워야 가능). 오직 PocketSisyphusE2E 스킴 + 실기기 destination
+  # 에서만 빌드된다 — Tor 셀프링크 충돌은 simulator 한정이라 device 빌드는 안전.
+  #
+  # 검증은 전적으로 iOS 화면에서. daemon 은 프로덕션 그대로(러너가 앱과 동일한 공개
+  # API 로 세션만 미리 만들어 둠). 시나리오는 PocketSisyphusUITests/ 참고.
+  # ──────────────────────────────────────────────────────────────────────────
+  PocketSisyphusUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - PocketSisyphusUITests
+    dependencies:
+      - target: PocketSisyphus
+    settings:
+      base:
+        DEVELOPMENT_TEAM: AZ9NKP8D9G
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: pe.wayne.pocketsisyphus.uitests
+        TEST_TARGET_NAME: PocketSisyphus

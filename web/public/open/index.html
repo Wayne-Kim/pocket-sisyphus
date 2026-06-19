@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Open in Pocket Sisyphus</title>
+  <!--
+    Static deep-link bridge for Discord notifications.
+
+    Why this page exists: Discord (unlike Slack) refuses to linkify custom URL
+    schemes — `pocketsisyphus://session/<id>` is dead plain text there, and the
+    masked-link / button APIs reject any non-(http/https/discord) scheme. So the
+    daemon's Discord notifier instead posts an https link to THIS page, which
+    Discord does linkify; the page then hands off to the app's custom scheme.
+
+    No server, no secrets: the session id lives only in the URL fragment
+    (`#<id>`, never sent over the network) and is used solely to build the
+    `pocketsisyphus://` URL on the client. One canonical page serves every build.
+
+    Discord iOS opens links in an in-app Safari modal that bypasses Universal
+    Links — but a custom-scheme redirect still works there (it prompts "Open in
+    Pocket Sisyphus?"), which is exactly why a redirect page beats AASA here.
+
+    NOTE: served by the web/ static export (web/public/open/) so it survives the
+    GitHub Pages switch from docs/ → Actions. URL is unchanged:
+    https://wayne-kim.github.io/pocket-sisyphus-mac/open/#<id>
+  -->
+  <style>
+    :root { color-scheme: light dark; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      background: #0b0d12; color: #e6e8ee;
+    }
+    main {
+      max-width: 22rem; padding: 2rem 1.5rem; text-align: center;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 0.75rem; }
+    p { margin: 0.5rem 0; color: #aab1c2; }
+    .btn {
+      display: inline-block; margin-top: 1rem; padding: 0.7rem 1.4rem;
+      border-radius: 0.7rem; background: #5865f2; color: #fff;
+      text-decoration: none; font-weight: 600;
+    }
+    .hint { font-size: 0.85rem; margin-top: 1.25rem; }
+    code { background: rgba(255,255,255,0.08); padding: 0.1em 0.35em; border-radius: 0.3em; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Pocket Sisyphus</h1>
+    <p id="status">Opening in the app…</p>
+    <a id="open" class="btn" href="#">Open in app</a>
+    <p class="hint">If nothing happens, make sure the Pocket Sisyphus app is installed, then tap the button above.</p>
+  </main>
+  <script>
+    (function () {
+      // Target from the fragment (preferred — never leaves the browser) or ?s=.
+      // Two shapes:
+      //   "<id>"            → pocketsisyphus://session/<id>   (legacy bare session id)
+      //   "<route>[/<id>]"  → pocketsisyphus://<route>[/<id>] (route-prefixed, e.g.
+      //                       "backlog" / "backlog/<briefId>" for PO brief alerts,
+      //                       "workflow/<runId>" for workflow run-canvas alerts)
+      function readFragment() {
+        var h = (location.hash || "").replace(/^#/, "");
+        if (h) return h;
+        var m = location.search.match(/[?&]s=([^&]+)/);
+        return m ? decodeURIComponent(m[1]) : "";
+      }
+      // Ids are UUID-ish; allow only safe chars (plus one path separator) to block
+      // scheme/URL injection. Routes are whitelisted — unknown first segments are
+      // treated as a bare session id (back-compat with old daemons).
+      var raw = readFragment();
+      var m = raw.match(/^([A-Za-z0-9._-]+)(?:\/([A-Za-z0-9._-]+))?/) || [];
+      var first = m[1] || "";
+      var second = m[2] || "";
+
+      var statusEl = document.getElementById("status");
+      var openEl = document.getElementById("open");
+
+      if (!first) {
+        statusEl.textContent = "No session specified.";
+        openEl.style.display = "none";
+        return;
+      }
+
+      var ROUTES = { session: 1, backlog: 1, workflow: 1 };
+      var target;
+      if (ROUTES[first]) {
+        target = "pocketsisyphus://" + first + (second ? "/" + encodeURIComponent(second) : "");
+      } else {
+        target = "pocketsisyphus://session/" + encodeURIComponent(first);
+      }
+      openEl.setAttribute("href", target);
+
+      // Auto-hand off to the app. If it isn't installed the navigation fails
+      // harmlessly and this page (with the manual button) stays visible.
+      try { location.replace(target); } catch (e) { /* button fallback */ }
+    }());
+  </script>
+</body>
+</html>

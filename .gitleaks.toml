@@ -1,0 +1,21 @@
+# Pocket Sisyphus — gitleaks 설정
+#
+# 기본 룰셋(useDefault)을 확장하고, 「검토 완료된 오탐」 경로만 allowlist 한다.
+# allowlist 대상은 테스트 픽스처·PEM 포맷 문자열·플레이스홀더·빌드설정·문서 예시 등
+# «실제 비밀이 아님이 확인된» 항목뿐이다 (전체 히스토리 전수 검토 완료).
+
+title = "Pocket Sisyphus gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "확인된 오탐 — 테스트 픽스처 / PEM 파싱 포맷 문자열 / 플레이스홀더 / 빌드설정·문서"
+paths = [
+  '''.*\.test\.ts$''',
+  '''mac/daemon/test/.*''',
+  '''docs/PHASE2_RESULT\.md$''',
+  '''mac/project\.yml$''',
+  '''ios/PocketSisyphus/Services/SSHClient\.swift$''',
+  '''mac/daemon/src/ssh/keys\.ts$''',
+]

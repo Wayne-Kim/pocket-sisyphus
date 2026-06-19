@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+    Sandbox 는 비활성 (project.yml: ENABLE_APP_SANDBOX=NO). 비활성 상태에선
+    이 plist 가 사실상 비어 있어도 된다 — entitlements 는 default-deny 가 아니라
+    default-allow + 추가 권한 grant 모델. hardened runtime 의 default 제약만 받는다.
+
+    유지 이유:
+    - Xcode 의 CODE_SIGN_ENTITLEMENTS 설정이 빈 파일이라도 존재하길 요구.
+    - 차후 옵션(automation, file-bookmark 등) 켤 자리 보존.
+    -->
+
+    <!-- ## 왜 이게 비어 있는가
+         일반 macOS .app 은 사용자가 가진 권한 (uid 의 모든 파일/네트워크) 을 그대로
+         쓴다. 우리 daemon (Node 자식) 도 부모(이 앱) 권한을 inherit 해서 진짜 home 의
+         ~/.claude/projects 와 임의 repo 경로에 접근. Sandbox 가 꺼져 있어서 별도
+         entitlement 없이 그게 그냥 된다. -->
+</dict>
+</plist>
