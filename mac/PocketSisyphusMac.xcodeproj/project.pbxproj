@@ -23,6 +23,7 @@
 		8421AE0C26ABD24A707B9AC6 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = D0557DDC85C0792B8795018F /* Sparkle */; };
 		8D49DCCD931C95C100B52C9A /* MenuContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 470271CEDD8BD111AEE81CAE /* MenuContent.swift */; };
 		97C9D93608D0E315C435889E /* DaemonPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58A33206EA4C4B4F85D6B0F1 /* DaemonPaths.swift */; };
+		9902D9619FE61AAC718CDD13 /* THIRD-PARTY-NOTICES.txt in Resources */ = {isa = PBXBuildFile; fileRef = 89B81B2FD2269331540B5BD8 /* THIRD-PARTY-NOTICES.txt */; };
 		9E599A2FD0C929C71F9FD821 /* UnifiedLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C02C8839E978856322665489 /* UnifiedLog.swift */; };
 		A55425CA1496E0D9C33978B1 /* RemoteControlPermissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 178C40D567D1533D9405CB2D /* RemoteControlPermissions.swift */; };
 		A8667509A34A904560CA08BF /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = B066070C0DCB43A5A9400454 /* Localizable.xcstrings */; };
@@ -59,6 +60,7 @@
 		6EE9BBA5D99EF28860F80579 /* LanguageOverrideTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageOverrideTests.swift; sourceTree = "<group>"; };
 		7449A4183672CE2CD032882C /* NetworkChangeMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkChangeMonitor.swift; sourceTree = "<group>"; };
 		8848FE086EBA060BA38E8F38 /* GuideContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuideContent.swift; sourceTree = "<group>"; };
+		89B81B2FD2269331540B5BD8 /* THIRD-PARTY-NOTICES.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "THIRD-PARTY-NOTICES.txt"; sourceTree = "<group>"; };
 		8DCCEB8B930B2C61EEAE49E4 /* DaemonPathsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaemonPathsTests.swift; sourceTree = "<group>"; };
 		9F5A5B0FA7C5DA7783DB5B75 /* DaemonManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaemonManager.swift; sourceTree = "<group>"; };
 		A1627129D5E1F71DAC64AA4A /* PocketSisyphusMac-NodeRuntime.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "PocketSisyphusMac-NodeRuntime.entitlements"; sourceTree = "<group>"; };
@@ -107,6 +109,7 @@
 				D4C9FEC9021BC9F0CC23DA31 /* PocketSisyphusMacApp.swift */,
 				3123DDAF78D81D7E76AD1575 /* PowerManager.swift */,
 				178C40D567D1533D9405CB2D /* RemoteControlPermissions.swift */,
+				89B81B2FD2269331540B5BD8 /* THIRD-PARTY-NOTICES.txt */,
 				29D7754AD02988D2FC694DB7 /* UpdaterBridge.swift */,
 				5308A0C5FF0235682BE9EB6E /* Logging */,
 				A461EC69CB2E2C40D83AE0B1 /* Views */,
@@ -275,6 +278,7 @@
 			files = (
 				06554EE2C46CC6C446BDB5B7 /* Assets.xcassets in Resources */,
 				A8667509A34A904560CA08BF /* Localizable.xcstrings in Resources */,
+				9902D9619FE61AAC718CDD13 /* THIRD-PARTY-NOTICES.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -503,7 +507,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 2.18.0;
+				MARKETING_VERSION = 2.19.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -564,7 +568,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 2.18.0;
+				MARKETING_VERSION = 2.19.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
