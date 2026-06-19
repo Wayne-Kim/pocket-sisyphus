@@ -46,6 +46,9 @@ const H = vi.hoisted(() => {
       branches: null,
       needsAttention: false,
     })),
+    /** abortPtySession/awaitPtyExit mock — 회귀 테스트가 throw 주입에 쓴다. */
+    abortPtySessionMock: vi.fn((_sessionId: string) => true),
+    awaitPtyExitMock: vi.fn(async (_sessionId: string, _ms?: number) => {}),
   };
 });
 
@@ -75,8 +78,8 @@ vi.mock("../agent/pty-runner.js", () => ({
     H.startedSessions.push(opts.sessionId);
   }),
   runTerminalScriptPty: vi.fn(() => {}),
-  abortPtySession: vi.fn(() => true),
-  awaitPtyExit: vi.fn(async () => {}),
+  abortPtySession: H.abortPtySessionMock,
+  awaitPtyExit: H.awaitPtyExitMock,
   prewarmPty: vi.fn(),
   resizePty: vi.fn(() => false),
   writePtyRaw: vi.fn(() => false),
@@ -106,7 +109,7 @@ const { db, _resetDbForTest } = await import("../db/index.js");
 const { hashToken, invalidateAuthCache } = await import("../auth.js");
 const { registerBuiltinAgents } = await import("../agent/index.js");
 const { insertWorkflow, insertRun, getRun, listNodeRuns } = await import("../workflow/store.js");
-const { startWorkflowRun, cancelWorkflowRun, resolveWorkflowDecision, reconcileStaleRuns } =
+const { startWorkflowRun, cancelWorkflowRun, resolveWorkflowDecision, reconcileStaleRuns, activeRunWorktreePaths } =
   await import("../workflow/engine.js");
 
 type RawNode = Record<string, unknown>;
@@ -198,6 +201,10 @@ beforeEach(() => {
   }
   H.startedSessions.length = 0;
   H.notifyMock.mockClear();
+  H.abortPtySessionMock.mockReset();
+  H.abortPtySessionMock.mockReturnValue(true);
+  H.awaitPtyExitMock.mockReset();
+  H.awaitPtyExitMock.mockResolvedValue(undefined);
   H.harvestMock.mockReset();
   H.harvestMock.mockResolvedValue({ ...DONE_HARVEST });
 });
@@ -296,6 +303,65 @@ describe("run failed → workflow_failed", () => {
     expect(getRun(runId)?.status).toBe("failed");
     // 실패 run 에는 완료(done) 알림이 섞이지 않는다 — failed/done 은 상호 배타 분기.
     expect(notifyKinds()).not.toContain("workflow_done");
+  });
+});
+
+describe("정리 누수 회귀 — awaitPtyExit throw 시 activeSessions 비움", () => {
+  // 병렬 분기: start → task(정리 중 throw) + start → gate(parked 로 run 을 살려둔다).
+  // task 의 awaitPtyExit 가 throw 해도 finally 에서 activeSessions.delete 가 돌아,
+  // reaper 의 시야(activeRunWorktreePaths)에 누수 세션 경로가 남지 않아야 한다.
+  const LEAK_NODES: RawNode[] = [
+    { id: "start", type: "start", title: "시작", x: 0, y: 0 },
+    { id: "task", type: "task", title: "작업", prompt: "일해라", skip_permissions: true, x: -100, y: 100 },
+    { id: "gate", type: "task", title: "게이트", prompt: "검토", requires_approval: true, skip_permissions: true, x: 100, y: 100 },
+    { id: "end", type: "end", title: "종료", x: 0, y: 200 },
+  ];
+  const LEAK_EDGES: RawEdge[] = [
+    { id: "e1", from: "start", to: "task" },
+    { id: "e2", from: "start", to: "gate" },
+    { id: "e3", from: "task", to: "end" },
+    { id: "e4", from: "gate", to: "end" },
+  ];
+
+  it("awaitPtyExit 가 throw 해도 누수 세션 경로가 reaper 시야에 남지 않는다", async () => {
+    H.awaitPtyExitMock.mockRejectedValueOnce(new Error("awaitPtyExit boom"));
+    const wf = makeWorkflow(LEAK_NODES, LEAK_EDGES);
+    const runId = runIdOf(startWorkflowRun(wf, "manual"));
+
+    // task 세션이 떴고, gate 는 parked(awaiting_approval) 로 run 을 살려둔다.
+    expect(await waitUntil(() => H.startedSessions.length > 0)).toBe(true);
+    expect(await waitUntil(() => listNodeRuns(runId).find((n) => n.def_node_id === "gate")?.status === "awaiting_approval")).toBe(true);
+    expect(activeRunWorktreePaths()).toContain(H.repoDir);
+
+    // task 세션 종료 → settle 해소 → 정리 중 awaitPtyExit throw.
+    H.ptyEvents.emit("session_exit", { sessionId: H.startedSessions[0] });
+
+    // throw 가 흡수돼 task 는 failed 로 마감.
+    expect(await waitUntil(() => listNodeRuns(runId).find((n) => n.def_node_id === "task")?.status === "failed")).toBe(true);
+
+    // 핵심: 정리(finally)가 항상 돌아 activeSessions 에 누수 세션이 안 남는다.
+    // run 은 gate 로 아직 살아있지만, 활성 세션이 없으니 reaper 보호 경로도 비어야 한다.
+    expect(activeRunWorktreePaths()).not.toContain(H.repoDir);
+
+    cancelWorkflowRun(runId);
+  });
+
+  it("abortPtySession 이 throw 해도 동일하게 정리된다", async () => {
+    H.abortPtySessionMock.mockImplementationOnce(() => {
+      throw new Error("abortPtySession boom");
+    });
+    const wf = makeWorkflow(LEAK_NODES, LEAK_EDGES);
+    const runId = runIdOf(startWorkflowRun(wf, "manual"));
+
+    expect(await waitUntil(() => H.startedSessions.length > 0)).toBe(true);
+    expect(await waitUntil(() => listNodeRuns(runId).find((n) => n.def_node_id === "gate")?.status === "awaiting_approval")).toBe(true);
+
+    H.ptyEvents.emit("session_exit", { sessionId: H.startedSessions[0] });
+
+    expect(await waitUntil(() => listNodeRuns(runId).find((n) => n.def_node_id === "task")?.status === "failed")).toBe(true);
+    expect(activeRunWorktreePaths()).not.toContain(H.repoDir);
+
+    cancelWorkflowRun(runId);
   });
 });
 

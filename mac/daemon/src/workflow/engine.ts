@@ -458,24 +458,32 @@ async function runNodeSession(
   });
   const settle = waitForNodeDone(sessionId, p.repoPath, thisFolderRel);
   const adapter = getAgent(p.agentId);
-  void runUserMessagePty(
-    { sessionId, cwd: p.repoPath, adapter },
-    prompt,
-    { bypassPermissions: p.skipPermissions },
-  ).catch((e) => {
-    console.warn(`[workflow] runUserMessagePty failed session=${sessionId}:`, (e as Error).message);
-  });
-  const result = await settle;
 
-  abortPtySession(sessionId);
-  await awaitPtyExit(sessionId, 4000);
-  state.activeSessions.delete(sessionId);
-  markSessionEnded(sessionId, result.status === "error" ? "error" : "completed");
+  // add~정리 구간을 try/finally 로 감싼다. settle/abortPtySession/awaitPtyExit 중
+  // 어디서 throw 해도 finally 에서 activeSessions.delete·markSessionEnded 가 항상 실행돼
+  // 세션이 activeSessions(=reaper 보호 경로)에 영구 잔류하지 않게 한다.
+  let result: Awaited<typeof settle> | undefined;
+  try {
+    void runUserMessagePty(
+      { sessionId, cwd: p.repoPath, adapter },
+      prompt,
+      { bypassPermissions: p.skipPermissions },
+    ).catch((e) => {
+      console.warn(`[workflow] runUserMessagePty failed session=${sessionId}:`, (e as Error).message);
+    });
+    result = await settle;
+
+    abortPtySession(sessionId);
+    await awaitPtyExit(sessionId, 4000);
+  } finally {
+    state.activeSessions.delete(sessionId);
+    markSessionEnded(sessionId, result?.status === "error" ? "error" : "completed");
+  }
 
   const harvest = await harvestTaskFolder(p.repoPath, thisFolderRel);
   let status: "done" | "failed" | "needs_attention";
   let verdict: "pass" | "fail" | null = null;
-  if (result.status === "error" || result.status === "timeout") {
+  if (result!.status === "error" || result!.status === "timeout") {
     // 하드 실패(세션 에러/타임아웃) — 실행 자체가 안 됨. run 을 failed 로 표시(엣지 비활성→dead-path).
     status = "failed";
     state.anyFailed = true;
