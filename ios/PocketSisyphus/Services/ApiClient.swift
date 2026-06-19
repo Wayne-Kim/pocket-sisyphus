@@ -825,8 +825,9 @@ struct PoProfile: Codable {
     /// 공개 repo 를 지정하면 수집이 개발 origin 대신 그 repo 의 이슈·Discussions 를 읽는다.
     /// 구 daemon 응답엔 키 자체가 없음 → nil (po_feedback_repo_v1 daemon 만 보냄).
     let githubFeedbackRepo: String?
-    /// 주기 수집 «전문가 관점» 렌즈 (po_collect_lens_v1) — "default"(전방위)|"design"|"bug". 주기
-    /// 수집(scheduler)이 매일 어느 초점으로 신호를 모을지 고정. 구 daemon 응답엔 키 자체가 없음 → nil.
+    /// 주기 수집 «전문가 관점» 렌즈 (po_collect_lens_v1, +security 는 po_collect_lens_v2) —
+    /// "default"(전방위)|"design"|"bug"|"security". 주기 수집(scheduler)이 매일 어느 초점으로 신호를
+    /// 모을지 고정. 구 daemon 응답엔 키 자체가 없음 → nil.
     let lens: String?
     /// Mac 에 ASC API 키가 설정돼 있는가 — 토글 안내문 분기용 (po_asc_v1 daemon 만 보냄).
     let ascKeyConfigured: Bool?
@@ -1755,8 +1756,9 @@ final class ApiClient {
     /// 브리프 ingest 는 daemon 백그라운드 — 끝나면 Discord 알림(po_briefs) + 목록 새로고침으로 확인.
     /// `instruction` — 사용자의 대략적 지시 (선택). 있으면 PO 에이전트가 그것을 중심으로 브리프를 만든다.
     /// `agent` — 수집을 돌릴 코드 에이전트 (po_agent_v1). nil 이면 필드 생략 → daemon 기본(claude_code).
-    /// `lens` — 수집 «전문가 관점» (po_collect_lens_v1). "design" 이면 코드 기회 대신 UI 디자인 부채를
-    /// 디자인 SSOT 대비로 발굴(옛 persona="designer" 와 동치), "bug" 면 디버깅·신뢰성 신호를 우선 모은다.
+    /// `lens` — 수집 «전문가 관점» (po_collect_lens_v1, +security 는 po_collect_lens_v2). "design" 이면
+    /// 코드 기회 대신 UI 디자인 부채를 디자인 SSOT 대비로 발굴(옛 persona="designer" 와 동치), "bug" 면
+    /// 디버깅·신뢰성 신호를, "security" 면 인증·키 취급·노출면·자격증명·위협모델 신호를 우선 모은다.
     /// nil/"default" 면 필드 생략 → daemon 기본(전방위 수집). 옛 daemon 은 이 필드를 조용히 버려 기본
     /// 수집으로 돈다 (그래서 호출처가 capability 보고 피커 노출을 분기 — soft).
     /// `gh` / `asc` — 응답에 신호 가용성 점검 메타 (po_gh_check_v1 / po_asc_check_v1). 옛 daemon/
@@ -1959,7 +1961,8 @@ final class ApiClient {
     /// `PUT /api/po/profile` — 조사 방식 + 주기 수집 + 스토어 리뷰 + 피드백 repo + 주기 수집 렌즈 저장
     /// (모두 비우면 삭제). schedule 은 5필드 cron 식 (nil = 주기 수집 꺼짐). ascAppId 는 ASC
     /// 앱 ID/번들 ID (nil = 스토어 리뷰 꺼짐). githubFeedbackRepo 는 owner/name (nil = 로컬
-    /// origin). lens 는 주기 수집 «전문가 관점» (po_collect_lens_v1, nil = 미변경/전방위). 형식 오류는
+    /// origin). lens 는 주기 수집 «전문가 관점» (po_collect_lens_v1, +security 는 po_collect_lens_v2;
+    /// nil = 미변경/전방위). 형식 오류는
     /// daemon 이 400 (invalid_feedback_repo) — 호출부가 검증 안내를 띄운다. 구 daemon 은 모르는 필드를 무시한다.
     func setPoProfile(
         repoPath: String,

@@ -3,9 +3,10 @@
 //   GET    /briefs?repoPath=…     브리프 목록 (옵션: repo 필터). score·생성순 정렬은 클라이언트.
 //   GET    /stats?repoPath=…      누적 성적표 (po_stats_v1) — 승인율·verified/missed·결재 중앙값.
 //   POST   /collect { repoPath, agent?, lens?, persona? }  수집 시작 — 즉시 sessionId 반환, ingest
-//          는 백그라운드. lens="design"|"bug" (po_collect_lens_v1) 면 «전문가 관점» 으로 수집한다 —
-//          design 은 코드 기회 대신 UI 디자인 부채를 발굴(옛 persona="designer" 와 동치), bug 는
-//          디버깅·신뢰성 신호를 우선 모은다. 옛 클라이언트의 persona="designer" 는 design 으로 매핑.
+//          는 백그라운드. lens="design"|"bug" (po_collect_lens_v1) | "security" (po_collect_lens_v2)
+//          면 «전문가 관점» 으로 수집한다 — design 은 코드 기회 대신 UI 디자인 부채를 발굴(옛
+//          persona="designer" 와 동치), bug 는 디버깅·신뢰성, security 는 인증·키 취급·노출면·자격증명·
+//          위협모델 신호를 우선 모은다. 옛 클라이언트의 persona="designer" 는 design 으로 매핑.
 //   POST   /briefs/:id/decide { action, useWorktree?, agent?, mode? } — approve(→실행 세션 spawn·running) | hold | reject.
 //          useWorktree=true 면 새 worktree(`po/<id8>` 브랜치)를 만들어 그 안에서 구현 —
 //          동시 세션 간 작업트리 충돌 방지 (po_worktree_v1).
@@ -534,9 +535,10 @@ po.post("/collect", async (c) => {
     typeof body.instruction === "string" ? body.instruction.trim().slice(0, 2000) : undefined;
   const agent = parseAgent(body.agent);
   if (agent && !hasAgent(agent)) return c.json({ error: "agent_missing", message: agent }, 400);
-  // 수집 «전문가 관점» 렌즈 (po_collect_lens_v1) — 새 클라이언트는 lens('default'|'design'|'bug')를,
-  // 옛 클라이언트(po_designer_v1만 아는)는 persona='designer' 를 보낸다. lens 가 오면 그것을(자유
-  // 문자열은 parseLens 화이트리스트로 안전 폴백), 없고 persona='designer' 면 'design' 으로 매핑한다
+  // 수집 «전문가 관점» 렌즈 (po_collect_lens_v1, +security 는 po_collect_lens_v2) — 새 클라이언트는
+  // lens('default'|'design'|'bug'|'security')를, 옛 클라이언트(po_designer_v1만 아는)는 persona='designer'
+  // 를 보낸다. lens 가 오면 그것을(자유 문자열은 parseLens 화이트리스트로 안전 폴백), 없고
+  // persona='designer' 면 'design' 으로 매핑한다
   // (designer→design 동치). 둘 다 없으면 'default'(전방위). route 는 «항상» explicit lens 를 넘겨
   // 수동 수집이 프로필 렌즈에 흔들리지 않게 한다 — 프로필 렌즈 폴백은 인자 없는 주기 수집 전용.
   const lens =
@@ -993,8 +995,9 @@ po.get("/profile", (c) => {
     schedule: row?.schedule ?? null,
     ascAppId: row?.asc_app_id ?? null,
     githubFeedbackRepo: row?.github_feedback_repo ?? null,
-    // 주기 수집 «전문가 관점» 렌즈 (po_collect_lens_v1) — 'default'(전방위)|'design'|'bug'. 옛 row 는
-    // DEFAULT 'default'. iOS 설정의 «전문가 관점» 픽커가 이 값을 보여주고 PUT 으로 갱신한다.
+    // 주기 수집 «전문가 관점» 렌즈 (po_collect_lens_v1, +security 는 po_collect_lens_v2) —
+    // 'default'(전방위)|'design'|'bug'|'security'. 옛 row 는 DEFAULT 'default'. iOS 설정의 «전문가
+    // 관점» 픽커가 이 값을 보여주고 PUT 으로 갱신한다 (security 옵션은 v2 게이팅).
     lens: row?.lens ?? "default",
     // design_directive = 승인돼 «선언» 으로 쓰이는 약속(강신호). draft = 디자이너 에이전트가 만든
     // 검토 대기 초안(승인 전엔 적용 안 됨). draftSessionId 가 non-null 이면 «생성 중».
@@ -1061,10 +1064,10 @@ po.put("/profile", async (c) => {
         design_directive_draft_at: number | null;
       }
     | undefined;
-  // 주기 수집 «전문가 관점» 렌즈 (po_collect_lens_v1) — body 에 lens 가 «명시» 됐을 때만 그 값으로
-  // 갱신, 없으면 기존 값을 보존한다(옛 클라이언트 PUT 이 렌즈를 날리지 않게 — designDirective 와 동형).
-  // parseLens 로 이상값/누락은 'default' 폴백. 'default' 가 아닌 렌즈는 «의미 있는 설정» 이라 «모두
-  // 비움» 삭제 판정에서 row 를 살린다 (주기 수집의 고정 초점을 보존).
+  // 주기 수집 «전문가 관점» 렌즈 (po_collect_lens_v1, +security 는 po_collect_lens_v2) — body 에 lens 가
+  // «명시» 됐을 때만 그 값으로 갱신, 없으면 기존 값을 보존한다(옛 클라이언트 PUT 이 렌즈를 날리지 않게
+  // — designDirective 와 동형). parseLens 로 이상값/누락은 'default' 폴백. 'default' 가 아닌 렌즈는
+  // «의미 있는 설정» 이라 «모두 비움» 삭제 판정에서 row 를 살린다 (주기 수집의 고정 초점을 보존).
   const lens =
     "lens" in body ? parseLens(body.lens) : parseLens(existing?.lens);
   const hasLens = lens !== "default";

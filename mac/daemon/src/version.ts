@@ -402,6 +402,20 @@ export const DAEMON_CAPABILITIES: readonly string[] = [
   // 노출 — 없으면 숨김(soft, 옛 daemon 은 lens 를 조용히 버려 전방위로 돌므로 픽커를 보여주면 거짓 UI 가
   // 된다. 옛 daemon 은 persona 만 알아 design 만 가능했다). bug 옵션은 이 capability 가 게이트한다.
   "po_collect_lens_v1",
+  // 수집 «전문가 관점» 렌즈 집합 확장 — collect 의 lens="security" (보안 전문가) 추가. lens.ts 의
+  // collectLensHeadmatter 가 보안 머리말(인증·키 취급·네트워크 노출면·자격증명 흐름·위협모델 대비
+  // 신호 우선; evidence=파일:라인+신뢰 경계·시크릿 취급, spec=위협/완화책/검증)을 일반 수집 경로에
+  // 주입한다. 리서치의 security 렌즈(po_research_lens_v3)와 같은 SECURITY_LENS_FOCUS 를 «공유» 해 두
+  // 경로의 의미가 갈리지 않는다(design/designer 정합과 동형). 이 제품은 SSH host key·Tor onion·페어링
+  // QR·로컬 자격증명처럼 보안이 1급 관심사라(docs/THREAT_MODEL.md·SECURITY.md) 리서치에서만 쓰던
+  // 보안 렌즈를 «타이핑 없는» 자동·주기(cron) 수집 루프에서도 쓰게 채운 것. v1 «위» 의 별도 capability
+  // 인 이유는 research 렌즈 확장(qa/security)과 동일 — 새 iOS 가 v1-만-아는(design/bug 까진 알아도
+  // security 는 모르는) 옛 daemon 에 security 를 보내면 collectLensHeadmatter 가 빈 문자열을 돌려
+  // parseLens 가 통과시킨 security 가 «머리말 없는 default 수집» 으로 조용히 폴백 → «거짓 UI» 가 된다.
+  // 그래서 iOS 는 이 capability 가 있을 때만 수집 픽커(빠른 수집의 일회성 lens + 주기 수집 프로필
+  // lens)에 security 옵션을 넣는다. default/design/bug 는 v1 그대로라 회귀 0. (qa/pm/marketing/…은
+  // 후속 단계 — 이번엔 security 우선.)
+  "po_collect_lens_v2",
   // POST /api/po/briefs/:id/restart { agent? } — 진행 중(running) 브리프의 «구현 다시 시작».
   // 사용자가 구현 세션을 임의로 정지하거나 세션이 깔끔한 정착 신호 없이 죽으면 브리프가 running 에
   // 영원히 남는다(shipped 전이는 세션 정착 시에만). 유일한 수습이 «삭제» 뿐이라 승인 이력·결재 사유·

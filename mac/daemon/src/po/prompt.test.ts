@@ -12,6 +12,11 @@ import {
   type PoExistingBrief,
 } from "./prompt.js";
 import { buildPoFallbackDef } from "./workflow-exec.js";
+import {
+  SECURITY_LENS_FOCUS,
+  collectLensHeadmatter,
+  researchLensHeadmatter,
+} from "./lens.js";
 
 /** 수집 프롬프트의 최소 필수 입력 — 나머지(이력·지시·리뷰 등)는 선택. */
 const base = {
@@ -240,15 +245,23 @@ describe("buildPoCollectPrompt — 디자인 제약 주입", () => {
   });
 });
 
-describe("buildPoCollectPrompt — 전문가 관점 렌즈 (po_collect_lens_v1)", () => {
+describe("buildPoCollectPrompt — 전문가 관점 렌즈 (po_collect_lens_v1/v2)", () => {
   it("lens 생략/\"default\" 이면 기본 전방위 수집과 byte-identical (회귀 없음)", () => {
     const baseline = buildPoCollectPrompt(base);
     expect(buildPoCollectPrompt({ ...base, lens: "default" })).toBe(baseline);
-    // 기본 경로엔 디자인/디버깅 렌즈의 흔적이 없다.
+    // 기본 경로엔 디자인/디버깅/보안 렌즈의 흔적이 없다.
     expect(baseline).not.toContain("«디자이너» 페르소나");
     expect(baseline).not.toContain("UI 표면 스캔");
     expect(baseline).not.toContain("## 수집 관점 — 디버깅·신뢰성 전문가");
+    expect(baseline).not.toContain("## 수집 관점 — 보안 전문가");
     expect(baseline).toContain("## 1단계 — 신호 수집");
+  });
+
+  // 픽커에 노출하지 않는 렌즈(qa/pm/…)는 머리말 없이 default 와 byte-identical — 옛 daemon 에
+  // security 가 와도(parseLens 통과) 이 폴백을 타기 전 collectLensHeadmatter 가 빈 문자열을 돌린다.
+  it("픽커 밖 렌즈(qa)는 머리말 없이 default 수집과 byte-identical (안전 폴백)", () => {
+    const baseline = buildPoCollectPrompt(base);
+    expect(buildPoCollectPrompt({ ...base, lens: "qa" })).toBe(baseline);
   });
 
   it("lens=\"design\" 이면 옛 designer 페르소나와 같은 미션·스캔·부채 종합으로 재구성된다 (designer→design 동치)", () => {
@@ -289,6 +302,54 @@ describe("buildPoCollectPrompt — 전문가 관점 렌즈 (po_collect_lens_v1)"
     expect(designIdx).toBeGreaterThanOrEqual(0);
     expect(headIdx).toBeGreaterThan(designIdx);
     expect(stageIdx).toBeGreaterThan(headIdx);
+  });
+
+  it("lens=\"security\" 이면 일반 수집 경로에 «보안» 머리말을 주입한다 (po_collect_lens_v2 — lens.ts SSOT)", () => {
+    const out = buildPoCollectPrompt({ ...base, lens: "security" });
+    // 일반 수집 골격 유지 (스키마/저장소 동일) — 디자인 부채 재구성이 아니다 (AC3: 같은 백로그).
+    expect(out).toContain("## 1단계 — 신호 수집");
+    expect(out).not.toContain("## 1단계 — UI 표면 스캔");
+    // 보안 머리말 — 인증·키 취급·노출면·자격증명·위협모델 신호를 «우선 신호» 로.
+    expect(out).toContain("## 수집 관점 — 보안 전문가");
+    expect(out).toContain("인증");
+    expect(out).toContain("키·시크릿 취급");
+    expect(out).toContain("노출면");
+    expect(out).toContain("자격증명 흐름");
+    expect(out).toContain("위협모델");
+    // spec 삼요소(위협/완화책/검증) — 리서치 security 렌즈와 같은 형으로 의미 일치.
+    expect(out).toContain("위협(무엇을·누가)");
+    expect(out).toContain("완화책");
+    // UI 표면 없어도 동작 — daemon/CLI 전용 엣지케이스를 머리말이 명시한다.
+    expect(out).toContain("코드·자격증명 흐름 신호라");
+    // 보안 부채를 자동 차단하지 않는다 — 판정·결재는 사람 몫 (비-목표).
+    expect(out).toContain("자동 «차단»");
+    // AC3 — 산출 스키마 동일 + evidence ref 파일:라인/커밋 역추적.
+    expect(out).toContain('"title"');
+    expect(out).toContain('"evidence"');
+    expect(out).toContain('"impact": 1-5');
+    expect(out).toContain("파일:라인");
+    // 다른 렌즈 머리말은 섞이지 않는다.
+    expect(out).not.toContain("## 수집 관점 — 디버깅·신뢰성 전문가");
+    expect(out).not.toContain("«디자이너» 페르소나");
+    // 머리말은 「디자인 제약」 «뒤», 1단계 «앞» (designContext 보존 — bug 와 동형).
+    const designIdx = out.indexOf("## 디자인 제약");
+    const headIdx = out.indexOf("## 수집 관점 — 보안 전문가");
+    const stageIdx = out.indexOf("## 1단계 — 신호 수집");
+    expect(designIdx).toBeGreaterThanOrEqual(0);
+    expect(headIdx).toBeGreaterThan(designIdx);
+    expect(stageIdx).toBeGreaterThan(headIdx);
+  });
+
+  it("AC1 — 수집 security 머리말이 리서치 security 렌즈와 같은 SECURITY_LENS_FOCUS 를 «공유» 한다 (중복 정의 금지 — design/designer 정합과 동형)", () => {
+    const collect = collectLensHeadmatter("security");
+    const research = researchLensHeadmatter("security");
+    // 같은 SSOT 초점 문자열을 둘 다 «그대로» 포함 — 두 경로의 의미가 갈리지 않는다.
+    expect(SECURITY_LENS_FOCUS.length).toBeGreaterThan(0);
+    expect(collect).toContain(SECURITY_LENS_FOCUS);
+    expect(research).toContain(SECURITY_LENS_FOCUS);
+    // 수집은 «신호 수집·종합», 리서치는 «조사» 맥락이라 헤더는 다르되 초점은 같다.
+    expect(collect).toContain("## 수집 관점 — 보안 전문가");
+    expect(research).toContain("## 조사 관점 — 보안 전문가");
   });
 
   it("evidence 는 파일:라인 + 위반 토큰/패턴명을 강제하고, 산출 스키마는 기존과 동일 (design)", () => {
