@@ -920,6 +920,38 @@ describe("POST /api/sessions/:id/pty/control — 일괄 승인/중지", () => {
       expect(vi.mocked(ptyRunner.writePtyRaw)).toHaveBeenLastCalledWith(id, Buffer.from([0x0d]));
     }
   });
+
+  it("agy/opencode/local_llm 세션의 interrupt → ESC(0x1b) — 어댑터가 광고한 취소 키를 쓴다", async () => {
+    const ptyRunner = await import("../agent/pty-runner.js");
+    const app = buildApp();
+
+    // 셋 다 Gemini CLI 계보(agy·qwen) 또는 TUI(opencode)라 진행 turn 취소 키가 ESC.
+    // 폴백과 같은 키지만 어댑터의 interruptBytes() 를 «실제로» 거치는지 못박는다.
+    for (const agent of ["agy", "opencode", "local_llm"] as const) {
+      vi.mocked(ptyRunner.writePtyRaw).mockClear().mockReturnValue(true);
+      const id = await createPty(app, agent);
+      const interrupt = await app.request(`/api/sessions/${id}/pty/control`, {
+        method: "POST",
+        headers: { ...AUTH_HEADER, "content-type": "application/json" },
+        body: JSON.stringify({ action: "interrupt" }),
+      });
+      expect(interrupt.status).toBe(200);
+      expect(vi.mocked(ptyRunner.writePtyRaw)).toHaveBeenLastCalledWith(id, Buffer.from([0x1b]));
+
+      // approve 는 어댑터 무관하게 Enter(0x0d) 그대로.
+      const approve = await app.request(`/api/sessions/${id}/pty/control`, {
+        method: "POST",
+        headers: { ...AUTH_HEADER, "content-type": "application/json" },
+        body: JSON.stringify({ action: "approve" }),
+      });
+      expect(approve.status).toBe(200);
+      expect(vi.mocked(ptyRunner.writePtyRaw)).toHaveBeenLastCalledWith(id, Buffer.from([0x0d]));
+
+      // opencode·local_llm 은 같은 llama-server 를 공유해 동시 활성 세션이 1개로 제한된다
+      // (local_llm_session_limit). 다음 반복이 409 로 막히지 않게 검증 끝난 세션은 비활성화.
+      db().prepare("UPDATE sessions SET status = 'completed' WHERE id = ?").run(id);
+    }
+  });
 });
 
 describe("GET /api/sessions/:id/git/branch", () => {
