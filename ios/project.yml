@@ -76,7 +76,7 @@ settings:
     EAGER_LINKING: NO
     EAGER_LINKING_TBDS: NO
     # 빌드 시 외부에서 override 가능 (TestFlight 스크립트가 git commit count 로 덮어씀)
-    MARKETING_VERSION: "2.19.0"
+    MARKETING_VERSION: "2.20.0"
     CURRENT_PROJECT_VERSION: "1"
 
 # Tor.framework SPM 미지원 — CocoaPods 로 통합 (Podfile 참고).

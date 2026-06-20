@@ -40,7 +40,7 @@ import { getUpdateStatus, type UpdateStatus } from "./updateStatus.js";
 // 버전 bump 시 양쪽 project.yml 과 함께 이 값도 갱신한다.
 // daemon 은 Mac 앱 안에 번들로 들어가므로 두 값이 어긋나면 사용자가 «Mac
 // 데몬 0.2.1» 같이 옛 버전을 보게 된다 (실제 Mac 앱은 1.0.0).
-export const DAEMON_VERSION = "2.19.0";
+export const DAEMON_VERSION = "2.20.0";
 
 /**
  * daemon 이 받아들일 수 있는 iOS 앱의 최소 버전. 이보다 낮은 iOS 가 페어된 경우
