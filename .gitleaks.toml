@@ -1,8 +1,26 @@
 # Pocket Sisyphus — gitleaks 설정
 #
-# 기본 룰셋(useDefault)을 확장하고, 「검토 완료된 오탐」 경로만 allowlist 한다.
-# allowlist 대상은 테스트 픽스처·PEM 포맷 문자열·플레이스홀더·빌드설정·문서 예시 등
-# «실제 비밀이 아님이 확인된» 항목뿐이다 (전체 히스토리 전수 검토 완료).
+# 기본 룰셋(useDefault) + 「검토 완료된 오탐」만 «좁게» allowlist. (2026-06-20 공개 전환 대비 정비)
+#
+# 정책: 소스 파일을 통째로 allowlist 하는 건 «최소화»한다 — 공개 저장소라 실수로 박힌
+# 키/토큰을 게이트가 반드시 잡아야 하기 때문. 옛 설정은 project.yml·PHASE2_RESULT.md 까지
+# path 로 통째 허용했는데, 전자는 빌드설정이라 미래 비밀이 묵살될 위험이 있어 제거하고
+# «정확한 공개키 값»만 허용으로 좁혔다. 후자는 이미 파일이 삭제됐고 main 에도 없어 제거.
+#
+# main(공개 대상)에서 트리거되는 오탐 3종 — 전부 확인된 비-비밀:
+#   1) ios/.../SSHClient.swift  : PEM 헤더/푸터 «마커» 문자열(키 본문 없음). ed25519 PEM
+#      파싱 코드의 포맷 설명·replacingOccurrences. 실제 키는 런타임 입력 파싱.
+#   2) mac/daemon/src/ssh/keys.ts: 같은 PEM 마커(주석). host key 는 런타임 생성
+#      (crypto.generateKeyPairSync) — 저장소에 하드코딩된 키 없음.
+#   3) mac/project.yml SUPublicEDKey : Sparkle 업데이트 «공개키»(EdDSA). 의도적으로 공개 —
+#      개인키는 macOS Keychain. 정확한 값만 허용 → project.yml 의 다른 비밀은 게이트가 잡는다.
+#
+# 테스트 픽스처(.test.ts / daemon/test)는 가짜 토큰·키가 의도적으로 들어가는 자리라 경로 허용.
+# CI 워크플로우(.github/workflows/gitleaks.yml)는 GITLEAKS_VERSION 을 핀해 이 검토와 동일
+# 버전으로 스캔한다.
+#
+# ⚠️ main 에서 purge 된 옛 dev 페어링 토큰이 backup/pre-history-rewrite 브랜치·로컬 stash 에
+#    남아 있다(공개 안 됨). 그 브랜치/stash 는 공개 origin 에 push 하지 말 것.
 
 title = "Pocket Sisyphus gitleaks config"
 
@@ -10,12 +28,18 @@ title = "Pocket Sisyphus gitleaks config"
 useDefault = true
 
 [allowlist]
-description = "확인된 오탐 — 테스트 픽스처 / PEM 파싱 포맷 문자열 / 플레이스홀더 / 빌드설정·문서"
+description = "확인된 오탐만 — 테스트 픽스처 경로 + SSH 키-핸들링 파일의 PEM 마커 + Sparkle 공개키 값"
 paths = [
+  # 테스트 픽스처: 가짜 토큰/키가 의도적으로 들어가는 자리.
   '''.*\.test\.ts$''',
   '''mac/daemon/test/.*''',
-  '''docs/PHASE2_RESULT\.md$''',
-  '''mac/project\.yml$''',
+  # SSH 키 «핸들링» 파일 — PEM 헤더/푸터 마커가 포맷 설명·파싱 문자열로 정당하게 등장.
+  # 실제 host key 는 런타임 생성/입력 파싱이며 소스에 하드코딩하지 않는다.
   '''ios/PocketSisyphus/Services/SSHClient\.swift$''',
   '''mac/daemon/src/ssh/keys\.ts$''',
+]
+regexes = [
+  # Sparkle 업데이트 검증 «공개키»(SUPublicEDKey) — 공개 의도. 개인키는 macOS Keychain.
+  # 이 정확한 값만 허용하므로 project.yml 의 다른 비밀-패턴은 그대로 게이트가 잡는다.
+  '''lCTOjukeIsw6q0okF78zUcztq/7EgLJ8uqpnokLd0X4=''',
 ]
