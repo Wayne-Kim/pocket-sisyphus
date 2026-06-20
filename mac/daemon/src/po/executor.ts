@@ -24,9 +24,11 @@ import {
   buildPoResearchPrompt,
   buildPoRevisePrompt,
   buildPoDesignBootstrapPrompt,
+  poLoc,
   type PoBriefDraft,
   type PoDecisionRecord,
 } from "./prompt.js";
+import { t } from "./i18n/t.js";
 import { parseLens, type PoLens } from "./lens.js";
 import { fetchCustomerReviews } from "./asc.js";
 import { fetchCrashDigest } from "./crash.js";
@@ -930,6 +932,7 @@ export type PoDesignBootstrapResult =
 export function startPoDesignBootstrap(
   repoPathRaw: string,
   agentIdRaw?: string,
+  locale?: string,
 ): PoDesignBootstrapResult {
   const dir = resolveAndEnsureRepoDir(repoPathRaw);
   if ("error" in dir) return { status: "error", error: dir.error };
@@ -948,13 +951,13 @@ export function startPoDesignBootstrap(
   // 디자인 SSOT 스캔은 grep/ls 등 도구 사용이 많아 권한 자동 승인 PTY 가 전제 (수집과 동형).
   const sessionId = createSession(
     repoPath,
-    `🎨 디자인 directive 초안`,
+    t("design.bootstrap.sessionLabel", poLoc(locale)),
     undefined,
     true,
     agentId,
   );
   const outFile = path.join(os.tmpdir(), `ps-po-design-${sessionId}.md`);
-  const prompt = buildPoDesignBootstrapPrompt({ repoPath, outFile });
+  const prompt = buildPoDesignBootstrapPrompt({ repoPath, outFile, locale });
 
   // «생성 중» 표시 — 초안 세션 id 를 둔다(아직 초안 없음). 프로필 row 가 없으면 directive='' 로
   // 만든다(NOT NULL). 기존 design_directive/초안은 건드리지 않는다 (생성 실패해도 옛 값 보존).

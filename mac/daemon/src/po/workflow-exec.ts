@@ -39,7 +39,8 @@ import { getRun, listNodeRuns, countActiveWorktreeRuns } from "../workflow/store
 import { startWorkflowRun } from "../workflow/engine.js";
 import { createWorktree } from "../git/worktree.js";
 import { dispatchPoWorkflowNotification } from "../notify/index.js";
-import { buildPoWorkflowDesignPrompt, buildDesignerReviewPrompt } from "./prompt.js";
+import { buildPoWorkflowDesignPrompt, buildDesignerReviewPrompt, poLoc } from "./prompt.js";
+import { t } from "./i18n/t.js";
 
 /** 설계 산출 노드/간선 상한 — 폭주 산출 방어 (엔진 MAX_NODES 보다 훨씬 작게). */
 const MAX_DESIGN_NODES = 20;
@@ -75,8 +76,8 @@ export type PoBriefForWorkflow = {
  * 올려 직렬로(사전 충돌 탐지·머지 후 정리 포함) 처리한다. 자연어 머지의 비신뢰(직렬 미보장·
  * force-push·충돌로 멈춤)를 제거하는 게 이 노드의 핵심 변경이다.
  */
-export function buildGatePrompt(briefTitle: string): string {
-  return `사용자가 머지를 승인했다. 이전 단계 결과 폴더를 읽고 — «디자이너 리뷰» findings(있으면)를 포함해 — 이 워크플로우(«${briefTitle}»)가 만든 변경을 검토한 뒤 저장소 컨벤션에 따라 «커밋까지만» 하라. 작업 브랜치를 기본 브랜치로 직접 합치지 마라 (git merge·push 하지 마라) — 재결합은 daemon 의 머지 큐가 직렬로(충돌 사전탐지·머지 후 정리 포함) 담당한다. 디자인 리뷰에 «확정(confirmed)» 회귀가 남아 있으면(사람이 이미 승인했더라도) 커밋 요약에 그 사실을 명시하라. 끝으로 변경 요약(커밋 결과)을 결과로 남겨라.`;
+export function buildGatePrompt(briefTitle: string, locale?: string): string {
+  return t("wf.gate.body", poLoc(locale), { briefTitle });
 }
 
 /**
@@ -215,13 +216,15 @@ export function buildPoFallbackDef(
   brief: PoBriefForWorkflow,
   agentId: string,
   designDirective?: string,
+  locale?: string,
 ): WorkflowDef {
-  const briefBody = `## 브리프
-- title: ${brief.title}
-- problem: ${brief.problem}
-- scope: ${brief.scope}
-- spec:
-${brief.spec}`;
+  const loc = poLoc(locale);
+  const briefBody = t("wf.fallback.briefBody", loc, {
+    title: brief.title,
+    problem: brief.problem,
+    scope: brief.scope,
+    spec: brief.spec,
+  });
 
   const task = (
     id: string,
@@ -242,38 +245,20 @@ ${brief.spec}`;
   });
 
   const nodes: NodeDef[] = [
-    { id: "start", type: "start", title: "시작", x: 60, y: 40 },
-    task(
-      "spec",
-      "스펙 확정",
-      `아래 승인된 기회 브리프의 스펙을 확정하라. 이 레포의 스펙/문서 컨벤션을 따르는 스펙 문서로 작성해 저장하고(레포가 쓰는 위치·형식을 먼저 찾아 따르고, 없으면 docs/ 아래 새 문서로 — 파일명에 브리프 주제를 담아라), 결과에 그 파일 경로와 요약을 남겨라. 코드는 아직 수정하지 마라.
-
-${briefBody}`,
-      210,
-    ),
-    task(
-      "impl",
-      "구현",
-      `이전 단계 결과 폴더를 읽어 확정된 스펙 문서를 찾고, 그 스펙대로 구현하라. 스코프의 비-목표는 건드리지 마라. 구현한 변경 파일 목록과 요약을 결과로 남겨라.
-
-참고용 원본 브리프:
-${briefBody}`,
-      380,
-    ),
-    task(
-      "verify",
-      "자가 검증",
-      `이전 단계의 구현을 이 레포의 «기존 검증 수단» 으로 스스로 검증하라 — 레포의 CLAUDE.md / AGENTS.md / .claude/ / scripts 를 보고 변경 종류에 맞는 것을 골라라 (예: UI 변경이면 그 스택의 UI/스냅샷 검증, 백엔드/CLI 변경이면 테스트+빌드/타입체크). 새 검증 방식을 만들지 마라. 수용 기준 체크리스트를 대조하고, 하나라도 통과하지 못하면 실패로 판정하라.
-
-수용 기준이 담긴 브리프:
-${briefBody}`,
-      550,
-    ),
+    { id: "start", type: "start", title: t("wf.node.start", loc), x: 60, y: 40 },
+    task("spec", t("wf.node.spec", loc), t("wf.fallback.spec", loc, { briefBody }), 210),
+    task("impl", t("wf.node.impl", loc), t("wf.fallback.impl", loc, { briefBody }), 380),
+    task("verify", t("wf.node.verify", loc), t("wf.fallback.verify", loc, { briefBody }), 550),
     // 디자이너 리뷰 — 렌더된 화면을 디자인 SSOT 대비 비평해 findings 를 게이트로 «공급». UI
     // 무관 브리프면 노드 prompt 의 0단계가 빌드 없이 즉시 통과시킨다 (always-두되 내부 게이트).
-    task("design_review", "디자이너 리뷰", buildDesignerReviewPrompt({ briefTitle: brief.title, designDirective }), 720),
-    task("gate", "머지 승인 게이트", buildGatePrompt(brief.title), 890, true),
-    { id: "end", type: "end", title: "종료", x: 60, y: 1060 },
+    task(
+      "design_review",
+      t("wf.node.designReview", loc),
+      buildDesignerReviewPrompt({ briefTitle: brief.title, designDirective, locale }),
+      720,
+    ),
+    task("gate", t("wf.node.gate", loc), buildGatePrompt(brief.title, locale), 890, true),
+    { id: "end", type: "end", title: t("wf.node.end", loc), x: 60, y: 1060 },
   ];
   const edges: EdgeDef[] = [
     { id: "e1", from: "start", to: "spec" },
@@ -313,6 +298,7 @@ export type PoWorkflowApprovalResult =
 export async function startPoWorkflowApproval(
   brief: PoBriefForWorkflow,
   agentIdRaw?: string,
+  locale?: string,
 ): Promise<PoWorkflowApprovalResult> {
   const dir = resolveAndEnsureRepoDir(brief.repo_path);
   if ("error" in dir) return { status: "error", error: dir.error };
@@ -349,7 +335,7 @@ export async function startPoWorkflowApproval(
   // 설계 세션 + 모든 노드가 worktree 에서 돈다 (공유 repo 아님).
   const sessionId = createSession(
     worktree.path,
-    `🔀 워크플로우 설계: ${brief.title}`.slice(0, 120),
+    t("wf.session.designLabel", poLoc(locale), { title: brief.title }).slice(0, 120),
     undefined,
     true,
     agentId,
@@ -372,6 +358,7 @@ export async function startPoWorkflowApproval(
     agentIds: eligible.length > 0 ? eligible : [agentId],
     defaultAgent: agentId,
     designDirective: designDirective ?? undefined,
+    locale,
   });
 
   console.log(`[po] workflow design start brief=${brief.id} session=${sessionId} agent=${agentId}`);
@@ -384,6 +371,7 @@ export async function startPoWorkflowApproval(
     prompt,
     agentId,
     designDirective ?? undefined,
+    locale,
   ).catch((e) =>
     console.warn(`[po] workflow finalize failed brief=${brief.id}:`, (e as Error).message),
   );
@@ -403,6 +391,8 @@ async function finalizeWorkflowApproval(
   agentId: string,
   /** po_profiles.design_directive — fallback 의 디자이너 리뷰 노드에 전달 (없으면 자동 발견). */
   designDirective?: string,
+  /** 산출 언어 (po_locale_v1) — 게이트·fallback 노드 프롬프트를 앱 언어로. */
+  locale?: string,
 ): Promise<void> {
   markCronSession(sessionId);
   let note: string | null = null;
@@ -449,7 +439,7 @@ async function finalizeWorkflowApproval(
           } else {
             // ② 사람 게이트 강제 — 게이트 자동 삽입 후 재검증 (삽입이 그래프를 깨면 fallback).
             const gated = ensureHumanGate(valid.def, {
-              prompt: buildGatePrompt(brief.title),
+              prompt: buildGatePrompt(brief.title, locale),
               agent: agentId,
             });
             const revalid = validateDef(gated.nodes, gated.edges);
@@ -462,7 +452,7 @@ async function finalizeWorkflowApproval(
         }
       }
     }
-    if (!def) def = buildPoFallbackDef(brief, agentId, designDirective);
+    if (!def) def = buildPoFallbackDef(brief, agentId, designDirective, locale);
 
     // ③ «PO: <제목>» 워크플로우로 저장 — 캔버스에서 열람/수정 가능한 재사용 자산.
     // repo_path 는 «실제 레포» (worktree 아님) — 저장된 자산을 나중에 다시 돌릴 때 살아있는

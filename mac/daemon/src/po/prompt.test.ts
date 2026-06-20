@@ -893,12 +893,19 @@ describe("산출 언어 지시 (po_locale_v1) — collect/research/revise", () =
     );
   });
 
-  it("비-ko 지원 로케일이면 산출 언어 지시를 «끝» 에 덧붙인다 (English)", () => {
+  it("비-ko 지원 로케일이면 본문이 그 언어로 + 산출 언어 지시가 끝에 (English)", () => {
     const out = buildPoCollectPrompt({ ...base, locale: "en" });
-    expect(out).toContain("## 산출 언어 (사용자 앱 언어 — 필수)");
+    // 본문이 영어로 지역화된다 (한국어 본문 마커 부재).
+    expect(out).toContain("Product Owner (PO) agent");
+    expect(out).not.toContain("너는 이 저장소의 프로덕트 오너(PO) 에이전트다.");
+    // 산출 언어 지시가 «영어» 로 끝에 붙는다 — 한국어 지시 헤딩이 아니다.
+    expect(out).toContain("## Output language (the user's app language — required)");
     expect(out).toContain("English");
-    // 지시는 프롬프트 «끝» 에 붙는다 — 기존 본문(브리프 N건 작성 완료)은 그 앞에 그대로 있다.
-    expect(out.indexOf("브리프 N건 작성 완료")).toBeLessThan(out.indexOf("## 산출 언어"));
+    expect(out).not.toContain("## 산출 언어 (사용자 앱 언어 — 필수)");
+    // 지시는 본문(3단계 산출) «뒤» 에 온다.
+    expect(out.indexOf("## Step 3 — Output")).toBeLessThan(
+      out.indexOf("## Output language"),
+    );
   });
 
   it("각 로케일이 자기 언어 이름으로 들어간다 (research 보고서/브리프)", () => {
@@ -914,16 +921,17 @@ describe("산출 언어 지시 (po_locale_v1) — collect/research/revise", () =
 
   it("design 렌즈 수집도 산출 언어 지시를 받는다 (디자인 부채 브리프도 앱 언어로)", () => {
     const out = buildPoCollectPrompt({ ...base, lens: "design", locale: "es" });
-    expect(out).toContain("## 산출 언어 (사용자 앱 언어 — 필수)");
     expect(out).toContain("Español (Spanish)");
-    // 디자인 렌즈 본문은 유지 — 지시는 그 뒤에 붙는다.
-    expect(out.indexOf("디자인 부채 N건 작성 완료")).toBeLessThan(out.indexOf("## 산출 언어"));
+    // 산출 언어 지시 헤딩이 스페인어로 들어간다.
+    expect(out).toContain("## Idioma de salida (el idioma de la app del usuario — obligatorio)");
+    expect(out).not.toContain("## 산출 언어 (사용자 앱 언어 — 필수)");
   });
 
   it("revise 도 비-ko 면 갱신본을 앱 언어로 쓰라는 지시를 받는다", () => {
     const out = buildPoRevisePrompt({ ...reviseBase, locale: "ru" });
-    expect(out).toContain("## 산출 언어 (사용자 앱 언어 — 필수)");
     expect(out).toContain("Русский (Russian)");
-    expect(out.indexOf("재종합 완료")).toBeLessThan(out.indexOf("## 산출 언어"));
+    // 산출 언어 지시 헤딩이 러시아어로 들어간다.
+    expect(out).toContain("## Язык вывода (язык приложения пользователя — обязательно)");
+    expect(out).not.toContain("## 산출 언어 (사용자 앱 언어 — 필수)");
   });
 });
