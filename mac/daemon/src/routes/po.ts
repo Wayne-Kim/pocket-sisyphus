@@ -31,17 +31,17 @@ import {
   startPoRevision,
   startPoDesignBootstrap,
   watchExecForShipped,
-} from "../po/executor.js";
-import { startPoWorkflowApproval } from "../po/workflow-exec.js";
-import { parseLens } from "../po/lens.js";
-import { checkGhForCollect } from "../po/gh.js";
-import { checkAscForCollect } from "../po/asc-check.js";
-import { parseSignals } from "../po/signals.js";
-import { getPoScheduler } from "../po/scheduler.js";
+} from "../persona/executor.js";
+import { startPoWorkflowApproval } from "../persona/workflow-exec.js";
+import { parseLens } from "../persona/lens.js";
+import { checkGhForCollect } from "../persona/gh.js";
+import { checkAscForCollect } from "../persona/asc-check.js";
+import { parseSignals } from "../persona/signals.js";
+import { getPoScheduler } from "../persona/scheduler.js";
 import { validateSchedule } from "../cron/schedule.js";
-import { buildPoExecPrompt, buildPoCleanupPrompt, normalizePoLocale } from "../po/prompt.js";
+import { buildPoExecPrompt, buildPoCleanupPrompt, normalizePoLocale } from "../persona/prompt.js";
 import { createWorktree } from "../git/worktree.js";
-import { validateAscKey, verifyAscConnection } from "../po/asc.js";
+import { validateAscKey, verifyAscConnection } from "../persona/asc.js";
 import { readConfig, writeConfig, type AscConfig } from "../config.js";
 
 export const po = new Hono();

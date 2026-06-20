@@ -47,7 +47,7 @@ import {
   getWorkflowTriggerScheduler,
 } from "./workflow/triggers.js";
 import { startCronScheduler, getCronScheduler } from "./cron/scheduler.js";
-import { startPoScheduler, getPoScheduler } from "./po/scheduler.js";
+import { startPoScheduler, getPoScheduler } from "./persona/scheduler.js";
 import { startMergeQueue } from "./merge/queue.js";
 import { initLocalLlmStatusBroadcast } from "./local-llm/status.js";
 import { stopServer as stopLocalLlmServer } from "./local-llm/supervisor.js";

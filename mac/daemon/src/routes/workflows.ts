@@ -30,8 +30,8 @@ import {
 } from "../workflow/store.js";
 import { startWorkflowRun, cancelWorkflowRun, resolveWorkflowDecision } from "../workflow/engine.js";
 import { startWorkflowDesign, getWorkflowDesign } from "../workflow/design.js";
-import { listWorkflowTemplates } from "../po/templates.js";
-import { normalizePoLocale } from "../po/prompt.js";
+import { listWorkflowTemplates } from "../persona/templates.js";
+import { normalizePoLocale } from "../persona/prompt.js";
 import { getWorkflowTriggerScheduler } from "../workflow/triggers.js";
 import { db, type WorkflowRow } from "../db/index.js";
 

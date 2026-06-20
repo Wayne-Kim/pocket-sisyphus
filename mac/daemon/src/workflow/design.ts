@@ -22,10 +22,10 @@ import { runUserMessagePty, abortPtySession, awaitPtyExit } from "../agent/pty-r
 import { createSession, resolveAndEnsureRepoDir } from "../routes/sessions.js";
 import { markCronSession, unmarkCronSession } from "../cron/registry.js";
 import { waitForSessionSettle } from "../cron/executor.js";
-import { sanitizeDesignedDef } from "../po/workflow-exec.js";
+import { sanitizeDesignedDef } from "../persona/workflow-exec.js";
 import { validateDef, type NodeDef, type EdgeDef } from "./types.js";
-import { poLoc } from "../po/prompt.js";
-import { t } from "../po/i18n/t.js";
+import { poLoc } from "../persona/prompt.js";
+import { t } from "../persona/i18n/t.js";
 
 /** 진행 중/완료된 설계 작업의 in-memory 상태. designId = 설계 세션 id (1:1). */
 type DesignStatus = "designing" | "ready" | "failed";

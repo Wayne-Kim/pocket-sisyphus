@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildWorkflowDesignPrompt } from "./design.js";
-import { sanitizeDesignedDef } from "../po/workflow-exec.js";
+import { sanitizeDesignedDef } from "../persona/workflow-exec.js";
 import { validateDef } from "./types.js";
 
 const base = {

@@ -29,7 +29,7 @@ import {
   isFullyRedacted,
   PREVIEW_ALL_REDACTED,
 } from "./preview.js";
-import { type CollectSignals, type SignalSourceState, isSignalFailure } from "../po/signals.js";
+import { type CollectSignals, type SignalSourceState, isSignalFailure } from "../persona/signals.js";
 
 /** Discord 완료 알림용 — 한 신호원 상태의 영어 라벨. off/empty 는 «조용» 대상이라 호출처가 거른다. */
 function signalStateLabel(s: SignalSourceState): string {

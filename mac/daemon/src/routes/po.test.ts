@@ -79,11 +79,11 @@ const { cancelWorkflowRun } = await import("../workflow/engine.js");
 const { getRun } = await import("../workflow/store.js");
 const { validateDef } = await import("../workflow/types.js");
 const { sanitizeDesignedDef, ensureHumanGate, buildPoFallbackDef } = await import(
-  "../po/workflow-exec.js"
+  "../persona/workflow-exec.js"
 );
 const { hashToken, invalidateAuthCache } = await import("../auth.js");
 const { registerBuiltinAgents } = await import("../agent/index.js");
-const { getPoScheduler } = await import("../po/scheduler.js");
+const { getPoScheduler } = await import("../persona/scheduler.js");
 const { dispatchPoNotification } = await import("../notify/index.js");
 const { runUserMessagePty } = await import("../agent/pty-runner.js");
 

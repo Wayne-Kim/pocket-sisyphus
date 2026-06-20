@@ -12,8 +12,8 @@ import {
 } from "./egress.js";
 import { getExternalIPv4, invalidateExternalIPv4Cache } from "./nat/external-ip.js";
 import { tryMapSSHPort, tryUnmapSSHPort } from "./nat/port-mapping.js";
-import { ascGet, ascPost } from "./po/asc.js";
-import { checkAscForCollect } from "./po/asc-check.js";
+import { ascGet, ascPost } from "./persona/asc.js";
+import { checkAscForCollect } from "./persona/asc-check.js";
 import { postDiscordWebhook } from "./notify/discord.js";
 
 const DUMMY_ASC = { keyId: "K", issuerId: "I", privateKeyPem: "pem-not-used-when-blocked" };
