@@ -1,8 +1,10 @@
-# 아키텍처 — 듀얼 채널 전송 + 3개 평면 (전송 / 애플리케이션 / PO)
+**English** · [한국어](ARCHITECTURE.ko.md)
 
-> 이 문서는 세 층으로 읽는다. **전송·보안 평면**(§1~4, §9~11)이 「폰과 Mac 을 어떻게 안전하게 잇는가」, **애플리케이션 평면**(§12)이 「그 위에서 무엇을 실행하는가」, **결과 평면**(§13)이 「실행 결과를 폰에서 어떻게 보고 조작하는가」, 그리고 **PO 평면**(§14)이 「무엇을 만들지 누가 정하는가」 다.
+# Architecture — Dual-Channel Transport + 3 Planes (Transport / Application / PO)
 
-## 1. 시스템 개요
+> Read this document in three layers. The **transport & security plane** (§1–4, §9–11) covers "how the phone and the Mac are connected securely," the **application plane** (§12) covers "what runs on top of it," the **result plane** (§13) covers "how execution results are viewed and operated from the phone," and the **PO plane** (§14) covers "who decides what to build."
+
+## 1. System Overview
 
 ```
 ┌──────────────── 사용자 Mac ────────────────┐
@@ -68,40 +70,40 @@
 └──────────────────────────────────────┘
 ```
 
-### 핵심 원칙
-- **NEPacketTunnelProvider 익스텐션 제거**. Apple Guideline 5.4 트리거(VPN 앱 분류) 조건 불성립.
-- **데이터 plane은 SSH**. 직접 SSH가 닿는 환경에서 latency 10~50ms (Tor data plane 200~800ms 대비 10~50배 빠름).
-- **Tor 는 endpoint discovery + SSH fallback 채널**. 메인 앱 프로세스 내 lazy 시작/종료. SSH 직접 채택 시 즉시 stop. DPI 차단 환경에선 obfs4 bridge 로 우회(§2.6).
-- **「같은 Wi‑Fi 전용(LAN 전용)」 모드 (opt-in, fail-closed)**. 켜면 폰↔Mac 이 «같은 LAN 일 때만» 사설/링크로컬·mDNS 주소로 직접 SSH 하고, Tor 발견·공인 IP·onion 폴백을 통째로 건너뛰고 거부한다(오프-LAN 이면 명시적 차단 `.offLanBlocked`). 첫 실행에 연결 방식(어디서나(Tor) / 같은 Wi‑Fi 전용)을 고르며, LAN 전용이면 Tor 부트스트랩 자체를 시작하지 않는다(§2.6). daemon 측은 같은 플래그로 비-LAN outbound 를 차단(egress confinement, THREAT_MODEL §5.11).
-- **백그라운드 런타임 일체 없음**. APNs/BGAppRefreshTask/BGProcessingTask 영구 미구현. 모든 연결은 포그라운드 진입 시 처음부터 재수립. 실시간 알림은 Discord webhook 으로 위임(§12.6).
-- **운영 인프라 0**. Tor 분산 네트워크 + 공개 IP echo (ipify 등) + (선택) Discord/GitHub Pages 같은 «남의 인프라» 만 사용. 메인테이너 서버 0.
-- **암호학적 신원 삼중 보장**. ① onion v3 주소 (Ed25519 hash) + ② SSH host key fingerprint (페어링 QR pin + TOFU 장부) + ③ Secure Enclave 기기 인증(App Attest, §2.9).
+### Core Principles
+- **NEPacketTunnelProvider extension removed**. Does not meet the Apple Guideline 5.4 trigger conditions (VPN-app classification).
+- **The data plane is SSH**. In environments where direct SSH reaches, latency is 10–50 ms (10–50× faster than the Tor data plane's 200–800 ms).
+- **Tor is the endpoint-discovery + SSH-fallback channel**. Lazily started/stopped within the main app process. Stopped immediately once direct SSH is adopted. In DPI-blocked environments it is circumvented via an obfs4 bridge (§2.6).
+- **"Same-Wi‑Fi-only (LAN-only)" mode (opt-in, fail-closed)**. When enabled, the phone↔Mac do direct SSH to private/link-local·mDNS addresses «only when on the same LAN», skipping and refusing Tor discovery, public IP, and onion fallback entirely (off-LAN means an explicit block, `.offLanBlocked`). On first launch you choose the connection method (Anywhere (Tor) / Same-Wi‑Fi-only); in LAN-only mode the Tor bootstrap itself is not started (§2.6). On the daemon side, the same flag blocks non-LAN outbound (egress confinement, THREAT_MODEL §5.11).
+- **No background runtime whatsoever**. APNs/BGAppRefreshTask/BGProcessingTask are permanently unimplemented. Every connection is re-established from scratch on foreground entry. Real-time notifications are delegated to a Discord webhook (§12.6).
+- **Zero operational infrastructure**. Uses only «someone else's infrastructure» — the Tor distributed network + public-IP echo (ipify, etc.) + (optionally) Discord/GitHub Pages. Zero maintainer servers.
+- **Triple cryptographic identity guarantee**. ① onion v3 address (Ed25519 hash) + ② SSH host key fingerprint (pairing-QR pin + TOFU ledger) + ③ Secure Enclave device attestation (App Attest, §2.9).
 
-## 2. 컴포넌트 명세 (전송·보안)
+## 2. Component Spec (Transport & Security)
 
 ### 2.1 Mac daemon (Node)
 
-| Listener | 포트 | 용도 |
+| Listener | Port | Purpose |
 |---|---|---|
-| Hono API | `127.0.0.1:7777` | `/api/*` + `/ws` — SSH 채널을 통해서만 접근 |
-| Endpoint listener | `127.0.0.1:7778` | `/endpoint` 한 라우트 — Tor onion 으로만 접근 |
+| Hono API | `127.0.0.1:7777` | `/api/*` + `/ws` — accessible only through the SSH channel |
+| Endpoint listener | `127.0.0.1:7778` | the single `/endpoint` route — accessible only via Tor onion |
 | sshd | `0.0.0.0:22022` + `[::]:22022` | OpenSSH portable. direct-tcpip → `127.0.0.1:7777` |
-| preview proxy | `127.0.0.1:<고정>` | dev 서버 리버스 프록시 (§13.1). PermitOpen 에 정적 추가 |
+| preview proxy | `127.0.0.1:<fixed>` | reverse proxy for the dev server (§13.1). Added statically to PermitOpen |
 
-- **PTY runner**: 모든 세션은 `node-pty`로 코드 에이전트 CLI 를 spawn. WS가 raw ANSI 청크 + question/exit 이벤트 흘림. `writePtyRaw(sessionId, Buffer)` 는 iOS 의 `pty_input` WS 메시지를 byte 가공 없이 직통 — 한글 multi-byte 손상 없음. 어댑터는 5종(claude_code / agy / codex / shell / local_llm)으로 레지스트리화(§12.1).
-- **콜드 진입 페이지네이션 / 화면 스냅샷**(`session_history_v1` / `pty_snapshot_v1`): PTY 출력은 15ms coalesced `pty_chunk` 로 무한 누적돼, 콜드 진입 poll 이 LIMIT 없이 전체를 내려받으면 긴 세션이 Tor 경유 ~5s 로딩됐다. 두 단계로 해소 — ① `GET /:id/poll?limit=N` 콜드 tail 캡 + `GET /:id/messages` 복합 keyset `(created_at,id)` 역방향 히스토리(증분은 `afterCreatedAt` 그대로). ② `GET /:id/pty/snapshot` — 요청 시 최근 tail 을 헤드리스 VT(`@xterm/headless`+`addon-serialize`)로 replay 해 «현재 화면+scrollback» 을 한 덩이로 직렬화 → 비용이 O(청크 바이트 총합) → O(화면). watermark(`throughCreatedAt`) 로 클라이언트가 이후만 증분으로 잇는다(이중 렌더 없음). `pty_chunk` 는 `prunePtyChunks`(onFlush 512회마다, 최신 8000 유지)로 compaction — 모든 reader 윈도우(스냅샷4000/콜드600/catch-up1000)보다 retain 이 커 손실 없음. 옛 daemon 은 limit 무시(전체)·snapshot 404 → iOS 가 tail 캡/폴백으로 회귀 없이 동작. 콜드 WS catch-up 은 `since=0` 이라 skip 되므로 콜드 전체-히스토리 경로는 poll 하나뿐. (`@xterm` 는 CJS — named import 가 tsx 런타임에서 깨져 default import 로 받는다.)
-- **`/endpoint` 라우트**(`routes/endpoint.ts`): priority 순 endpoint 배열(`direct_ipv6` p1 / `direct_ipv4` p2 / `tor_onion` p99) + SSH host key fingerprint + ssh_user + daemon_local_port + ttl 300s. iOS 가 happy eyeballs 로 채택.
-- **NAT 자동 매핑**: `nat-api` 로 UPnP IGD / NAT-PMP 시도. 외부 IPv4 echo(`ipify`/`ifconfig.me`/`icanhazip` fallback + 5분 캐시). 글로벌 IPv6 가 있으면 매핑 없이 priority 1.
-- **App Attest 게이트**: `requireAttestation` 미들웨어가 `/api/*` 보호. WS 도 `?attest=` 쿼리로 검증(§2.9).
-- **애플리케이션·결과·PO 평면 모듈**: 멀티 에이전트 / 워크플로우 DAG / 예약(cron) / 로컬 LLM / 라이브 프리뷰 / 화면 캡처·제어 / Discord 알림 / PO 루프 — 전부 같은 daemon 이 호스팅하고 `/api/version` capability 로 soft-gate. 상세는 §12~§14.
+- **PTY runner**: every session spawns the code-agent CLI via `node-pty`. The WS streams raw ANSI chunks + question/exit events. `writePtyRaw(sessionId, Buffer)` passes the iOS `pty_input` WS message straight through with no byte processing — no Korean multi-byte corruption. Adapters are registered as 5 kinds (claude_code / agy / codex / shell / local_llm) (§12.1).
+- **Cold-entry pagination / screen snapshot** (`session_history_v1` / `pty_snapshot_v1`): PTY output accumulates indefinitely as 15 ms-coalesced `pty_chunk`s, so when a cold-entry poll downloaded the whole thing with no LIMIT, a long session took ~5 s to load over Tor. Resolved in two steps — ① `GET /:id/poll?limit=N` caps the cold tail + `GET /:id/messages` for reverse history via composite keyset `(created_at,id)` (increments still use `afterCreatedAt`). ② `GET /:id/pty/snapshot` — on request, the recent tail is replayed through a headless VT (`@xterm/headless`+`addon-serialize`) to serialize «the current screen + scrollback» into one chunk → cost goes from O(total chunk bytes) → O(screen). A watermark (`throughCreatedAt`) lets the client stitch only what follows incrementally (no double render). `pty_chunk` is compacted by `prunePtyChunks` (every 512 onFlush calls, keeping the latest 8000) — its retain is larger than every reader window (snapshot 4000 / cold 600 / catch-up 1000) so there is no loss. An old daemon ignores limit (returns everything)·snapshot 404 → iOS works without regression via the tail cap/fallback. Cold WS catch-up is skipped because `since=0`, so the cold full-history path is poll alone. (`@xterm` is CJS — a named import breaks under the tsx runtime, so it is taken via a default import.)
+- **`/endpoint` route** (`routes/endpoint.ts`): a priority-ordered endpoint array (`direct_ipv6` p1 / `direct_ipv4` p2 / `tor_onion` p99) + SSH host key fingerprint + ssh_user + daemon_local_port + ttl 300s. iOS adopts via happy eyeballs.
+- **Automatic NAT mapping**: attempts UPnP IGD / NAT-PMP via `nat-api`. External IPv4 echo (`ipify`/`ifconfig.me`/`icanhazip` fallback + 5-minute cache). If a global IPv6 exists, it is priority 1 without mapping.
+- **App Attest gate**: the `requireAttestation` middleware protects `/api/*`. The WS is also verified via the `?attest=` query (§2.9).
+- **Application·result·PO plane modules**: multi-agent / workflow DAG / scheduling (cron) / local LLM / live preview / screen capture·control / Discord notifications / PO loop — all hosted by the same daemon and soft-gated by `/api/version` capability. Details in §12–§14.
 
-### 2.2 Mac 임베디드 sshd
+### 2.2 Mac embedded sshd
 
-`scripts/embed-daemon-binaries.sh` 가 빌드 시점에 Homebrew OpenSSH portable 바이너리 + 의존 dylib (`libcrypto`, `libssl`) 을 `.app/Contents/Resources/daemon/bin/` 에 박는다. dylibbundler 로 `@executable_path/libs/` 상대 경로 재작성.
+`scripts/embed-daemon-binaries.sh` embeds the Homebrew OpenSSH portable binary + dependent dylibs (`libcrypto`, `libssl`) into `.app/Contents/Resources/daemon/bin/` at build time. Relative paths are rewritten to `@executable_path/libs/` with dylibbundler.
 
-**OpenSSH 9.8+ 멀티프로세스 모델**: `sshd` 단독이 아니라 re-exec 헬퍼 `sshd-session` + `sshd-auth` 도 함께 임베드한다(연결마다 권한 분리 프로세스 spawn). 이 둘이 없으면 신버전 sshd 가 부팅하지 못한다.
+**OpenSSH 9.8+ multiprocess model**: not `sshd` alone — the re-exec helpers `sshd-session` + `sshd-auth` are embedded together (each connection spawns a privilege-separated process). Without these two, the newer sshd cannot boot.
 
-**sshd_config 화이트리스트** (`mac/daemon/src/ssh/server.ts` 가 동적 생성):
+**sshd_config whitelist** (generated dynamically by `mac/daemon/src/ssh/server.ts`):
 ```
 HostKey "<영구 ed25519 host key>"
 AuthorizedKeysFile "<authorized_keys 동적 관리>"
@@ -116,9 +118,9 @@ ForceCommand /bin/false        # session channel exec/shell 거부
 # Subsystem 일체 미등록 (sftp 차단)
 ```
 
-`direct-tcpip` 만 통과시키고 daemon HTTP/WS 포트(+라이브 프리뷰 고정 프록시 포트)만 노출. dev 포트마다 동적 reload 하지 않고 **고정 프록시 포트 한 줄만 정적 추가**해 엄격 화이트리스트를 유지(§13.1). 페어링 한 번 = 새 ed25519 client keypair 발급, priv는 QR로 폰에 전달, pub은 `authorized_keys` 라인 추가 (`pocket-device:<id>` 코멘트로 revoke 시 식별).
+Only `direct-tcpip` is let through, exposing only the daemon HTTP/WS port (+ the live-preview fixed proxy port). Rather than dynamically reloading per dev port, the strict whitelist is maintained by **statically adding just the single fixed-proxy-port line** (§13.1). One pairing = a new ed25519 client keypair issued; the priv is delivered to the phone via QR, and the pub is added as an `authorized_keys` line (identified for revocation by the `pocket-device:<id>` comment).
 
-### 2.3 Mac Tor 통합 — 듀얼 HiddenServicePort
+### 2.3 Mac Tor Integration — Dual HiddenServicePort
 
 ```
 HiddenServiceNonAnonymousMode 1
@@ -133,35 +135,35 @@ NumEntryGuards 3
 KeepalivePeriod 60
 ```
 
-같은 onion 주소로 두 가상 포트 노출. v3 client-auth (x25519) 로 디스크립터 복호화 제한 — onion 주소가 누출돼도 폰만 회로 빌드 가능. 회로 안정성 튜닝(introduction point 증설·keepalive)으로 IP 변경/idle 후 재접속 시간을 줄인다.
+Two virtual ports are exposed under the same onion address. v3 client-auth (x25519) restricts descriptor decryption — even if the onion address leaks, only the phone can build a circuit. Circuit-stability tuning (more introduction points·keepalive) shortens the reconnect time after an IP change/idle.
 
 ### 2.4 iOS TorManager (in-process)
 
-**메인 앱 프로세스 내**에서 Tor.framework 직접 운용. NEPacketTunnelProvider 제거됨.
+Tor.framework is operated directly **within the main app process**. NEPacketTunnelProvider is removed.
 
-iCepa Tor.framework의 `TORThread`는 프로세스당 1회 시작 가정. 깨끗한 재시작을 위해 stop 시퀀스 빠짐없이:
+iCepa Tor.framework's `TORThread` assumes a single start per process. For a clean restart, the stop sequence is followed without omission:
 
 1. `SIGNAL HALT`
 2. `controller.disconnect()` + nil
 3. `torThread.cancel()` + nil
-4. `<dataDir>/lock` 파일 제거
-5. `waitForPortRelease(socksPort)` — TIME_WAIT 해소 대기
+4. remove the `<dataDir>/lock` file
+5. `waitForPortRelease(socksPort)` — wait for TIME_WAIT to clear
 
-**3겹 안전망**: ① 백그라운드 진입 시 stop (`beginBackgroundTask` 30초 안), ② `start()` 직전 stale state cleanup, ③ 강제 종료 시 fresh process 가 자연 해소.
+**3-layer safety net**: ① stop on background entry (within `beginBackgroundTask` 30 s), ② stale-state cleanup just before `start()`, ③ on forced termination, a fresh process resolves it naturally.
 
-Tor 가 활성인 시점은 **endpoint 조회 + SSH-over-Tor fallback 채택 시만**. 직접 SSH 채택 후엔 `stopAsync()` 호출 → 메모리 절약.
+Tor is active **only when looking up the endpoint + when SSH-over-Tor fallback is adopted**. After direct SSH is adopted, `stopAsync()` is called → memory savings.
 
-### 2.5 iOS SSHClient (Citadel) + host key 검증
+### 2.5 iOS SSHClient (Citadel) + Host Key Verification
 
-Citadel (swift-nio-ssh wrapper) 기반. NMSSH 의 vendored libcrypto.a 가 Xcode 26 + arm64-sim linker 와 alignment 충돌이라 회피.
+Based on Citadel (a swift-nio-ssh wrapper). NMSSH's vendored libcrypto.a has an alignment clash with the Xcode 26 + arm64-sim linker, so it is avoided.
 
-- `Citadel.SSHClient.connect(...)` 로 SSH 세션. 인증: ed25519 priv (페어링 QR PKCS8 PEM base64).
-- **host key 검증 (구현 완료 — `SSHHostKeyTOFU.swift` `TOFUHostKeyValidator`)**: 모든 SSH 채널을 NIOSSH 표준 fingerprint API 위에서 3단계 우선순위로 검증한다.
-  1. **Pinned key** — `cfg.sshHostKey`(공개키 한 줄, QR 의 `ssh_host_key` 필드) 가 있으면 정확 일치 핀(가장 강함).
-  2. **신뢰 fingerprint** — 페어링 QR / onion `/endpoint` 가 준 `ssh_host_key_fingerprint` strict 대조.
-  3. **순수 TOFU** — anchor 가 전혀 없을 때만 `KnownHostStore`(onion 주소→fingerprint, Keychain 장부) 비교/기록.
-  불일치는 `SSHError.hostKeyMismatch` 로 거부해 적대적 LAN/Wi-Fi 의 daemon 가장(MITM)을 차단한다. onion 채널은 Tor 가 이미 신원을 보장하고 같은 host key 를 공유하므로 무해히 통과.
-- **Local TCP forwarding**: `NWListener` (`127.0.0.1:<dynamic>`) 띄우고 incoming TCP 마다 `createDirectTCPIPChannel` 호출. `NWConnectionBridge` (ChannelInboundHandler) 가 ByteBuffer 양방향 copy. 라이브 프리뷰는 프록시 포트로 2차 포워딩(`openForward`).
+- SSH session via `Citadel.SSHClient.connect(...)`. Authentication: ed25519 priv (pairing-QR PKCS8 PEM base64).
+- **Host key verification (implemented — `SSHHostKeyTOFU.swift` `TOFUHostKeyValidator`)**: every SSH channel is verified with a 3-level priority on top of the standard NIOSSH fingerprint API.
+  1. **Pinned key** — if `cfg.sshHostKey` (a single public-key line, the QR's `ssh_host_key` field) is present, an exact-match pin (strongest).
+  2. **Trusted fingerprint** — strict comparison against the `ssh_host_key_fingerprint` given by the pairing QR / onion `/endpoint`.
+  3. **Pure TOFU** — only when there is no anchor at all, compare/record against `KnownHostStore` (onion address→fingerprint, Keychain ledger).
+  A mismatch is refused with `SSHError.hostKeyMismatch` to block daemon impersonation (MITM) on a hostile LAN/Wi-Fi. The onion channel passes harmlessly since Tor already guarantees identity and shares the same host key.
+- **Local TCP forwarding**: brings up an `NWListener` (`127.0.0.1:<dynamic>`) and calls `createDirectTCPIPChannel` for each incoming TCP. `NWConnectionBridge` (a ChannelInboundHandler) copies ByteBuffer bidirectionally. Live preview does a secondary forward to the proxy port (`openForward`).
 
 ### 2.6 iOS ConnectionManager + Tor bridge
 
@@ -173,32 +175,32 @@ Citadel (swift-nio-ssh wrapper) 기반. NMSSH 의 vendored libcrypto.a 가 Xcode
 2. 첫 성공 채택, 나머지 cancel. 직접 채널 채택 시 Tor stop.
 3. 모두 실패 → Tor 부팅 → /endpoint 갱신 → 재시도.
 ```
-- `connect()` 멱등(`.running` early return + inflight 디듀프), `reconnect()` transport 실패 회복 경로.
+- `connect()` is idempotent (`.running` early return + inflight dedup), `reconnect()` is the transport-failure recovery path.
 
-**Tor bridge / pluggable transport (obfs4)** — DPI 가 평문 Tor 를 막는 환경 대비.
-- `TorBridgeStore` 가 사용자 입력 bridge line(obfs4/vanilla)을 파싱·영속. iOS 설정 「Tor bridge」(`TorBridgeView`).
-- obfs4 PT 는 iOS 가 별도 바이너리 exec 를 막으므로 `IPtProxy`(in-process gomobile lyrebird, `PluggableTransport.swift`)로 돌리고 Tor 에 `ClientTransportPlugin obfs4 socks5 127.0.0.1:<port>` 로 연결.
-- **평문 우선·실패 시에만** bridge 경유 재시도 — 미설정 사용자 동작 회귀 없음.
+**Tor bridge / pluggable transport (obfs4)** — for environments where DPI blocks plaintext Tor.
+- `TorBridgeStore` parses·persists user-entered bridge lines (obfs4/vanilla). iOS Settings → "Tor bridge" (`TorBridgeView`).
+- Since iOS blocks executing a separate binary for the obfs4 PT, it runs via `IPtProxy` (in-process gomobile lyrebird, `PluggableTransport.swift`) and connects to Tor with `ClientTransportPlugin obfs4 socks5 127.0.0.1:<port>`.
+- **Plaintext first, retry via bridge only on failure** — no behavior regression for users who have not configured it.
 
-**「같은 Wi‑Fi 전용(LAN 전용)」 모드** (`LanOnlyPolicy` / `ConnectionModePolicy` / `connectLanOnly`) — 사설망 직결·fail-closed.
-- **연결 방식 선택**: `ConnectionModePolicy.modeChosen` 이 false 인 동안 `AppRoot` 가 Tor 부트스트랩 «전» 에 `ConnectionModeView` 를 띄워 「어디서나(Tor)」 / 「같은 Wi‑Fi 전용」 중 하나를 고르게 한다(페어 전/후 공통). 미선택 동안 launch `.task` 는 Tor 를 시작하지 않는다. 고르면 `modeChosen` 이 true → `.task(id:)` 재실행으로 연결 시작.
-- **LAN 전용 경로**: 켜져 있으면 `ConnectionManager.connectImpl` 이 `connectLanOnly` 로 분기 — `tor.stopAsync()` 후, 페어링 QR 의 `lan_host`(mDNS `<host>.local`) ∪ 캐시된 `direct_lan` 후보«만» 으로 SSH. host key 검증(TOFU/핀)은 직접 채널과 동일하게 적용해 적대적 LAN 의 MITM 을 거부.
-- **콜드 부트스트랩**: QR 의 `lan_host`/`ssh_port` 만으로 Tor·`/endpoint` 없이 미페어링 상태에서도 곧장 LAN 페어링이 된다 → Tor 가 막힌 망에서도 페어 가능(미페어링이어도 `AppRoot` 가 `PairView` 직행).
-- **fail-closed**: 채택할 LAN 후보가 없거나 전부 실패하면 공인/onion 으로 폴백하지 않고 `.offLanBlocked` 로 명시 차단 — 패킷이 사설망을 벗어나지 않음을 보장. 순수 정책(후보 필터·Tor skip·fail-closed)은 `LanOnlyPolicy` 에 host-less 로 떼어내 `LanOnlyPolicyTests` 가 고정한다.
-- daemon 측 짝: 같은 `config.lanOnly` 로 «비-LAN outbound»(공인 IP echo·UPnP·ASC·Discord)를 `egress.ts` 단일 게이트로 차단(egress confinement, THREAT_MODEL §5.11).
+**"Same-Wi‑Fi-only (LAN-only)" mode** (`LanOnlyPolicy` / `ConnectionModePolicy` / `connectLanOnly`) — direct private-network connection·fail-closed.
+- **Connection-method choice**: while `ConnectionModePolicy.modeChosen` is false, `AppRoot` shows `ConnectionModeView` «before» the Tor bootstrap to make you pick one of "Anywhere (Tor)" / "Same-Wi‑Fi-only" (common before/after pairing). While unchosen, the launch `.task` does not start Tor. Once chosen, `modeChosen` becomes true → connection starts via re-running `.task(id:)`.
+- **LAN-only path**: when enabled, `ConnectionManager.connectImpl` branches to `connectLanOnly` — after `tor.stopAsync()`, SSH to «only» the pairing QR's `lan_host` (mDNS `<host>.local`) ∪ cached `direct_lan` candidates. Host key verification (TOFU/pin) is applied identically to the direct channel to refuse MITM on a hostile LAN.
+- **Cold bootstrap**: with just the QR's `lan_host`/`ssh_port`, LAN pairing happens immediately even in an unpaired state without Tor·`/endpoint` → pairing is possible even on a network where Tor is blocked (even when unpaired, `AppRoot` goes straight to `PairView`).
+- **fail-closed**: if there is no LAN candidate to adopt or all fail, it does not fall back to public/onion but explicitly blocks with `.offLanBlocked` — guaranteeing packets never leave the private network. The pure policy (candidate filtering·Tor skip·fail-closed) is split out host-less into `LanOnlyPolicy` and pinned by `LanOnlyPolicyTests`.
+- daemon-side counterpart: the same `config.lanOnly` blocks «non-LAN outbound» (public-IP echo·UPnP·ASC·Discord) via the single `egress.ts` gate (egress confinement, THREAT_MODEL §5.11).
 
 ### 2.7 iOS ApiClient / WSClient
 
 - base URL: `http://127.0.0.1:<ConnectionManager.currentLocalPort>` (HTTP) / `ws://127.0.0.1:<localPort>/ws`
-- Bearer: `cfg.daemonToken`. 추가로 모든 요청에 `X-Client-Version` 헤더(서버 426 강제, §11) + attest 토큰(§2.9).
-- transport 실패 1차 → `conn.reconnect()` → 재시도. 2차 실패 → markUnrecoverable.
-- **WS 채널**:
-  - inbound: `pty_chunk`(PTY raw ANSI), `question`/`exit` 이벤트, `screen_frame`(JPEG)/H.264 바이너리 프레임, 워크플로우/cron/PO 이벤트.
-  - outbound: `pty_input`(base64 byte), `pty_resize`, `subscribe`(since= 로 §catchup), 화면 `input_event`/`capture_*`.
-  - ping/pong: 30s 주기. pong RTT 를 `ConnectionManager.recordRTT` 에 EMA(α=0.4) 반영 → 「연결 상태」 표시.
-  - **catch-up (`ws_catchup_v1`)**: 재연결 시 `subscribe { since }` 로 빠진 `pty_chunk` 를 한 RTT 로 backfill — 폴 사이클을 기다리지 않는다.
+- Bearer: `cfg.daemonToken`. Additionally, every request carries an `X-Client-Version` header (server enforces 426, §11) + attest token (§2.9).
+- transport failure 1st → `conn.reconnect()` → retry. 2nd failure → markUnrecoverable.
+- **WS channel**:
+  - inbound: `pty_chunk` (PTY raw ANSI), `question`/`exit` events, `screen_frame` (JPEG)/H.264 binary frames, workflow/cron/PO events.
+  - outbound: `pty_input` (base64 byte), `pty_resize`, `subscribe` (since= for §catchup), screen `input_event`/`capture_*`.
+  - ping/pong: 30 s cycle. The pong RTT is reflected into `ConnectionManager.recordRTT` as an EMA (α=0.4) → "connection status" display.
+  - **catch-up (`ws_catchup_v1`)**: on reconnect, `subscribe { since }` backfills the missed `pty_chunk`s in one RTT — no waiting for the poll cycle.
 
-### 2.8 페어링 QR (v=3)
+### 2.8 Pairing QR (v=3)
 
 ```json
 {
@@ -218,21 +220,21 @@ Citadel (swift-nio-ssh wrapper) 기반. NMSSH 의 vendored libcrypto.a 가 Xcode
 }
 ```
 
-iOS 가 v=3 미만 페이로드 거부 → "Mac 앱 업데이트 후 재페어링" 안내. `ssh_host_key`(공개키 한 줄)는 후행 추가된 선택 필드로, 있으면 §2.5 의 1단계 strict pin 으로 쓰인다(구버전 호환을 위해 optional). `lan_host`/`ssh_port`/`daemon_port` 도 선택 필드로, 「같은 Wi‑Fi 전용」 모드가 Tor·`/endpoint` 없이 QR 한 장으로 LAN 직결 페어링하는 데 쓴다(§2.6).
+iOS rejects payloads below v=3 → prompts "Re-pair after updating the Mac app." `ssh_host_key` (a single public-key line) is an optional field added later; when present it is used as the level-1 strict pin in §2.5 (optional for backward compatibility). `lan_host`/`ssh_port`/`daemon_port` are also optional fields, used by "Same-Wi‑Fi-only" mode to do LAN direct-connect pairing with a single QR without Tor·`/endpoint` (§2.6).
 
-### 2.9 App Attest — Secure Enclave 기기 인증 (신규)
+### 2.9 App Attest — Secure Enclave Device Attestation (new)
 
-페어링 토큰만으로는 «토큰을 손에 넣은 누구나» daemon 에 붙을 수 있다. 그 위에 **하드웨어 바운드 기기 인증** 한 겹을 더한다.
+With the pairing token alone, «anyone who gets hold of the token» can attach to the daemon. On top of it, one more layer of **hardware-bound device attestation** is added.
 
-- **iOS (`DeviceAttestor` / `AttestSession`)**: Secure Enclave 의 P-256 키쌍 생성(재설치해도 Keychain 에 보존). 페어링 시 공개키(X9.63 uncompressed) + self-signature 를 `/api/attest/register` 로 등록. 이후 `/api/attest/challenge` → nonce 를 SE 키로 서명 → `/api/attest/verify` 로 단기 attest 토큰(HMAC, ~24h) 수령. Face ID/Touch ID 생체 게이트(`LAContext` 재사용으로 등록+검증 한 번의 프롬프트).
-- **daemon (`attest.ts` / `routes/attest.ts`)**: nonce 발급(60s TTL·단일 사용) → 등록 공개키로 서명 검증 → HMAC 토큰 발급. `BOOT_HMAC_SECRET` 은 부팅 시 1회 생성 → daemon 재시작 시 모든 attest 토큰 무효화. 공개키는 페어링당 TOFU(`fingerprintForPublicKey` = `SHA256:` 포맷, iOS 와 동일).
-- **다중 기기 슬롯**: 기본 1, 사용자 옵션으로 2개까지. `config.ts` 가 레거시 단일 필드를 배열로 정규화.
-- **게이트 정책**: 미등록(옛 daemon/옛 폰)은 soft 통과(회귀 0), 로컬 운영자(`X-PS-Local` + `localAdminSecret`)도 통과. 등록된 기기는 attest 토큰 없으면 차단 → iOS 가 `LockView` 로 생체 인증 유도.
-- iOS 「보안 상태」(`SecurityStatusView`)·「기기」(`DevicesView`) 화면이 등록 상태·채널·host key 등급·등록 기기 목록을 사람이 읽게 보여준다.
+- **iOS (`DeviceAttestor` / `AttestSession`)**: generates a Secure Enclave P-256 keypair (preserved in the Keychain even after reinstall). At pairing, registers the public key (X9.63 uncompressed) + self-signature via `/api/attest/register`. Thereafter `/api/attest/challenge` → sign the nonce with the SE key → receive a short-lived attest token (HMAC, ~24h) via `/api/attest/verify`. Face ID/Touch ID biometric gate (`LAContext` reuse makes registration+verification a single prompt).
+- **daemon (`attest.ts` / `routes/attest.ts`)**: issues a nonce (60s TTL·single use) → verifies the signature with the registered public key → issues an HMAC token. `BOOT_HMAC_SECRET` is generated once at boot → all attest tokens are invalidated on daemon restart. The public key is TOFU per pairing (`fingerprintForPublicKey` = `SHA256:` format, same as iOS).
+- **Multiple device slots**: default 1, up to 2 as a user option. `config.ts` normalizes the legacy single field into an array.
+- **Gate policy**: unregistered (old daemon/old phone) passes soft (zero regression), and the local operator (`X-PS-Local` + `localAdminSecret`) also passes. A registered device is blocked without an attest token → iOS prompts biometric authentication via `LockView`.
+- The iOS "Security Status" (`SecurityStatusView`)·"Devices" (`DevicesView`) screens show registration status·channel·host key grade·the list of registered devices in human-readable form.
 
-## 3. 트래픽 흐름
+## 3. Traffic Flow
 
-### 정상 (직접 SSH 채택)
+### Normal (direct SSH adopted)
 
 ```
 iPhone — 콜드 부팅:
@@ -255,10 +257,10 @@ iPhone 사용 중:
      ↓ 역경로
 ```
 
-### Fallback (CGNAT / UPnP 막힌 환경)
-direct_ipv6/ipv4 모두 connect timeout → tor_onion 채택. 모든 inbound 가 Tor SOCKS proxy 위 direct-tcpip 로 흐름. Tor 유지. ChatView 상단 banner 로 "Tor 회로로 통신 중(느림)" 안내. DPI 가 평문 Tor 도 막으면 §2.6 obfs4 bridge.
+### Fallback (CGNAT / UPnP-blocked environment)
+Both direct_ipv6/ipv4 connect-timeout → tor_onion adopted. All inbound flows over the Tor SOCKS proxy via direct-tcpip. Tor stays up. A banner at the top of ChatView informs "Communicating over a Tor circuit (slow)." If DPI also blocks plaintext Tor, see §2.6 obfs4 bridge.
 
-### LAN 전용 (같은 Wi‑Fi 전용 모드)
+### LAN-only (Same-Wi‑Fi-only mode)
 ```
 iPhone — 콜드 부팅 (modeChosen=false):
   1) AppRoot 가 Tor 시작 전에 ConnectionModeView 표시 → 「같은 Wi‑Fi 전용」 선택
@@ -269,51 +271,51 @@ iPhone — 콜드 부팅 (modeChosen=false):
      - 같은 LAN 이면 사설 주소로 직접 SSH (host key 검증 동일)
   3) 채택 실패/오프-LAN → .offLanBlocked 로 fail-closed (외부 폴백 금지)
 ```
-미페어링 상태에서도 1)에서 「같은 Wi‑Fi 전용」 을 고르면 AppRoot 가 PairView 로 직행, QR 의 lan_host/ssh_port 로 Tor 없이 LAN 페어링한다(§2.6). daemon 은 같은 모드에서 비-LAN outbound 를 차단(§5.11).
+Even when unpaired, choosing "Same-Wi‑Fi-only" at step 1) makes AppRoot go straight to PairView and pair over LAN without Tor using the QR's lan_host/ssh_port (§2.6). In the same mode the daemon blocks non-LAN outbound (§5.11).
 
-### IP 변경 복구
-SSH keepalive 실패 → `ApiClient.send` transport 실패 → `reconnect()` 캐시 재시도(옛 IP 실패) → Tor 부팅 → `/endpoint` 새 IP → SSH 재채택. 사용자 시각 1~5초 멈춤 후 자동 복구. Mac `NetworkChangeMonitor` 가 IP 변경 감지 시 daemon 에 SIGHUP.
+### IP-change recovery
+SSH keepalive failure → `ApiClient.send` transport failure → `reconnect()` cache retry (old IP fails) → Tor boot → `/endpoint` new IP → SSH re-adopted. From the user's view, a 1–5 s freeze followed by automatic recovery. When the Mac `NetworkChangeMonitor` detects an IP change, it SIGHUPs the daemon.
 
-## 4. 보안 모델
+## 4. Security Model
 
-| 위협 | 완화 |
+| Threat | Mitigation |
 |---|---|
-| ISP/통신사 도청 | SSH (forward secrecy, ECDHE) 또는 Tor onion (3홉 암호화) |
-| 가짜 daemon 사칭 | `.onion` 주소 = Ed25519 공개키 hash. SSH host key 3단계 검증(pin/fingerprint/TOFU, §2.5) |
-| MITM (적대적 LAN/Wi-Fi) | SSH host key 불일치 시 `hostKeyMismatch` 거부. onion v3 cryptographic identity |
-| 토큰 유출 (QR/Bearer) | **하드웨어 바운드 기기 인증**(App Attest, §2.9) — 토큰만으론 부족, 등록된 Secure Enclave 키 서명 필요 |
-| 폰 분실 | 생체 잠금(`LockView`). Mac 「기기」 창에서 해당 기기 revoke. 메뉴 «페어링 값 바꾸기» 로 일괄 회전 |
-| `.onion` 주소 누출 | v3 client-auth (x25519) priv 없는 사람은 디스크립터 복호화 불가 |
-| SSH 무차별 대입 | direct-tcpip 만 허용, exec/shell/sftp 거부, password auth off |
-| 외부 inbound 차단 (CGNAT) | Tor onion fallback. Tor 자체가 DPI 차단되면 obfs4 bridge(§2.6) |
-| 비-LAN outbound 유출 (사내 보안 요구) | **「같은 Wi‑Fi 전용」 모드**(opt-in) — 클라이언트는 사설 주소로만 직결·fail-closed(`connectLanOnly`/`.offLanBlocked`), daemon 은 비-LAN outbound 단일 게이트 차단(`egress.ts`). Tor·공인 IP·onion 미사용(§2.6, THREAT_MODEL §5.11) |
-| 변조 DMG (업데이트) | Sparkle EdDSA 서명 검증 — 사일런트 설치도 코어가 위조 거부(§11) |
+| ISP/carrier eavesdropping | SSH (forward secrecy, ECDHE) or Tor onion (3-hop encryption) |
+| Fake daemon impersonation | `.onion` address = Ed25519 public-key hash. SSH host key 3-level verification (pin/fingerprint/TOFU, §2.5) |
+| MITM (hostile LAN/Wi-Fi) | On SSH host key mismatch, refuse with `hostKeyMismatch`. onion v3 cryptographic identity |
+| Token leak (QR/Bearer) | **Hardware-bound device attestation** (App Attest, §2.9) — the token alone is not enough; a signature from the registered Secure Enclave key is required |
+| Lost phone | Biometric lock (`LockView`). Revoke that device in the Mac "Devices" window. Rotate everything at once via the menu's «Change pairing values» |
+| `.onion` address leak | Without the v3 client-auth (x25519) priv, no one can decrypt the descriptor |
+| SSH brute-force | Only direct-tcpip allowed, exec/shell/sftp refused, password auth off |
+| External inbound blocked (CGNAT) | Tor onion fallback. If Tor itself is DPI-blocked, obfs4 bridge (§2.6) |
+| Non-LAN outbound leak (corporate security requirement) | **"Same-Wi‑Fi-only" mode** (opt-in) — the client connects directly to private addresses only·fail-closed (`connectLanOnly`/`.offLanBlocked`), and the daemon blocks non-LAN outbound at a single gate (`egress.ts`). No Tor·public IP·onion used (§2.6, THREAT_MODEL §5.11) |
+| Tampered DMG (update) | Sparkle EdDSA signature verification — even a silent install has the core refuse a forgery (§11) |
 
-### 페어링 해제 (revoke)
-`routes/admin.ts` 의 `/api/admin/rotate-pairing` 가: ① 새 daemon Bearer 발급, ② 살아있는 WS 끊기, ③ Tor onion 키 + client-auth 키 회전(새 .onion), ④ SSH client keypair 새 발급 + `authorized_keys` 갱신, ⑤ attest 등록 초기화, ⑥ 새 QR PNG 생성. 옛 페어링 즉시 무효. 「기기」 창에서 특정 기기 슬롯만 개별 해제도 가능.
+### Unpairing (revoke)
+`/api/admin/rotate-pairing` in `routes/admin.ts`: ① issues a new daemon Bearer, ② drops live WS, ③ rotates the Tor onion key + client-auth key (new .onion), ④ issues a new SSH client keypair + updates `authorized_keys`, ⑤ resets attest registration, ⑥ generates a new QR PNG. The old pairing is invalidated immediately. Individual revocation of a specific device slot from the "Devices" window is also possible.
 
-## 5. iOS 앱 설계
+## 5. iOS App Design
 
-### 5.1 스택
-- Swift 5.10, SwiftUI, deployment target **iOS 17.0+**. 단일 앱 target, 익스텐션 없음.
-- 의존성:
+### 5.1 Stack
+- Swift 5.10, SwiftUI, deployment target **iOS 17.0+**. Single app target, no extensions.
+- Dependencies:
   - `Tor.framework` (CocoaPods, iCepa) — in-process
   - `IPtProxy` (CocoaPods, obfs4pt) — Tor bridge pluggable transport
-  - `Citadel` (SwiftPM, swift-nio-ssh) — SSH client (NMSSH 제거)
-  - `SwiftTerm` (SwiftPM) — PTY ANSI 렌더
-  - `Runestone` + TreeSitter — 코드/diff 하이라이트
-  - `WhisperKit` (SwiftPM) — 온디바이스 음성→텍스트(§5.6)
-  - `PencilKit` — 캡처 마크업(§13.5)
-- 저장: Keychain (페어링 + SE 기기 키 + host key 장부). App Group 없음.
+  - `Citadel` (SwiftPM, swift-nio-ssh) — SSH client (NMSSH removed)
+  - `SwiftTerm` (SwiftPM) — PTY ANSI rendering
+  - `Runestone` + TreeSitter — code/diff highlighting
+  - `WhisperKit` (SwiftPM) — on-device speech→text (§5.6)
+  - `PencilKit` — capture markup (§13.5)
+- Storage: Keychain (pairing + SE device key + host key ledger). No App Group.
 
-### 5.2 화면 — 3탭 메인
-메인은 `MainTabView` 의 **3탭**으로 진화했다(이전 「세션 + 워크플로우」 2탭). 각 탭이 자기 NavigationStack 을 가진다.
+### 5.2 Screens — 3-Tab Main
+The main has evolved into the **3 tabs** of `MainTabView` (previously the 2-tab "Sessions + Workflows"). Each tab has its own NavigationStack.
 
-1. **백로그 탭** (`BacklogTab` / `BacklogView`) — «1번 탭». PO 루프(§14). `po_loop_v1` + 프로(`.poLoop`) 게이트. 미지원 daemon 이면 숨김.
-2. **세션 탭** (`SessionsView`) — 항상 노출(무료). 세션 목록 + 새 세션 시트(동적 에이전트 피커) + 설정/도움말. 워크플로우/cron/PO 가 만든 세션도 여기에 모여 필터로 분리. daemon capability 를 reload 때 끌어와 다른 탭 노출을 결정.
-3. **자동화 탭** (`AutomationTab`) — `workflow_v1` 또는 `cron_v1` 중 하나라도 있으면 노출. 안에서 「워크플로우 | 예약」 세그먼트로 묶고 지원 세그먼트만 표시. 프로(`.workflow`) 게이트. 노드/예약 실행 세션을 열면 세션 탭으로 전환하며 deepLink.
+1. **Backlog tab** (`BacklogTab` / `BacklogView`) — «tab 1». The PO loop (§14). `po_loop_v1` + pro (`.poLoop`) gate. Hidden on an unsupported daemon.
+2. **Sessions tab** (`SessionsView`) — always shown (free). Session list + new-session sheet (dynamic agent picker) + settings/help. Sessions created by workflow/cron/PO also gather here, separated by filter. Pulls daemon capabilities on reload to decide the visibility of the other tabs.
+3. **Automation tab** (`AutomationTab`) — shown if either `workflow_v1` or `cron_v1` is present. Inside, grouped into "Workflows | Schedule" segments, showing only the supported segment. Pro (`.workflow`) gate. Opening a node/scheduled-run session switches to the Sessions tab via deepLink.
 
-앱 진입 흐름(`AppRoot`):
+App entry flow (`AppRoot`):
 ```
 연결 방식 미선택(modeChosen=false, 비-DevPairing) → ConnectionModeView  ← Tor 부트스트랩 «전» 게이트
   · 「어디서나(Tor)」 선택 → lanOnly=false → 아래 흐름(Tor)
@@ -325,229 +327,229 @@ SSH keepalive 실패 → `ApiClient.send` transport 실패 → `reconnect()` 캐
               · 아니면 MainTabView
           → connecting/idle → BootView, failed → ErrorView
 ```
-연결 방식은 launch `.task(id: modeChosen)` 의 게이트라, 고르기 전엔 onion 회로가 전혀 만들어지지 않는다(사용자 요구: «Tor 거치기 전에 묻는다»). 이후엔 설정 「연결·보안」 의 LAN 전용 토글로 자유롭게 전환. **탭 색**: 백로그·자동화 «탭 버튼» 만 pro 주황(alwaysOriginal), 탭 콘텐츠 안 버튼은 기본 accent(보라) — 「색상 토큰 정책」(§12.7) 준수.
+The connection method is the gate of the launch `.task(id: modeChosen)`, so before you pick, no onion circuit is built at all (user requirement: «ask before going through Tor»). Afterward you can switch freely via the LAN-only toggle in Settings → "Connection & Security." **Tab color**: only the Backlog·Automation «tab buttons» are pro orange (alwaysOriginal); buttons inside the tab content keep the default accent (purple) — adhering to the "Color Token Policy" (§12.7).
 
-### 5.3 Chat 입력 path — 키보드 언어별 분기 (유지)
-한글 IME 가 SwiftTerm 의 `UITextInput` 을 거치면 byte cycle 로 화면이 깨진다. 그래서 활성 키보드 언어로 두 path 분기:
-- **영문(ASCII)** — `InteractiveTerminalView`(SwiftTerm subclass) first responder, 매 keystroke 즉시 `WSClient.sendPtyInput` 1:1 byte 송신. inputBar 숨김.
-- **한글/CJK** — SwiftUI `TextField`(inputBar) first responder, IME markedText 흡수 후 완성 음절 누적 → 「전송」 시 `text + "\r"` 한 번에 송신. SwiftTerm 은 렌더링 전용.
+### 5.3 Chat Input Path — Branching by Keyboard Language (retained)
+When the Korean IME passes through SwiftTerm's `UITextInput`, the screen corrupts due to a byte cycle. So the path branches in two by the active keyboard language:
+- **English (ASCII)** — `InteractiveTerminalView` (a SwiftTerm subclass) as first responder, sending 1:1 bytes to `WSClient.sendPtyInput` immediately on each keystroke. inputBar hidden.
+- **Korean/CJK** — SwiftUI `TextField` (inputBar) as first responder, absorbing IME markedText then accumulating completed syllables → on "Send," sends `text + "\r"` all at once. SwiftTerm is render-only.
 
-모드 자동 감지(`UITextInputMode.currentInputModeDidChangeNotification` + `primaryLanguage` 검사), first responder 자동 swap, `send` delegate 에 ASCII byte filter, 가상 화살표 누름 시 SwiftTerm 자동 focus.
+Auto-detect the mode (`UITextInputMode.currentInputModeDidChangeNotification` + `primaryLanguage` inspection), auto-swap the first responder, an ASCII byte filter on the `send` delegate, and auto-focus SwiftTerm when a virtual arrow is pressed.
 
-#### 입력 바이트 추적(KS-TRACE) + 에이전트별 CJK 입력 재현 레시피
-입력 경로엔 에이전트별 분기가 없다 — `writePtyRaw(sessionId, Buffer)` 가 모든 어댑터를 동일 취급해 byte 를 가공 없이 PTY 로 흘린다. 그래서 한 어댑터의 CJK/IME 입력 회귀(예: Copilot 추가 시 한글 깨짐)는 «다음 에이전트» 에서도 재발할 수 있다. 이를 양끝 대조로 잡는 진단이 **KS-TRACE** 다.
+#### Input Byte Tracing (KS-TRACE) + Per-Agent CJK Input Reproduction Recipe
+There is no per-agent branching in the input path — `writePtyRaw(sessionId, Buffer)` treats all adapters identically and streams bytes to the PTY with no processing. So a CJK/IME input regression in one adapter (e.g. Korean corruption when adding Copilot) can recur in the «next agent» too. The diagnostic that catches this by comparing both ends is **KS-TRACE**.
 
-- **켜기(기본 OFF, 프로덕션 영향 0)** — daemon: `PS_KS_TRACE=1` env 로 데몬 기동. iOS: `PS_KS_TRACE=1` env(Xcode scheme/`simctl launch SIMCTL_CHILD_PS_KS_TRACE`) 또는 `UserDefaults` 키 `PS_KS_TRACE=true`(재빌드 없이).
-- **동일 포맷(송신=iOS / 수신=daemon)** — `KSTrace.swift`(iOS) 와 `pty-runner.ts`(daemon)가 1:1:
+- **Enabling (default OFF, zero production impact)** — daemon: start the daemon with `PS_KS_TRACE=1` env. iOS: `PS_KS_TRACE=1` env (Xcode scheme/`simctl launch SIMCTL_CHILD_PS_KS_TRACE`) or the `UserDefaults` key `PS_KS_TRACE=true` (without rebuilding).
+- **Same format (send=iOS / recv=daemon)** — `KSTrace.swift` (iOS) and `pty-runner.ts` (daemon) are 1:1:
   ```
   [KS-TRACE] send session=<id> agent=<id> bytes=<n> hex=[xx xx …]   (iOS  sendPtyInput)
   [KS-TRACE] recv session=<id> agent=<id> bytes=<n> hex=[xx xx …]   (daemon writePtyRaw)
   ```
-  hex 는 최대 64B(초과분 `+Nmore`). daemon sanitize 가 term-query 응답을 떨궜으면 recv 끝에 `(dropped NB term-response)`. WS 도착 시점(sanitize 전) 은 server 의 `[KS-TRACE] ws-recv` 로 따로 본다.
-- **대조** — iOS: `idevicesyslog | grep KS-TRACE`(또는 시뮬레이터 console). daemon: `~/.../logs/unified.log` 에서 `grep KS-TRACE`. 같은 `session`·`bytes`·`hex` 가 `send`→`recv` 로 짝지어지면 정상. byte 가 변형(예: `e5 88 9c` → `c3 a5 c2 88 c2 9c` 이중 인코딩)·유실되면 그 구간이 범인.
+  hex is up to 64 B (excess `+Nmore`). If the daemon sanitize dropped a term-query response, the recv ends with `(dropped NB term-response)`. The WS-arrival moment (before sanitize) is seen separately via the server's `[KS-TRACE] ws-recv`.
+- **Comparison** — iOS: `idevicesyslog | grep KS-TRACE` (or the simulator console). daemon: `grep KS-TRACE` in `~/.../logs/unified.log`. If the same `session`·`bytes`·`hex` pair up as `send`→`recv`, it is normal. If a byte is transformed (e.g. `e5 88 9c` → `c3 a5 c2 88 c2 9c` double-encoding)·lost, that span is the culprit.
 
-**재현 레시피 (어느 에이전트 세션에서든 동일 절차)** — `PS_KS_TRACE` 를 양끝 켜고, 대상 에이전트(claude_code / agy / codex / copilot / opencode / local_llm / shell) 세션에서 한글 IME 키보드로 아래를 차례로 타이핑→전송:
-1. **1음절** — `가` → 전송. 입력 박스에 `가` 가 그대로 반영·제출되는지, `send`/`recv` hex 가 UTF-8 3B(`ea b0 80`)로 일치하는지.
-2. **다음절** — `안녕하세요` → 전송. 음절이 합쳐진 채(자모 분리·중복 없이) 제출되는지.
-3. **이모지** — `안녕👋` → 전송. surrogate/4B UTF-8(`f0 9f 91 8b`)이 손상 없이 흐르는지.
-4. **줄바꿈 포함** — 본문 입력 후 Enter(`0d`) → 한 턴 submit. recv 에 `0d` 가 도달하고 turn 이 시작되는지.
-각 단계에서 (a) 입력 박스 반영·제출, (b) `send`↔`recv` 바이트 매칭을 둘 다 확인한다. Copilot 수정(브리프 1) 전/후를 같은 레시피로 재현하면 차이가 hex 로 드러난다.
+**Reproduction recipe (same procedure in any agent session)** — turn `PS_KS_TRACE` on at both ends, and in the target agent (claude_code / agy / codex / copilot / opencode / local_llm / shell) session, type→send the following in order on the Korean IME keyboard:
+1. **1 syllable** — `가` → send. Whether `가` is reflected·submitted as-is in the input box, and whether the `send`/`recv` hex matches UTF-8 3B (`ea b0 80`).
+2. **Multiple syllables** — `안녕하세요` → send. Whether the syllables are submitted combined (no jamo splitting·duplication).
+3. **Emoji** — `안녕👋` → send. Whether the surrogate/4B UTF-8 (`f0 9f 91 8b`) flows without corruption.
+4. **Including a line break** — type the body then Enter (`0d`) → submit one turn. Whether `0d` reaches recv and a turn begins.
+At each step, confirm both (a) input-box reflection·submission and (b) `send`↔`recv` byte matching. Reproducing the same recipe before/after the Copilot fix (brief 1) reveals the difference in hex.
 
-### 5.4 ChatView 상태바·툴바
-- **상태바**: git 브랜치 칩(`session_git_branch_v1`) + 변경 N 칩→Diff 시트(`session_git_status_v1`) + 토큰 잔량(`agent_usage_v1`). 가상 화살표/Space/Enter/종료.
-- **툴바 버튼**(우상단·도구 그룹):
-  - 라이브 프리뷰(`preview_v1`/`v2`, 프로 `.preview`) → `PreviewView` 시트(§13.1).
-  - 모니터 미러링(`screen_capture_v1`, 프로 `.monitorMirror`) → `MonitorMirrorView` 풀스크린(§13.3).
-  - 「고급 도구」 칩(프로 `.chatTools`, 주황): 브랜치/worktree·파일 탐색·diff·이미지 첨부·세션 알림 음소거 등.
-  - 음성 입력 마이크(§5.6).
-- **첨부**: 사진첩 이미지(이미지별 요구사항)·파일/라인 참조·미러링 캡처/녹화·화면 피드백(마크업)을 «전송 대기» 로 모아 보낸다(§13.5).
-- **옛 «결과» 통합 시트는 폐지** — 웹 미리보기 / 미러 / 산출물을 각각의 진입점으로 분리(미러는 세션 무관 `__desktop__` 합성 id).
+### 5.4 ChatView Status Bar·Toolbar
+- **Status bar**: git branch chip (`session_git_branch_v1`) + changed-N chip→Diff sheet (`session_git_status_v1`) + token balance (`agent_usage_v1`). Virtual arrows/Space/Enter/terminate.
+- **Toolbar buttons** (top-right·tools group):
+  - Live preview (`preview_v1`/`v2`, pro `.preview`) → `PreviewView` sheet (§13.1).
+  - Monitor mirroring (`screen_capture_v1`, pro `.monitorMirror`) → `MonitorMirrorView` fullscreen (§13.3).
+  - "Advanced tools" chip (pro `.chatTools`, orange): branch/worktree·file explorer·diff·image attach·session notification mute, etc.
+  - Voice-input mic (§5.6).
+- **Attachments**: photo-library images (per-image requirements)·file/line references·mirroring captures/recordings·screen feedback (markup) are gathered into «pending send» and sent (§13.5).
+- **The old «Results» unified sheet is abolished** — web preview / mirror / artifacts are split into their own entry points (the mirror is the session-agnostic synthetic id `__desktop__`).
 
-### 5.5 음성 입력 (WhisperKit, 신규)
-`WhisperSpeechRecognizer`(앱 전역 싱글톤, 모델 1회 로드) + 재사용 컴포넌트(`VoiceDictation.swift`: `DictationMicButton` / `VoiceInputField` / `.voiceDictationChrome()`). 온디바이스 처리 — 음성은 기기 밖으로 안 나가고 모델 가중치만 1회 다운로드·캐시. 한글 포함 전 언어.
+### 5.5 Voice Input (WhisperKit, new)
+`WhisperSpeechRecognizer` (app-global singleton, model loaded once) + reusable components (`VoiceDictation.swift`: `DictationMicButton` / `VoiceInputField` / `.voiceDictationChrome()`). On-device processing — voice never leaves the device, only the model weights are downloaded·cached once. All languages including Korean.
 
-### 5.6 백그라운드 정책 (유지)
-- 백그라운드 진입 → 모든 연결 종료(SSH + Tor stop). 포그라운드 복귀 → 처음부터 재연결.
-- **APNs / BGAppRefreshTask / BGProcessingTask 영구 미구현**. 실시간 알림은 Discord webhook 위임(§12.6).
-- `AppLifecycle`: 콜드 런치/60초 미만 짧은 background 는 silent, 60초 이상 long trip 은 `longTripReawake()` 로 각 뷰가 targeted refresh(NavigationStack/입력 보존).
+### 5.6 Background Policy (retained)
+- Background entry → close all connections (SSH + Tor stop). Foreground return → reconnect from scratch.
+- **APNs / BGAppRefreshTask / BGProcessingTask permanently unimplemented**. Real-time notifications are delegated to a Discord webhook (§12.6).
+- `AppLifecycle`: cold launch/short background under 60 s is silent; a long trip of 60 s or more triggers `longTripReawake()` for each view to do a targeted refresh (NavigationStack/input preserved).
 
-### 5.7 수익화 — 프로(주황) 기능 게이트 + 구독/평생 IAP (전면 개편)
-**전체화면 강제 페이월은 폐기**됐다(프리미엄 전환). 기본 앱은 무료, **«주황(Theme.pro) 기능을 탭할 때만»** 보유 여부로 막는다.
+### 5.7 Monetization — Pro (Orange) Feature Gating + Subscription/Lifetime IAP (full overhaul)
+**The full-screen forced paywall has been abolished** (a premium pivot). The base app is free; it is gated by ownership **«only when tapping an orange (Theme.pro) feature»**.
 
-- **상품 3종**(`ProductCatalog` SSOT): 월 구독 `…sub.monthly`(₩5,000) · 년 구독 `…sub.yearly`(₩50,000) · 평생 `…lifetime`(₩250,000, 비소모성). 구독은 7일 무료 도입혜택(그룹 `pocketsisyphus.pro` 단위 1회).
-- **`ProFeature` 레지스트리**(단일 진실): `workflow / poLoop / cron / monitorMirror / terminal / localLLM / worktree / chatTools / preview`. 프로 기능이면 반드시 이 case 로 태깅하고 `PurchaseStore.gate(_:_:_:)` / `isUnlocked(_:)` 를 거친다 — 진입점이 타입을 요구해 게이트 누락(무료 노출 회귀)을 막는다. 색 정책의 «주황=프로» 와 1:1.
-- **`EntitlementDecision.iapEnabled`** 마스터 스위치: false 면 모든 프로 기능 무료 개방 + StoreKit fetch skip(무료 출시 단계). ASC 승인 후 true.
-- `EntitlementDecision`/`ProductCatalog` 는 host-less XCTest 로 id·판정을 핀으로 박는다.
+- **3 products** (`ProductCatalog` SSOT): monthly sub `…sub.monthly` (₩5,000) · yearly sub `…sub.yearly` (₩50,000) · lifetime `…lifetime` (₩250,000, non-consumable). Subscriptions have a 7-day free introductory offer (once per `pocketsisyphus.pro` group).
+- **`ProFeature` registry** (single source of truth): `workflow / poLoop / cron / monitorMirror / terminal / localLLM / worktree / chatTools / preview`. A pro feature must be tagged with this case and go through `PurchaseStore.gate(_:_:_:)` / `isUnlocked(_:)` — the entry point requires the type, preventing a missed gate (a free-exposure regression). 1:1 with the color policy's «orange=pro».
+- **`EntitlementDecision.iapEnabled`** master switch: when false, all pro features open free + StoreKit fetch skipped (the free-release stage). true after ASC approval.
+- `EntitlementDecision`/`ProductCatalog` pin ids·decisions with host-less XCTest.
 
-## 6. Mac 앱 설계
+## 6. Mac App Design
 
-### 6.1 스택
-- Swift 5.10 + SwiftUI, deployment target macOS 13.0+. MenuBarExtra(LSUIElement, Dock 아이콘 없음).
-- Sandbox 비활성(`ENABLE_APP_SANDBOX: NO` — §10). Hardened runtime + NodeRuntime entitlements(`cs.allow-jit`/`cs.allow-unsigned-executable-memory`/`cs.disable-library-validation`).
+### 6.1 Stack
+- Swift 5.10 + SwiftUI, deployment target macOS 13.0+. MenuBarExtra (LSUIElement, no Dock icon).
+- Sandbox disabled (`ENABLE_APP_SANDBOX: NO` — §10). Hardened runtime + NodeRuntime entitlements (`cs.allow-jit`/`cs.allow-unsigned-executable-memory`/`cs.disable-library-validation`).
 
-### 6.2 메뉴바 + 창
-- **메뉴바 아이콘**(`StatusIcon`): daemon state(stopped/starting/running/failed) 점으로 표시. 사일런트 업데이트 중 파란 다운로드 표시.
-- **메뉴 statusBlock**: Onion 주소 / SSH 직접(UPnP 매핑 결과) / SSH onion 채널 상태. UPnP 실패 시 「포트포워딩 가이드」(라우터 페이지 오픈) + 사일런트 업데이트 진행 배너.
-- **설정 창**(`SettingsWindow`, 8탭 통합): 로컬 LLM · Discord 알림 · App Store 인증(ASC) · SSH 포트 · 전원 · 권한 · 기기 · 언어.
-- **QR 창** — 페어링 v=3 생성/표시/복사 + rotate.
-- **터미널 미러 창** — daemon WS `pty_output` 실시간 미러(SwiftTerm) — 폰과 같은 화면.
-- **워크플로우 창**(`WorkflowWindow`) — DAG 캔버스 편집/실행(iOS 동등, §12.5).
-- Sparkle 인앱 업데이트(§11).
+### 6.2 Menu Bar + Windows
+- **Menu-bar icon** (`StatusIcon`): shows daemon state (stopped/starting/running/failed) as a dot. Shows a blue download indicator during a silent update.
+- **Menu statusBlock**: Onion address / SSH direct (UPnP mapping result) / SSH onion channel status. On UPnP failure, a "Port-forwarding guide" (opens the router page) + a silent-update progress banner.
+- **Settings window** (`SettingsWindow`, 8 tabs unified): Local LLM · Discord notifications · App Store auth (ASC) · SSH port · Power · Permissions · Devices · Language.
+- **QR window** — generate/show/copy pairing v=3 + rotate.
+- **Terminal mirror window** — real-time mirror of the daemon WS `pty_output` (SwiftTerm) — the same screen as the phone.
+- **Workflow window** (`WorkflowWindow`) — DAG canvas editing/execution (equivalent to iOS, §12.5).
+- Sparkle in-app updates (§11).
 
-### 6.3 권한·전원 관리 (신규 명시)
-- **화면 기록 TCC**(`RemoteControlPermissions`): `CGPreflight/RequestScreenCaptureAccess` + capture-helper 실동작 테스트(`__PS_SCREENPERM__`). capture-helper 의 책임 프로세스가 이 앱이라 앱이 받으면 helper 도 동작(§13.3).
-- **손쉬운 사용 TCC**: `AXIsProcessTrusted(WithOptions)` — capture-helper 의 `CGEvent` 입력 주입(원격 제어)용. «보기» 는 자동, «입력 주입» 은 세션별 `control_set` 명시 승인 시만.
-- **전체 디스크 접근(FDA, `FullDiskAccess`)**: TCC.db 접근 휴리스틱 + 설정 링크. Sandbox 비활성이라도 daemon 이 Documents/Desktop/iCloud 등 TCC 보호 경로를 만질 때 매번 프롬프트 → FDA 로 일괄 허용.
-- **전원(`PowerManager`)**: 잠자기 방지(`IOPMAssertion`, 권한 불필요) + 클램쉘 모드(`pmset disablesleep`, root 필요 → osascript admin). 클램쉘은 켜진 동안 시스템 전체 미잠 → UI 경고.
-- daemon stdout 의 `__PS_PERMISSION_REQUEST__ screen|accessibility` 마커 → 권한 탭 자동 열기·강조(15s throttle).
+### 6.3 Permissions·Power Management (newly stated)
+- **Screen Recording TCC** (`RemoteControlPermissions`): `CGPreflight/RequestScreenCaptureAccess` + a real capture-helper functional test (`__PS_SCREENPERM__`). Since the capture-helper's responsible process is this app, the helper works once the app is granted (§13.3).
+- **Accessibility TCC**: `AXIsProcessTrusted(WithOptions)` — for the capture-helper's `CGEvent` input injection (remote control). «Viewing» is automatic; «input injection» only when explicitly approved per session via `control_set`.
+- **Full Disk Access (FDA, `FullDiskAccess`)**: a TCC.db-access heuristic + a settings link. Even with the sandbox disabled, when the daemon touches TCC-protected paths like Documents/Desktop/iCloud it prompts every time → grant in bulk with FDA.
+- **Power (`PowerManager`)**: sleep prevention (`IOPMAssertion`, no permission needed) + clamshell mode (`pmset disablesleep`, requires root → osascript admin). While clamshell is on, the whole system stays awake → UI warning.
+- The daemon stdout's `__PS_PERMISSION_REQUEST__ screen|accessibility` marker → auto-open·highlight the Permissions tab (15 s throttle).
 
-## 7. 구현 단계 (역사 기록)
+## 7. Implementation Phases (historical record)
 
-| Phase | 내용 | 상태 |
+| Phase | Content | Status |
 |---|---|---|
-| P1~P7 | Mac daemon(sshd/Tor 듀얼/`/endpoint`) + iOS in-process Tor + Citadel direct-tcpip + 익스텐션 제거 + Mac UI + ASC 재제출 | ✅ |
-| P8 | PTY 실시간 keystroke (WS `pty_input` + 키보드 언어별 분기) | ✅ |
-| P9 | 멀티 에이전트(어댑터 레지스트리 + `/api/agents`, `multi_agent_v1`) | ✅ |
-| P10 | 예약 작업 (croner 세션 cron + 워크플로우 cron 트리거, `cron_v1`) | ✅ |
-| P11 | 워크플로우 (DAG 엔진 + 노드=세션 + result.md + iOS/Mac 캔버스, `workflow_v1`) | ✅ |
-| P12 | 로컬 LLM (llama-server 온디맨드 supervisor + Qwen Code, `local_llm_lifecycle_v1`) | ✅ |
-| P13 | 결과 평면 (프리뷰/산출물/화면 캡처·제어, §13) | ✅ |
-| P14 | SSH host key strict pin + TOFU 장부 (§2.5) | ✅ |
-| P15 | App Attest — Secure Enclave 기기 인증 (§2.9) | ✅ |
-| P16 | H.264 화면 릴레이 + 시스템 오디오 + 창 스코프 캡처 (§13.3, `screen_h264_v1`/`screen_window_target_v1`) | ✅ |
-| P17 | 라이브 프리뷰 v2 — 다중 포트 + 절대 URL 리라이트 (§13.1, `preview_v2`) | ✅ |
-| P18 | Discord 알림 + 세션 음소거 (§12.6, `notify_discord_v1`/`session_notify_mute_v1`) | ✅ |
-| P19 | 토큰 usage 추적 + 데스크탑 세션 import + git 상태/diff (§12.1, `agent_usage_v1`/`recent_projects_v1`/`session_git_*`) | ✅ |
-| P20 | cron terminal — 쉘 스크립트 예약 (§12.5, `cron_terminal_v1`) | ✅ |
-| P21 | 사일런트 강제 업데이트 (§11, `silent_update_v1`) | ✅ |
+| P1~P7 | Mac daemon (sshd/Tor dual/`/endpoint`) + iOS in-process Tor + Citadel direct-tcpip + extension removal + Mac UI + ASC resubmission | ✅ |
+| P8 | PTY real-time keystroke (WS `pty_input` + per-keyboard-language branching) | ✅ |
+| P9 | Multi-agent (adapter registry + `/api/agents`, `multi_agent_v1`) | ✅ |
+| P10 | Scheduled jobs (croner session cron + workflow cron trigger, `cron_v1`) | ✅ |
+| P11 | Workflows (DAG engine + node=session + result.md + iOS/Mac canvas, `workflow_v1`) | ✅ |
+| P12 | Local LLM (llama-server on-demand supervisor + Qwen Code, `local_llm_lifecycle_v1`) | ✅ |
+| P13 | Result plane (preview/artifacts/screen capture·control, §13) | ✅ |
+| P14 | SSH host key strict pin + TOFU ledger (§2.5) | ✅ |
+| P15 | App Attest — Secure Enclave device attestation (§2.9) | ✅ |
+| P16 | H.264 screen relay + system audio + window-scoped capture (§13.3, `screen_h264_v1`/`screen_window_target_v1`) | ✅ |
+| P17 | Live preview v2 — multi-port + absolute-URL rewrite (§13.1, `preview_v2`) | ✅ |
+| P18 | Discord notifications + session mute (§12.6, `notify_discord_v1`/`session_notify_mute_v1`) | ✅ |
+| P19 | Token usage tracking + desktop session import + git status/diff (§12.1, `agent_usage_v1`/`recent_projects_v1`/`session_git_*`) | ✅ |
+| P20 | cron terminal — shell-script scheduling (§12.5, `cron_terminal_v1`) | ✅ |
+| P21 | Silent forced update (§11, `silent_update_v1`) | ✅ |
 | P22 | Tor bridge / obfs4 (§2.6, `tor_bridge_v1`) | ✅ |
-| P23 | 음성 입력 (WhisperKit, §5.5) | ✅ |
-| P24 | 수익화 개편 — 프로 기능 게이트 + 구독/평생 (§5.7) | ✅ |
-| P25 | bulk session actions — 그룹 일괄 승인/중지 (`bulk_session_actions_v1`) | ✅ |
-| P26 | **PO 루프** — 기회 브리프 백로그 (§14, `po_*_v1` 계열) | ✅ |
+| P23 | Voice input (WhisperKit, §5.5) | ✅ |
+| P24 | Monetization overhaul — pro feature gating + subscription/lifetime (§5.7) | ✅ |
+| P25 | bulk session actions — group bulk approve/stop (`bulk_session_actions_v1`) | ✅ |
+| P26 | **PO loop** — opportunity-brief backlog (§14, `po_*_v1` family) | ✅ |
 
-## 8. 알려진 리스크 / 검증
-1. **CGNAT + Tor DPI 차단**: obfs4 bridge(`tor_bridge_v1`)로 평문 실패 시 우회. *남은 한계: bridge 경유는 지연이 커 라이브 프리뷰/미러가 거칠어질 수 있음; 내장 기본 bridge 세트(`TorBridgeStore.builtInObfs4Bridges`)는 회전하므로 메인테이너 갱신 필요; BridgeDB 자동 분배·HTTPS 종단·Mac 측 bridge 는 비-목표.*
-2. **Citadel maintainer 1인**: swift-nio-ssh 기반이라 NIO 는 검증됐으나 Citadel 자체 버그는 우리가 직접 fix 가능성.
-3. **PTY 모드 한계**: 도구 호출이 ANSI 안에 흐름. 인터랙티브 prompt 감지가 휴리스틱(`agent/pty-*`). 12초 idle 추정이 false-negative(prompt 띄워 놓고도 출력이 12초 안마다 깜빡여 영영 «대기» 로 안 잡힘)로 놓치는 대기는 **사람이 메우는 안전장치**로 보강: daemon 이 세션별 «대기 추정 근거»(마지막 출력 이후 idle·발사된 리마인더 단계)를 폰에 노출(`getPtyAttention`)하고, iOS 가 «조용함 N분» 으로 표면화하며, 사용자가 한 세션을 「다음 정지 시 알림」(`setNotifyNextStop`, `POST /api/sessions/:id/notify-next-stop`)으로 구독하면 그 세션만 4초 임계로 한 번 더 민감하게 잡는다(활성 PTY 한정·1회성, 다음 턴/출력 재개 시 자동 해제).
-4. **App Attest 신뢰 모델**: Apple 의 DCAppAttest 가 아니라 «SE 키 자체 TOFU 등록» 방식 — 첫 등록 시점이 신뢰의 닻. 등록 후 키 도난(탈옥 기기 등)은 범위 밖. 다중 기기 슬롯이 늘면 공격면도 늘어 기본 1슬롯.
-5. **무인(`skip_permissions`) 워크플로우/PO 노드의 파괴성**: 자동 승인 노드가 `rm`/force-push 등을 사람 확인 없이 실행 가능. 방어 = 노드별 승인 게이트(`requires_approval`) + 워크플로우 결과 폴더 격리 + PO 워크플로우 모드의 강제 사람 게이트(§14.4) + worktree 격리(`po_worktree_v1`).
-6. **로컬 LLM 메모리 압박**: 동시 1세션 강제(daemon)로 OOM 방어. 하드웨어 미달 모델 추천 차단(§12.4).
+## 8. Known Risks / Verification
+1. **CGNAT + Tor DPI blocking**: circumvented via obfs4 bridge (`tor_bridge_v1`) when plaintext fails. *Remaining limits: going via a bridge has high latency so live preview/mirror can get choppy; the built-in default bridge set (`TorBridgeStore.builtInObfs4Bridges`) rotates so it needs maintainer updates; BridgeDB auto-distribution·HTTPS termination·a Mac-side bridge are non-goals.*
+2. **Citadel maintained by one person**: since it is swift-nio-ssh-based, NIO is proven, but Citadel's own bugs may need us to fix them directly.
+3. **PTY-mode limits**: tool calls flow inside ANSI. Interactive-prompt detection is heuristic (`agent/pty-*`). Waits missed by the 12 s idle estimate as a false-negative (a prompt is up but output blinks within every 12 s so it is never caught as «waiting») are reinforced by a **human-in-the-loop safety device**: the daemon exposes the per-session «basis for the wait estimate» (idle since last output·fired reminder stage) to the phone (`getPtyAttention`), iOS surfaces it as «quiet for N minutes», and when the user subscribes a session to "notify on next stop" (`setNotifyNextStop`, `POST /api/sessions/:id/notify-next-stop`) that session alone is caught once more sensitively at a 4 s threshold (active-PTY only·one-shot, auto-released on the next turn/output resumption).
+4. **App Attest trust model**: not Apple's DCAppAttest but a «TOFU registration of the SE key itself» approach — the first-registration moment is the anchor of trust. Key theft after registration (jailbroken devices, etc.) is out of scope. Since more device slots widen the attack surface, the default is 1 slot.
+5. **Destructiveness of unattended (`skip_permissions`) workflow/PO nodes**: an auto-approve node could run `rm`/force-push, etc. without human confirmation. Defense = per-node approval gates (`requires_approval`) + workflow-result-folder isolation + the forced human gate of PO workflow mode (§14.4) + worktree isolation (`po_worktree_v1`).
+6. **Local LLM memory pressure**: OOM-guarded by forcing 1 concurrent session (daemon). Recommendation of models the hardware cannot meet is blocked (§12.4).
 
-## 9. daemon 의 V8 / 임베드 자식 프로세스
+## 9. The daemon's V8 / Embedded Child Processes
 
-`.app/Contents/Resources/daemon/` 안에 self-contained 트리:
-- **Node.js 25.4.0** 공식 darwin-arm64 (버전 고정 — 결정적 빌드).
-- **C tor** + 의존 dylib (`libevent`, `libssl`, `libcrypto`, `libscrypt`) + geoip 데이터.
-- **OpenSSH portable sshd** + `sshd-session` + `sshd-auth` (9.8+ 멀티프로세스) + dylib.
-- **capture-helper** (우리 Swift 코드, 빌드 시 `xcrun swiftc -O` 컴파일 — 화면 캡처/제어).
-- llama-server 는 미번들(모델 카탈로그로 온디맨드 — §12.4).
-- 핵심 npm 의존: hono · @hono/node-server · better-sqlite3 · croner · node-pty · ws · pino · nat-api.
+A self-contained tree inside `.app/Contents/Resources/daemon/`:
+- **Node.js 25.4.0** official darwin-arm64 (version-pinned — deterministic builds).
+- **C tor** + dependent dylibs (`libevent`, `libssl`, `libcrypto`, `libscrypt`) + geoip data.
+- **OpenSSH portable sshd** + `sshd-session` + `sshd-auth` (9.8+ multiprocess) + dylibs.
+- **capture-helper** (our Swift code, compiled at build with `xcrun swiftc -O` — screen capture/control).
+- llama-server is not bundled (on-demand via the model catalog — §12.4).
+- Core npm dependencies: hono · @hono/node-server · better-sqlite3 · croner · node-pty · ws · pino · nat-api.
 
-**자식 프로세스 spawn**: tor · sshd(+세션/auth 헬퍼) · capture-helper · llama-server(온디맨드) · 세션마다 에이전트 CLI(node-pty). V8 JIT(`node`, `claude` CLI) 는 `cs.allow-jit` + `cs.allow-unsigned-executable-memory`. 일반 native(tor/sshd/capture-helper/esbuild)는 hardened runtime 단독 사인. `lifecycle.ts` 가 ppid 모니터링 + self-SIGTERM 으로 orphan(부모 앱 종료 후 남는 daemon/tor/sshd) 방지.
+**Child-process spawn**: tor · sshd (+session/auth helpers) · capture-helper · llama-server (on-demand) · the agent CLI per session (node-pty). V8 JIT (`node`, `claude` CLI) gets `cs.allow-jit` + `cs.allow-unsigned-executable-memory`. Ordinary native (tor/sshd/capture-helper/esbuild) is signed with hardened runtime alone. `lifecycle.ts` prevents orphans (daemon/tor/sshd left after the parent app exits) via ppid monitoring + self-SIGTERM.
 
-## 10. 배포 모델
+## 10. Distribution Model
 
-iOS = TestFlight(App Store Connect). Mac = Developer ID 사인 + notarized DMG + Sparkle.
-MAS 아닌 이유 — daemon 이 사용자 home 임의 repo + `~/.claude/projects` 접근 필요, sandbox 와 본질 충돌.
-구체 배포 절차·스크립트·버전 bump 은 메인테이너 전용(비공개).
+iOS = TestFlight (App Store Connect). Mac = Developer ID signed + notarized DMG + Sparkle.
+Why not MAS — the daemon needs to access arbitrary repos in the user's home + `~/.claude/projects`, fundamentally conflicting with the sandbox.
+The concrete distribution procedure·scripts·version bump are maintainer-only (not included in this repository). The repository is public but the license is proprietary (source-available does not mean open source, and commercial use is not granted).
 
-## 11. 버전 호환성 핸드셰이크 + 사일런트 업데이트
+## 11. Version-Compatibility Handshake + Silent Update
 
-`mac/daemon/src/version.ts` 가 SSOT. 양쪽이 ① 자기 버전 ② 상대 minVersion ③ capability 집합을 빌드에 박는다.
-- iOS 가 부팅 시 `/api/version` 1회 호출 → **Hard**(minVersion 위반): `IncompatibleView` 차단 / **Soft**(capability mismatch): 상단 배너("Mac 앱 업데이트 시 활성화").
-- **2차 안전망**: `requireClientVersion` 미들웨어가 모든 `/api/*` 에서 `X-Client-Version` 검사 → min 미만이면 `426 Upgrade Required`. `/api/version` 만 예외(옛 클라가 자기 노후를 학습할 채널).
-- capability 명명: 소문자_언더스코어 + `_v숫자`. protocol-broken 변경은 `_v2`로 새 식별자(키 의미 silently 변경 금지).
+`mac/daemon/src/version.ts` is the SSOT. Both sides bake into the build ① their own version ② the counterpart's minVersion ③ the capability set.
+- iOS calls `/api/version` once at boot → **Hard** (minVersion violation): blocked by `IncompatibleView` / **Soft** (capability mismatch): a top banner ("Enabled when the Mac app is updated").
+- **Secondary safety net**: the `requireClientVersion` middleware checks `X-Client-Version` on every `/api/*` → below min, `426 Upgrade Required`. Only `/api/version` is exempt (the channel by which an old client learns of its own obsolescence).
+- capability naming: lowercase_underscore + `_v<number>`. A protocol-breaking change gets a new identifier with `_v2` (do not silently change a key's meaning).
 
-**사일런트 강제 업데이트 (`silent_update_v1`)**: iOS `/api/admin/trigger-update` → daemon `SIGUSR1` → Mac `UpdaterBridge` 신호 핸들러 → `SilentUpdateUserDriver`(SPUStandardUserDriver 서브클래스) 가 mode 를 `.silent` 로 전환(모든 UI 콜백 no-op, reply 자동 `.install`) → Sparkle 코어가 **EdDSA 검증된** DMG 설치 + relaunch. 진행률은 메뉴 배너 + 메뉴바 파란 점. iOS 는 결과를 `/api/version` 의 `lastUpdate` 로 확인(설치 성공은 daemonVersion ↑ 자체가 신호). 옛 Mac 앱이면 「Mac 화면에서 Sparkle 확인」 폴백.
+**Silent forced update (`silent_update_v1`)**: iOS `/api/admin/trigger-update` → daemon `SIGUSR1` → Mac `UpdaterBridge` signal handler → `SilentUpdateUserDriver` (an SPUStandardUserDriver subclass) switches mode to `.silent` (all UI callbacks no-op, reply auto `.install`) → the Sparkle core installs the **EdDSA-verified** DMG + relaunch. Progress is shown via the menu banner + the menu-bar blue dot. iOS confirms the result via `/api/version`'s `lastUpdate` (a successful install is itself signaled by daemonVersion ↑). For an old Mac app, the "Check Sparkle on the Mac screen" fallback.
 
-## 12. 애플리케이션 평면 — 멀티 에이전트 / 워크플로우 / 예약 / 로컬 LLM / 알림
+## 12. Application Plane — Multi-Agent / Workflows / Scheduling / Local LLM / Notifications
 
-§1~11 이 «전송·보안» 평면이라면 이 절은 그 위 «애플리케이션» 평면이다. 신규 기능은 전부 `/api/version` capability 로 soft-gate — 옛 daemon 에 붙은 폰은 해당 UI 가 «안 보일» 뿐 깨지지 않는다.
+If §1–11 is the «transport & security» plane, this section is the «application» plane on top of it. All new features are soft-gated by `/api/version` capability — a phone attached to an old daemon merely «doesn't see» that UI; nothing breaks.
 
-### 12.1 에이전트 레지스트리 + 토큰 usage + 데스크탑 세션 import (`multi_agent_v1` / `agent_usage_v1` / `recent_projects_v1`)
-- `agent/registry.ts` + `adapters/{claude-code,agy,codex,shell,local-llm}` — 어댑터 5종을 id→adapter 로 등록. 각 어댑터: `displayName / capabilities / resolveBinary / buildSpawnArgs / buildSpawnEnv` (+ 선택 `prepareBackend/releaseBackend` — local_llm 이 llama-server 준비/해제, `desktopWatcher()`, `usage()`).
-- `GET /api/agents` → `[{id, displayName, capabilities, installed?, installHint?}]`. iOS·Mac «도구» 피커가 동적으로 그린다 — 새 에이전트 추가에 앱 재빌드 불필요. 미설치 CLI 는 `installed:false` + `installHint`. 옛 daemon 은 claude_code 단일로 흡수(행동 변화 0).
-- **토큰 usage (`agent_usage_v1`)**: `GET /api/sessions/:id/usage` — rate-limit 윈도우별 사용률 + 리셋 시각. `agent/usage.ts` 가 60s 캐시로 어댑터 `usage()` 를 감싼다. claude_code 는 Keychain OAuth 로 공식 API(5h/7d 윈도우), codex 는 최신 rollout jsonl 의 `token_count.rate_limits` 스냅샷. shell/agy/local_llm 은 `supported:false`. ChatView 상태바에 잔량 표시.
-- **데스크탑 세션 import (`recent_projects_v1`)**: claude_code/codex 어댑터의 `desktopWatcher` 가 `~/.claude/projects/*/<uuid>.jsonl` / `~/.codex/sessions/.../rollout-*.jsonl` 를 FS watch·파싱해 «Mac 에서 직접 돌던 세션» 을 폰에서 이어받게 한다(`--resume`/`resume` subcommand). `GET /api/recent-projects`(최근 cwd) + `GET /api/agents/<id>/desktop-sessions`(이어받기 후보).
-- **새 어댑터 추가 체크리스트(필수)**: `displayName/capabilities/resolveBinary/buildSpawnArgs/buildSpawnEnv` 구현·registry 등록 외에, **CJK 입력 재현 레시피(§5.3)를 통과해야 한다** — `writePtyRaw` 는 모든 어댑터를 동일 취급하지만 각 CLI(특히 Ink 기반)의 IME/CJK 입력 처리는 제각각이라 회귀가 어댑터별로 새로 터질 수 있다. `PS_KS_TRACE=1` 로 양끝(KS-TRACE send/recv)을 켜고 한글 1음절/다음절/이모지/줄바꿈을 타이핑→전송해 (a) 입력 박스 반영·제출, (b) 송신 바이트 = PTY write 바이트 매칭을 확인한 뒤에야 어댑터를 «지원» 으로 노출한다.
+### 12.1 Agent Registry + Token Usage + Desktop Session Import (`multi_agent_v1` / `agent_usage_v1` / `recent_projects_v1`)
+- `agent/registry.ts` + `adapters/{claude-code,agy,codex,shell,local-llm}` — registers the 5 adapters as id→adapter. Each adapter: `displayName / capabilities / resolveBinary / buildSpawnArgs / buildSpawnEnv` (+ optional `prepareBackend/releaseBackend` — local_llm prepares/releases llama-server, `desktopWatcher()`, `usage()`).
+- `GET /api/agents` → `[{id, displayName, capabilities, installed?, installHint?}]`. The iOS·Mac «tools» picker draws dynamically — adding a new agent needs no app rebuild. An uninstalled CLI is `installed:false` + `installHint`. An old daemon collapses to claude_code alone (zero behavior change).
+- **Token usage (`agent_usage_v1`)**: `GET /api/sessions/:id/usage` — usage rate per rate-limit window + reset time. `agent/usage.ts` wraps the adapter's `usage()` with a 60 s cache. claude_code uses the official API via Keychain OAuth (5h/7d windows), codex uses the `token_count.rate_limits` snapshot from the latest rollout jsonl. shell/agy/local_llm are `supported:false`. The balance is shown in the ChatView status bar.
+- **Desktop session import (`recent_projects_v1`)**: the claude_code/codex adapters' `desktopWatcher` FS-watches·parses `~/.claude/projects/*/<uuid>.jsonl` / `~/.codex/sessions/.../rollout-*.jsonl` to let you take over «sessions that were running directly on the Mac» from the phone (`--resume`/`resume` subcommand). `GET /api/recent-projects` (recent cwd) + `GET /api/agents/<id>/desktop-sessions` (takeover candidates).
+- **New-adapter checklist (mandatory)**: beyond implementing `displayName/capabilities/resolveBinary/buildSpawnArgs/buildSpawnEnv`·registering in the registry, **it must pass the CJK-input reproduction recipe (§5.3)** — `writePtyRaw` treats all adapters identically, but each CLI's (especially Ink-based) IME/CJK input handling differs, so a regression can newly break per adapter. Turn on both ends with `PS_KS_TRACE=1` (KS-TRACE send/recv) and type→send Korean 1-syllable/multi-syllable/emoji/line-break, confirming (a) input-box reflection·submission and (b) sent-bytes = PTY-write-bytes matching, only then expose the adapter as «supported».
 
-### 12.2 워크플로우 엔진 (`workflow_v1`)
-파일: `workflow/{types,store,engine,task-folder,triggers}.ts`.
-- **정의**: `nodes`(start/task/end) + `edges`(조건 없는 «성공·순차» 또는 `condition:"fail"` 경로) + start 노드 `triggers`(manual·cron·github). JSON 으로 `workflows` 테이블 저장(캔버스 x/y 포함). 옛 `general`/`test` 노드 종류는 `task` 로 정규화.
-- **실행**(`engine.ts`): 시작 시 정의를 `def_snapshot` 으로 동결 → 위상정렬해 start 부터 pump. **task 노드마다 세션 1개 spawn**(세션 탭/딥링크로 열람). 노드 완료 = idle 감지 또는 result.md 기록 또는 하드 타임아웃.
-- **결과 전달**: `.posiworkflow/<wf슬러그>--<wfId8>/<YYYYMMDD-HHMMSS>--<runId8>/<노드슬러그>--<nodeRunId8>/`. run 폴더 `_run.json` 매니페스트로 DB 없이 식별. 각 노드가 `result.md`(+선택 `verdict.json` pass/fail) 에 쓰고 다음 노드가 프롬프트로 이어받음.
-- **분기·루프**: 노드 결과 `branches.json` 으로 동적 자식 생성. `MAX_NODES=200` · `MAX_DEPTH=8` · `MAX_ITERATIONS=10` 상한. 「실패」 엣지가 조상으로 돌아가면 루프 — fail 엣지 제외 전진 그래프 도달성으로 순환 판정해 fail 엣지로만 허용.
-- **노드 상태**: pending →(requires_approval 면) awaiting_approval → running → done/failed/needs_attention, dead-path 는 skipped. awaiting_approval·needs_attention 은 `pending` map 에 action handler 를 두고 사용자 결정 대기.
-- **취소/재시작**: `cancelWorkflowRun`(cancelled 플래그 + 큐 비움 + PTY graceful abort → 남은 노드 skipped). daemon 재시작 시 떠 있던 running 은 failed 로 reconcile(이어가기 없음).
-- **DB**: `workflows` / `workflow_runs`(def_snapshot·status·trigger_kind) / `workflow_node_runs`(def_node_id·parent·session_id·status·verdict·iteration·x/y) / `workflow_triggers`.
-- **라우트**: `GET/POST /api/workflows`, `GET/PUT/DELETE /:id`, `POST /:id/run`, `GET /runs/:id`(캔버스 폴링), `POST /runs/:id/cancel`, `POST /runs/:id/nodes/:nid/:action`(approve/reject/complete/retry).
+### 12.2 Workflow Engine (`workflow_v1`)
+Files: `workflow/{types,store,engine,task-folder,triggers}.ts`.
+- **Definition**: `nodes` (start/task/end) + `edges` (an unconditioned «success·sequential» or a `condition:"fail"` path) + the start node's `triggers` (manual·cron·github). Stored in the `workflows` table as JSON (including canvas x/y). The old `general`/`test` node kinds are normalized to `task`.
+- **Execution** (`engine.ts`): on start, freeze the definition as `def_snapshot` → topo-sort and pump from start. **Spawns 1 session per task node** (viewable via the Sessions tab/deeplink). Node completion = idle detection or a result.md write or a hard timeout.
+- **Result handoff**: `.posiworkflow/<wf-slug>--<wfId8>/<YYYYMMDD-HHMMSS>--<runId8>/<node-slug>--<nodeRunId8>/`. The run folder is identified DB-free via the `_run.json` manifest. Each node writes to `result.md` (+ optional `verdict.json` pass/fail) and the next node takes over via the prompt.
+- **Branching·loops**: dynamic children created from the node result's `branches.json`. Caps `MAX_NODES=200` · `MAX_DEPTH=8` · `MAX_ITERATIONS=10`. A "fail" edge going back to an ancestor is a loop — cycles are determined by forward-graph reachability excluding fail edges, allowed only via fail edges.
+- **Node state**: pending → (if requires_approval) awaiting_approval → running → done/failed/needs_attention, dead paths are skipped. awaiting_approval·needs_attention place an action handler in the `pending` map and await the user's decision.
+- **Cancel/restart**: `cancelWorkflowRun` (cancelled flag + queue emptied + PTY graceful abort → remaining nodes skipped). On daemon restart, a running that was up is reconciled to failed (no resumption).
+- **DB**: `workflows` / `workflow_runs` (def_snapshot·status·trigger_kind) / `workflow_node_runs` (def_node_id·parent·session_id·status·verdict·iteration·x/y) / `workflow_triggers`.
+- **Routes**: `GET/POST /api/workflows`, `GET/PUT/DELETE /:id`, `POST /:id/run`, `GET /runs/:id` (canvas polling), `POST /runs/:id/cancel`, `POST /runs/:id/nodes/:nid/:action` (approve/reject/complete/retry).
 
-### 12.3 예약 작업 (`cron_v1` / `cron_terminal_v1`)
-- **세션 기반 cron**: `cron/{scheduler,executor,store,registry}.ts`. `croner` 로 5필드 cron + IANA tz. tick 마다 지정 agent+repo 로 세션 1개 만들어 1회 실행 후 종료. `session_mode`(fresh/continue, continue 면 `last_session_id` SDK 세션 이어받기) · `overlap_policy` · `catch_up` · `skip_permissions`.
-- **터미널 cron (`cron_terminal_v1`)**: `kind='terminal'` — 에이전트 대신 «쉘 스크립트 파일» 을 인터프리터(zsh/bash/sh login shell `-l`)로 1회 실행. `cron/terminal.ts` 가 `resolveScriptFile`(~ 확장·절대경로 강제·존재 확인)·`normalizeShell`·`buildScriptSpawnArgs`. 결과 세션은 남기지 않음(로그만). `cron_jobs.kind/shell/script` 컬럼.
-- **워크플로우 트리거(cron·github)**: start 노드 `triggers` 를 `workflow_triggers` 로 reconcile. cron 은 croner tick 에서 `startWorkflowRun(wf,'cron')`. github 는 공개 webhook 없어 폴 기반(`git ls-remote`, 폴 하한 60s) — 마지막 SHA 변하면 발화. manual 은 등록 없이 iOS 「실행」 이 `POST /run`.
-- iOS 노출: 세션 cron 과 워크플로우 트리거는 **자동화 탭**의 「예약」 세그먼트 + 워크플로우 노드 인스펙터.
+### 12.3 Scheduled Jobs (`cron_v1` / `cron_terminal_v1`)
+- **Session-based cron**: `cron/{scheduler,executor,store,registry}.ts`. 5-field cron + IANA tz via `croner`. On each tick, makes 1 session with the designated agent+repo, runs once, and exits. `session_mode` (fresh/continue; for continue, takes over the `last_session_id` SDK session) · `overlap_policy` · `catch_up` · `skip_permissions`.
+- **Terminal cron (`cron_terminal_v1`)**: `kind='terminal'` — instead of an agent, runs a «shell-script file» once through an interpreter (zsh/bash/sh login shell `-l`). `cron/terminal.ts` does `resolveScriptFile` (~ expansion·absolute-path enforcement·existence check)·`normalizeShell`·`buildScriptSpawnArgs`. The result session is not retained (logs only). The `cron_jobs.kind/shell/script` columns.
+- **Workflow triggers (cron·github)**: reconciles the start node's `triggers` into `workflow_triggers`. cron does `startWorkflowRun(wf,'cron')` on the croner tick. github is poll-based since there is no public webhook (`git ls-remote`, poll floor 60 s) — fires when the last SHA changes. manual requires no registration; the iOS "Run" does a `POST /run`.
+- iOS exposure: session cron and workflow triggers are in the **Automation tab**'s "Schedule" segment + the workflow node inspector.
 
-### 12.4 로컬 LLM (Qwen Code + llama-server, `local_llm_lifecycle_v1`)
-- `local-llm/{supervisor,paths,catalog,download,hardware,status,events,resolve-llama-server}.ts` + `agent/adapters/local-llm`. 단일 llama-server(고정 포트, parallel=1) **온디맨드**: /health adopt / 죽었으면 spawn / 외부 점유면 에러. 우리가 띄운 것만 graceful stop + 비정상 종료 시 지수 백오프(1s→30s) 재시작.
-- **하드웨어 추천(`hardware.ts`)**: `detectHardware()`(총 RAM·chip·gpu cores) + `recommendModel()` — 모델별 estRss/RAM 예산으로 「추천」(≤0.70 & ≥recommendedRam) / 「허용」(≥minRam & ≤0.85) 판정. 미달이면 추천 차단.
-- **카탈로그/다운로드**: Qwen Code 여러 크기(`{fileName, estRssBytes, recommendedRamBytes, minRamBytes, ctxNative, ...}`). ctx > native 시 YaRN rope scaling. `GET /api/local-llm/{status,models,hardware}` + 다운로드.
-- 메모리 압박 → **동시 로컬 LLM 세션 1개**(daemon 강제, 앱이 먼저 차단). 어댑터는 OpenAI 호환(`OPENAI_BASE_URL=…/v1`)으로 Qwen Code CLI 연결.
+### 12.4 Local LLM (Qwen Code + llama-server, `local_llm_lifecycle_v1`)
+- `local-llm/{supervisor,paths,catalog,download,hardware,status,events,resolve-llama-server}.ts` + `agent/adapters/local-llm`. A single llama-server (fixed port, parallel=1) **on-demand**: /health adopt / spawn if dead / error if externally occupied. Only what we launched gets a graceful stop + exponential backoff (1s→30s) restart on abnormal exit.
+- **Hardware recommendation (`hardware.ts`)**: `detectHardware()` (total RAM·chip·gpu cores) + `recommendModel()` — judges "recommended" (≤0.70 & ≥recommendedRam) / "allowed" (≥minRam & ≤0.85) by each model's estRss/RAM budget. If under, recommendation is blocked.
+- **Catalog/download**: Qwen Code in several sizes (`{fileName, estRssBytes, recommendedRamBytes, minRamBytes, ctxNative, ...}`). YaRN rope scaling when ctx > native. `GET /api/local-llm/{status,models,hardware}` + download.
+- Memory pressure → **1 concurrent local-LLM session** (daemon-enforced, the app blocks first). The adapter connects the Qwen Code CLI via OpenAI-compatible (`OPENAI_BASE_URL=…/v1`).
 
-### 12.5 캔버스 UI (iOS · Mac)
-- **iOS**: 자동화 탭 「워크플로우」 세그먼트 = 목록(`WorkflowListView`) → 편집기(`WorkflowEditorView`: 노드 추가·드래그·포트 연결·인스펙터·저장) → 실행 뷰어(`WorkflowCanvasView`: 읽기전용 + 폴링) + `WorkflowRunLoaderView`(딥링크 착지). 편집 캔버스: 진입 시 auto-fit, 빈 영역 길게 눌러 노드 추가, 드래그=팬·핀치=줌.
-- **Mac**: `WorkflowWindow` — 좌 사이드바(목록 CRUD) + 우 캔버스(`runState` 로 편집/실행 전환). 사이드바 선택은 `.id(workflow.id)` 로 캔버스 재생성. 두 손가락 스크롤=팬, 한 손 드래그=마퀴 선택.
-- 노드 종류색: iOS `editorTypeColor` / Mac `wfTypeColor` 가 같은 약속(시작 초록·작업 분홍·종료 파랑) → §12.7.
+### 12.5 Canvas UI (iOS · Mac)
+- **iOS**: the Automation tab "Workflows" segment = list (`WorkflowListView`) → editor (`WorkflowEditorView`: add node·drag·connect ports·inspector·save) → run viewer (`WorkflowCanvasView`: read-only + polling) + `WorkflowRunLoaderView` (deeplink landing). Editing canvas: auto-fit on entry, long-press an empty area to add a node, drag=pan·pinch=zoom.
+- **Mac**: `WorkflowWindow` — left sidebar (list CRUD) + right canvas (switches edit/run via `runState`). Sidebar selection re-creates the canvas via `.id(workflow.id)`. Two-finger scroll=pan, one-hand drag=marquee select.
+- Node-kind color: iOS `editorTypeColor` / Mac `wfTypeColor` follow the same promise (start green·task pink·end blue) → §12.7.
 
-### 12.6 Discord 알림 (`notify_discord_v1` / `session_notify_mute_v1`)
-백그라운드 런타임 0 원칙(§1)의 답 — 실시간 푸시를 **사용자 본인 Discord webhook** 에 위임한다(외부서버 0: URL 만 알면 Discord 인프라가 전달 대행).
-- `notify/{index,discord,preview}.ts`. 보내는 이벤트: `turn_complete` · `still_waiting`(10/30/60분 reminder chain) · `session_exit` · `error` (이상 4종은 **away-gate** — 실시간 시청자 없을 때만) · `cron_complete`/`cron_failed` · `po_briefs`/`po_failed`/`po_gate`(무인이라 away-gate 무시) · `test`.
-- `notify/preview.ts` 가 에이전트 출력 tail 에서 의미있는 한~두 줄 추출. 딥링크는 GitHub Pages 정적 브리지(`…/open/#<sessionId>` → `pocketsisyphus://…`, Discord 가 커스텀 scheme 직접 링크를 막아서).
-- **세션 음소거(`session_notify_mute_v1`)**: `PATCH /api/sessions/:id { notifyMuted }` + `sessions.notify_muted`. 여러 세션 동시 굴릴 때 시끄러운 세션만 끄는 ChatView bell 토글.
-- 설정은 Mac 설정 창 「알림」 탭. `GET/POST /api/notify/config` + `POST /api/notify/test`.
+### 12.6 Discord Notifications (`notify_discord_v1` / `session_notify_mute_v1`)
+The answer to the zero-background-runtime principle (§1) — real-time push is delegated to the **user's own Discord webhook** (zero external servers: knowing just the URL, the Discord infrastructure handles delivery).
+- `notify/{index,discord,preview}.ts`. Events sent: `turn_complete` · `still_waiting` (a 10/30/60-minute reminder chain) · `session_exit` · `error` (these 4 are **away-gated** — only when there is no live viewer) · `cron_complete`/`cron_failed` · `po_briefs`/`po_failed`/`po_gate` (unattended, so away-gate is ignored) · `test`.
+- `notify/preview.ts` extracts a meaningful line or two from the tail of the agent output. The deeplink is a GitHub Pages static bridge (`…/open/#<sessionId>` → `pocketsisyphus://…`, since Discord blocks direct links to a custom scheme).
+- **Session mute (`session_notify_mute_v1`)**: `PATCH /api/sessions/:id { notifyMuted }` + `sessions.notify_muted`. A ChatView bell toggle to silence only the noisy session when running many at once.
+- Settings are in the Mac Settings window's "Notifications" tab. `GET/POST /api/notify/config` + `POST /api/notify/test`.
 
-### 12.7 색상/디자인 토큰 정책
-의미 기반 색 토큰. SSOT 는 iOS `DesignSystem/DesignTokens.swift` 의 `Theme`(맨 위 「색상 정책」 주석), Mac 은 별도 Theme 없이 같은 약속을 리터럴로 따른다. 핵심: **warning=노랑(진짜 경고 전용)** 과 **pro=주황(프로/프리미엄/고급 강조)** 을 의미가 다른 토큰으로 분리(혼동 금지). 주황은 백로그·자동화 «탭 버튼»·예약·터미널/로컬 LLM 도구·채팅 도구 칩·미러링 진입 등에 쓴다(탭 «안» 일반 버튼은 기본 accent 그대로). 자세한 규칙은 `CLAUDE.md` 「색상 토큰 정책」.
+### 12.7 Color/Design Token Policy
+Semantic color tokens. The SSOT is `Theme` in iOS `DesignSystem/DesignTokens.swift` (the "Color Policy" comment at the top); the Mac has no separate Theme and follows the same promise with literals. Key point: separate **warning=yellow (for genuine warnings only)** and **pro=orange (pro/premium/advanced emphasis)** into tokens with different meaning (do not confuse them). Orange is used for the Backlog·Automation «tab buttons»·schedule·terminal/local-LLM tools·chat-tools chips·mirroring entry, etc. (ordinary buttons «inside» a tab keep the default accent). For detailed rules, see `CLAUDE.md`'s "Color Token Policy."
 
-## 13. 결과 평면 — 라이브 미리보기 / 산출물 / 화면 캡처·제어
+## 13. Result Plane — Live Preview / Artifacts / Screen Capture·Control
 
-§12 가 «무엇을 실행하는가» 라면 이 절은 «실행 결과를 폰에서 어떻게 보고 조작하는가» 다. 전부 `/api/version` capability soft-gate. **옛 «결과» 통합 시트(웹/화면/산출물 세그먼트)는 폐지** — 각 기능을 독립 진입점으로 분리했다(§5.4).
+If §12 is «what runs», this section is «how execution results are viewed and operated from the phone». All `/api/version` capability soft-gated. **The old «Results» unified sheet (web/screen/artifacts segments) is abolished** — each feature is split into an independent entry point (§5.4).
 
-### 13.1 라이브 웹 미리보기 (`preview_v1`, 절대 URL·다중 포트는 `preview_v2`)
-- **감지**(`preview/{detect,registry}.ts`): 세션 PTY 출력에서 loopback dev URL 파싱(ANSI strip + 원격 URL false-positive 필터).
-- **전송**: dev 포트를 폰에 직접 노출하지 않는다. daemon 이 **고정 포트 리버스 프록시**(`preview/proxy.ts`, HTTP+WS 패스스루)로 활성 세션 dev 서버를 root-origin 중계. sshd `PermitOpen` 에 그 **고정 프록시 포트 한 줄만 정적 추가**(§2.2).
-- **iOS**(`PreviewView`): `SSHClient.openForward` 로 프록시 포트에 2차 포워딩 → `WKWebView` 가 `http://127.0.0.1:<fwd>/` 로드. **WKWebView 가 실제 DOM 이라 보기=조작**. 라우트 `GET /api/preview/:id`, `.../enable`·`/disable`, `POST /api/preview/ports`.
-- **`preview_v2`(`preview/rewrite.ts`)**: 실무 Next.js/Vite 풀스택이 절대 URL 자산·별도 포트 API/HMR 을 쓰는 문제를 푼다.
-  - **다중 포트**: `POST /api/preview/ports` 배치 등록 → 쿠키 활성 셋(`<sid>~<주포트>~<p1,p2,...>`). 주포트는 root, 보조는 `/__psport__/<port>/...`. **미등록 포트는 어디서도 통과 안 함**(활성 셋 ∩ 등록부 둘 다 통과해야 forward).
-  - **리라이트**: `PreviewRewriteStream`(청크 경계 안전)이 «등록된» loopback 절대 URL 만 프록시 경로로. HTTP(S)는 정적 치환, WS(S)는 정적 치환 불가라 `<head>` 에 WebSocket shim 1회 주입(런타임 host 치환). 압축 응답은 Accept-Encoding 떼 uncompressed 로 받아 리라이트. 외부 도메인·미등록 포트·문자열 결합 HTTP URL 은 비변형(비-목표).
+### 13.1 Live Web Preview (`preview_v1`; absolute URL·multi-port is `preview_v2`)
+- **Detection** (`preview/{detect,registry}.ts`): parses loopback dev URLs from the session PTY output (ANSI strip + remote-URL false-positive filter).
+- **Transport**: dev ports are not exposed to the phone directly. The daemon relays the active session's dev server at root-origin via a **fixed-port reverse proxy** (`preview/proxy.ts`, HTTP+WS pass-through). **Only that single fixed-proxy-port line is statically added** to sshd `PermitOpen` (§2.2).
+- **iOS** (`PreviewView`): a secondary forward to the proxy port via `SSHClient.openForward` → `WKWebView` loads `http://127.0.0.1:<fwd>/`. **Since WKWebView is a real DOM, viewing=operating**. Routes `GET /api/preview/:id`, `.../enable`·`/disable`, `POST /api/preview/ports`.
+- **`preview_v2` (`preview/rewrite.ts`)**: solves the problem of real-world Next.js/Vite full-stacks using absolute-URL assets·separate-port API/HMR.
+  - **Multi-port**: `POST /api/preview/ports` batch registration → a cookie active set (`<sid>~<main port>~<p1,p2,...>`). The main port is root, the secondaries are `/__psport__/<port>/...`. **An unregistered port passes nowhere** (must pass both the active set ∩ the registry to forward).
+  - **Rewrite**: `PreviewRewriteStream` (chunk-boundary safe) routes only «registered» loopback absolute URLs to the proxy path. HTTP(S) is statically substituted; WS(S) cannot be statically substituted, so a WebSocket shim is injected once into `<head>` (runtime host substitution). A compressed response is taken uncompressed by stripping Accept-Encoding and then rewritten. External domains·unregistered ports·string-concatenated HTTP URLs are left unmodified (non-goal).
 
-### 13.2 산출물 뷰어 (`artifacts_v1`)
-- `GET /api/sessions/:id/artifacts` 가 repo 를 재귀 walk(node_modules/.git/빌드 제외, depth/visited 상한)해 렌더 가능 파일을 종류 분류 + mtime 내림차순. `GET .../fs/raw` 가 raw 바이트 스트리밍(`resolveRepoRelative` 경로 보안 재사용).
-- iOS `ArtifactsView` 가 폴더 드릴다운 + raw 를 temp 로 받아 **QuickLook** 렌더(이미지·PDF·Office·USDZ·동영상·오디오). 포그라운드 전용 한계의 답(«자리 비운 동안» 산출물은 파일로 남음).
+### 13.2 Artifact Viewer (`artifacts_v1`)
+- `GET /api/sessions/:id/artifacts` recursively walks the repo (excluding node_modules/.git/build, with depth/visited caps) to classify renderable files by kind + descending mtime. `GET .../fs/raw` streams raw bytes (reusing the `resolveRepoRelative` path security).
+- iOS `ArtifactsView` does folder drill-down + receives raw into temp and renders with **QuickLook** (image·PDF·Office·USDZ·video·audio). The answer to the foreground-only limit (artifacts «while you are away» remain as files).
 
-### 13.3 네이티브 화면 캡처 + 원격 제어 (`screen_capture_v1` / `screen_h264_v1` / `screen_shot_v1` / `screen_window_target_v1` / `remote_control_v1`)
-**번들 Swift 헬퍼**(`mac/daemon/helper/capture-helper.swift`)가 tor/sshd 처럼 daemon 자식으로 spawn. daemon `capture/sidecar.ts` 가 데이터 허브.
-- **캡처 코덱**: 기본은 두 가지 — **JPEG**(`CGDisplayCreateImage` 주기 캡처, stdout 길이-prefix) 또는 **H.264(`screen_h264_v1`)**: `SCStream`(ScreenCaptureKit) → VideoToolbox H.264 + 시스템 오디오 AAC 를 바이너리 WS 로 릴레이(타입 1 SPS/PPS·2 access unit·3 AAC config·4 AAC packet). 델타 인코딩이라 같은 대역폭에 fps 가 높다(2fps JPEG → 12fps H.264). iOS `H264Decoder`(AVSampleBufferDisplayLayer, GPU 디코드)가 렌더. 미지원 daemon 은 jpeg 폴백(soft).
-- **backpressure 적응**: SSH 채널 `bufferedAmount` 를 4Hz(250ms) 폴링해 fps/bitrate 동적 조절.
-- **원샷 캡처(`screen_shot_v1`)**: `GET /api/screen/shot?display=N&window=ID` — `screencapture(1)` 원샷 JPEG. 라이브 H.264 가 GPU 직행이라 정지 프레임 추출이 안 되므로, «캡처/녹화 → 채팅 첨부»(버그 재현 전달)는 이 원샷이 데이터원.
-- **창 스코프 캡처(`screen_window_target_v1`)**: 헬퍼가 화면 창 목록(`onScreenWindows`, z-order 최대 24개)을 보고하고(`capture_list_windows`→`capture_windows`), iOS 미러링 더보기 «캡처 대상» 피커가 `capture_set_window` 로 고르면 `SCContentFilter(desktopIndependentWindow:)` 로 그 창만 인코딩(대역폭·프라이버시 상류 해법). 창 리사이즈는 1s 폴링이 스트림 재구성, 창이 닫히면 전체 화면 폴백 + `capture_target(reason=window_closed)` → iOS 캡슐 안내.
-- **원격 제어(`remote_control_v1`)**: iOS 제스처 → WS `input_event` → 헬퍼 stdin JSON → `CGEvent` 주입(마우스/스크롤/키/한글 Unicode). 좌표는 0..1 정규화 → 헬퍼가 `CGDisplayBounds` 환산(Retina 흡수). **보안 게이트**: 캡처(보기)는 화면 기록 TCC 만, **입력 주입(조작)은 세션별 «제어 허용»(`controlEnabled` Set)을 명시적으로 켠 경우에만**(`setControlEnabled`→`control_set`) — 손쉬운 사용 TCC 별도. axPerm 미부여 시 `control_status(reason=accessibility_permission)` → iOS 「조작 막힘」 캡슐. 단일 활성 캡처 + 시청자 없으면 헬퍼 자동 종료.
-- iOS 진입: `MonitorMirrorView`(세션 무관 `__desktop__` 합성 id, 세션 목록·ChatView 양쪽) → `RemoteScreenView`(+`ZoomableScreenView`).
+### 13.3 Native Screen Capture + Remote Control (`screen_capture_v1` / `screen_h264_v1` / `screen_shot_v1` / `screen_window_target_v1` / `remote_control_v1`)
+A **bundled Swift helper** (`mac/daemon/helper/capture-helper.swift`) is spawned as a daemon child like tor/sshd. The daemon's `capture/sidecar.ts` is the data hub.
+- **Capture codecs**: there are two by default — **JPEG** (`CGDisplayCreateImage` periodic capture, stdout length-prefix) or **H.264 (`screen_h264_v1`)**: `SCStream` (ScreenCaptureKit) → VideoToolbox H.264 + system audio AAC relayed over a binary WS (type 1 SPS/PPS·2 access unit·3 AAC config·4 AAC packet). Being delta-encoded, fps is higher at the same bandwidth (2fps JPEG → 12fps H.264). iOS `H264Decoder` (AVSampleBufferDisplayLayer, GPU decode) renders. An unsupported daemon falls back to jpeg (soft).
+- **Backpressure adaptation**: polls the SSH channel's `bufferedAmount` at 4 Hz (250 ms) to dynamically adjust fps/bitrate.
+- **One-shot capture (`screen_shot_v1`)**: `GET /api/screen/shot?display=N&window=ID` — a `screencapture(1)` one-shot JPEG. Since live H.264 goes straight to GPU and still-frame extraction is impossible, «capture/record → chat attach» (conveying a bug repro) draws data from this one-shot.
+- **Window-scoped capture (`screen_window_target_v1`)**: the helper reports the on-screen window list (`onScreenWindows`, up to 24 in z-order) (`capture_list_windows`→`capture_windows`), and when the iOS mirroring "more" «capture target» picker selects via `capture_set_window`, it encodes only that window via `SCContentFilter(desktopIndependentWindow:)` (an upstream solution for bandwidth·privacy). A window resize is re-composed by 1 s polling of the stream; when a window closes, full-screen fallback + `capture_target(reason=window_closed)` → an iOS capsule notice.
+- **Remote control (`remote_control_v1`)**: iOS gesture → WS `input_event` → helper stdin JSON → `CGEvent` injection (mouse/scroll/key/Korean Unicode). Coordinates are 0..1 normalized → the helper converts via `CGDisplayBounds` (absorbing Retina). **Security gate**: capture (viewing) needs only Screen Recording TCC, but **input injection (operating) only when the per-session «control allowed» (`controlEnabled` Set) is explicitly turned on** (`setControlEnabled`→`control_set`) — Accessibility TCC is separate. When axPerm is not granted, `control_status(reason=accessibility_permission)` → an iOS "control blocked" capsule. A single active capture + the helper auto-terminates when there is no viewer.
+- iOS entry: `MonitorMirrorView` (the session-agnostic synthetic id `__desktop__`, from both the session list·ChatView) → `RemoteScreenView` (+`ZoomableScreenView`).
 
-### 13.4 미구현/후속
-TCC 권한 attribution(daemon-spawn 헬퍼의 책임 프로세스) 실기기 검증 후속. 다중 창 동시 송출·창 자동 추적 고도화는 비-목표. Tor fallback 환경의 영상 부드러움·실시간 제어 지연은 원천적 한계. 라이브 프리뷰의 런타임 동적 생성 HTTP URL 완전 포착·외부 도메인 프록시·HTTPS 종단은 비-목표.
+### 13.4 Unimplemented/Follow-up
+TCC-permission attribution (the responsible process of the daemon-spawned helper) is a real-device-verification follow-up. Simultaneous multi-window broadcast·advanced window auto-tracking are non-goals. Video smoothness·real-time-control latency in a Tor-fallback environment are inherent limits. Fully capturing a live preview's runtime-dynamically-generated HTTP URLs·external-domain proxy·HTTPS termination are non-goals.
 
-### 13.5 캡처/프리뷰 → 채팅 첨부 + 마크업 (신규)
-캡처한 화면을 그냥 보는 데서 멈추지 않고 «버그 리포트» 로 채팅에 흘린다.
-- `PreviewFeedbackSheet` — 단발 캡처(프리뷰 DOM / 화면) + **PencilKit 자유 그리기(마크업)** + 한 줄 코멘트. `.ps-preview-feedback`/`.ps-screen-feedback` temp → `FileReferenceDraft` 로 채팅 «전송 대기» 플럼빙 재사용.
-- `AttachmentSheet` / `AttachmentAnnotationEditor` — 첨부 이미지별 펜 획·블러 영역(찍힌 뒤 가리기)·되돌리기 + 이미지별 요구사항 + 미러링 녹화 단계 프레임용 「전체 요청」 입력란. `AttachmentDraft`(annotations/baseImage/baseData)로 주석 편집 복구.
+### 13.5 Capture/Preview → Chat Attach + Markup (new)
+Rather than stopping at just viewing a captured screen, it streams it into chat as a «bug report».
+- `PreviewFeedbackSheet` — a single capture (preview DOM / screen) + **PencilKit freehand drawing (markup)** + a one-line comment. `.ps-preview-feedback`/`.ps-screen-feedback` temp → reuses the chat «pending send» plumbing via `FileReferenceDraft`.
+- `AttachmentSheet` / `AttachmentAnnotationEditor` — per-attached-image pen strokes·blur regions (mask after capturing)·undo + per-image requirements + an "overall request" field for the mirroring-recording staged frames. `AttachmentDraft` (annotations/baseImage/baseData) for restoring annotation edits.
 
-## 14. PO 평면 — product-owner / 기회 브리프 백로그 (`po_*_v1`)
+## 14. PO Plane — product-owner / Opportunity-Brief Backlog (`po_*_v1`)
 
-§12~13 이 «어떻게 만들고 결과를 보는가» 라면, 이 절은 «무엇을 만들지 누가 정하는가» 다. 사람의 역할을 «생산» 에서 «결재» 로 줄인다 — 에이전트가 신호를 모아 기회 브리프를 쓰고, 사람은 백로그 탭에서 승인/보류/기각만 한다. iOS **「백로그」 탭(1번 탭)**, daemon `po/{executor,prompt,asc,crash,gh,scheduler,workflow-exec}.ts` + `routes/po.ts`.
+If §12–13 is «how to build and view results», this section is «who decides what to build». It reduces the human's role from «production» to «approval» — the agent gathers signals and writes an opportunity brief, and the human only approves/holds/rejects in the Backlog tab. iOS **"Backlog" tab (tab 1)**, daemon `po/{executor,prompt,asc,crash,gh,scheduler,workflow-exec}.ts` + `routes/po.ts`.
 
-### 14.1 루프 (신호 → 브리프 → 결재 → 구현 → 검증)
+### 14.1 The Loop (signal → brief → approval → implementation → verification)
 ```
 1) 수집(startPoCollection) — 신호 fetch → 에이전트가 종합
 2) 인제스트(ingestBriefs) — 근거 필수 검증 → po_briefs(status=proposed)
@@ -556,47 +558,47 @@ TCC 권한 attribution(daemon-spawn 헬퍼의 책임 프로세스) 실기기 검
 5) 출시(watchExecForShipped) — 구현 첫 turn 정착 시 자동 shipped
 6) 검증(ingestVerdicts) — 다음 수집 사이클이 가설 적중 판정(verified/missed)
 ```
-모든 브리프는 **근거(evidence) 배열 필수**(imaginary 제안 금지) — 원문(이슈·파일:라인·리뷰 id) 역추적 가능. impact/effort 1~5 정수, `score = round(impact/effort*100)/100`. 제목 중복(살아있는 proposed/held/running 기준) 방지.
+Every brief **requires an evidence array** (no imaginary proposals) — the source (issue·file:line·review id) is back-traceable. impact/effort are integers 1–5, `score = round(impact/effort*100)/100`. Title-duplication (against live proposed/held/running) is prevented.
 
-### 14.2 신호 소스
-- **GitHub(`po_gh_check_v1`, `po/gh.ts`)**: 수집 직전 `gh --version` + `gh auth status` + GitHub 원격 여부 프로브 → `{gh:{githubRemote,installed,authed}}`. 열린 이슈/Discussions/닫힌 이슈 후속 코멘트. 불확실은 null(거짓 「설정 필요」 금지), 확정 음성만 iOS 안내(brew install gh / gh auth login). 점검 실패는 수집을 막지 않음(GitHub 신호만 0건).
-- **레포 내부**: `docs/todo-*.md` 미완료, TODO/FIXME/HACK 주석(grep), README 로드맵, `git log` 최근 방향.
-- **App Store 리뷰(`po_asc_v1`, `po/asc.ts`)**: `po_profiles.asc_app_id` 켠 레포만. ASC API(ES256 JWT, p8 키는 Mac config.json 0600 에만 — QR/폰에 안 들어감) → 최신 리뷰 ≤50건. evidence kind `asc_review`.
-- **크래시(`po_crash_v1`, `po/crash.ts`)**: 같은 ASC 키 재사용 → Analytics 「App Crashes」 보고서(ONGOING→Daily→gzip CSV/TSV) 7일 집계(버전·디바이스 그룹 상위 25). evidence kind `crash`. 서드파티 SDK 없음.
+### 14.2 Signal Sources
+- **GitHub (`po_gh_check_v1`, `po/gh.ts`)**: just before collection, probes `gh --version` + `gh auth status` + whether a GitHub remote exists → `{gh:{githubRemote,installed,authed}}`. Open issues/Discussions/follow-up comments on closed issues. Uncertainty is null (no false "setup needed"); only a confirmed negative gives an iOS notice (brew install gh / gh auth login). A failed check does not block collection (just 0 GitHub signals).
+- **Inside the repo**: incomplete `docs/todo-*.md`, TODO/FIXME/HACK comments (grep), README roadmap, recent direction from `git log`.
+- **App Store reviews (`po_asc_v1`, `po/asc.ts`)**: only repos with `po_profiles.asc_app_id` on. ASC API (ES256 JWT; the p8 key is in the Mac config.json 0600 only — it never enters the QR/phone) → the latest ≤50 reviews. evidence kind `asc_review`.
+- **Crashes (`po_crash_v1`, `po/crash.ts`)**: reusing the same ASC key → the Analytics "App Crashes" report (ONGOING→Daily→gzip CSV/TSV) aggregated over 7 days (top 25 by version·device group). evidence kind `crash`. No third-party SDK.
 
-### 14.3 프로필 + 주기 수집 + 검증 (`po_schedule_v1`)
-- `po_profiles`(repo_path PK · directive 조사방식 · schedule 5필드 cron · asc_app_id). `GET/PUT /api/po/profile`.
-- **PoScheduler**(`po/scheduler.ts`): schedule 있는 레포를 croner 등록(repo_path 키). overlap=skip 고정(진행 중이면 tick 생략), catch-up 없음(깨자마자 폭주 방지). 콜백마다 최신 프로필 재조회.
-- **출시 후 검증**: shipped 브리프를 다음 수집 프롬프트에 「검증」 섹션으로 실어 가설 대조 — 이슈 닫힘·커밋·같은 불만 신호 부재면 `verified`, 여전하면 `missed`, 근거 부족이면 판정 보류(다음 사이클 재시도). `verify_note` 기록.
+### 14.3 Profile + Periodic Collection + Verification (`po_schedule_v1`)
+- `po_profiles` (repo_path PK · directive investigation method · schedule 5-field cron · asc_app_id). `GET/PUT /api/po/profile`.
+- **PoScheduler** (`po/scheduler.ts`): registers repos with a schedule in croner (keyed by repo_path). overlap=skip fixed (skips the tick if one is in progress), no catch-up (prevents a burst right after waking). Re-fetches the latest profile on each callback.
+- **Post-ship verification**: carries a shipped brief into the next collection prompt as a "Verification" section to check against the hypothesis — `verified` if the issue is closed·a commit·the same complaint signal is absent, `missed` if it persists, judgment held if evidence is insufficient (retried next cycle). Records `verify_note`.
 
-### 14.4 승인 모드 (`po_worktree_v1` / `po_workflow_v1` / `po_agent_v1`)
+### 14.4 Approval Modes (`po_worktree_v1` / `po_workflow_v1` / `po_agent_v1`)
 `POST /api/po/briefs/:id/decide { action, mode?, useWorktree?, agent? }`:
-| 모드 | 실행 | 격리 | 사람 게이트 |
+| Mode | Execution | Isolation | Human gate |
 |---|---|---|---|
-| **session**(기본) | 일반 구현 세션 1개 + watchExecForShipped | 없음 | 없음 |
-| **workflow**(`po_workflow_v1`) | 설계 에이전트가 브리프 맞춤 DAG(스펙→구현→자가검증→게이트) 생성 → `sanitizeDesignedDef`(화이트리스트) + `ensureHumanGate`(사람 승인 게이트 강제 삽입) + validateDef → run. 게이트 도달 시 `po_gate` 알림 + `workflow/<runId>` 딥링크. 실패 시 4노드 템플릿 폴백 | 없음 | **필수(자동 삽입)** |
-| **useWorktree**(`po_worktree_v1`) | `po/<id8>` 브랜치 새 worktree 에서 구현(동시 세션 작업트리 충돌 방지) | 있음 | session/workflow 와 결합 |
+| **session** (default) | 1 ordinary implementation session + watchExecForShipped | none | none |
+| **workflow** (`po_workflow_v1`) | a design agent generates a brief-tailored DAG (spec→implement→self-verify→gate) → `sanitizeDesignedDef` (whitelist) + `ensureHumanGate` (force-insert a human-approval gate) + validateDef → run. On reaching the gate, a `po_gate` notification + a `workflow/<runId>` deeplink. On failure, falls back to a 4-node template | none | **mandatory (auto-inserted)** |
+| **useWorktree** (`po_worktree_v1`) | implement in a new worktree on the `po/<id8>` branch (prevents concurrent-session working-tree clashes) | yes | combined with session/workflow |
 
-- **에이전트 선택(`po_agent_v1`)**: collect/research/decide/cleanup body 의 `agent` — 누가 수집/리서치/구현/정리를 돌릴지(생략 시 claude_code, 무인이라 `cron_eligible` 필수). 옛 daemon 은 필드를 버려 항상 claude_code → iOS 가 capability 없으면 픽커를 숨긴다(거짓 UI 방지).
+- **Agent selection (`po_agent_v1`)**: the `agent` in the collect/research/decide/cleanup body — who runs collection/research/implementation/cleanup (claude_code if omitted; unattended, so `cron_eligible` is required). An old daemon discards the field and always uses claude_code → iOS hides the picker if the capability is absent (preventing a false UI).
 
-> **⚠️ 회귀 주의 — «에이전트 선택 누락» (3회+ 반복된 버그)**
-> 에이전트 세션을 spawn 하는 진입점이 «하나라도» `agent` 를 안 실어 보내면, 사용자가 어떤 도구를 골라도 무시되고 항상 claude_code 로 돈다. 같은 종류의 누락이 여러 번 재발한 이력이 있다(예: shipped 의 «지금 수집해 검증하기» = collect 인데 agent 미전달, rejected 의 «코드 흔적 정리» = cleanup 인데 agent 미전달 → 둘 다 2026-06 수정). 새/기존 진입점을 만질 땐 아래를 **반드시** 점검한다.
+> **⚠️ Regression caution — «missing agent selection» (a bug repeated 3+ times)**
+> If «even one» entry point that spawns an agent session fails to carry `agent`, whatever tool the user picks is ignored and it always runs as claude_code. There is a history of the same kind of omission recurring several times (e.g. shipped's «collect-and-verify now» = collect but agent not passed; rejected's «clean up code traces» = cleanup but agent not passed → both fixed in 2026-06). When touching a new/existing entry point, **always** check the following.
 >
-> **체크리스트 — collect/research/decide/cleanup 을 호출하는 «모든» iOS 진입점**:
-> 1. 호출에 `agent:` 인자를 싣는가? (`agents.isEmpty ? nil : execAgentId` 패턴 — 픽커 미노출/옛 daemon 은 nil 로 두어 claude_code 폴백)
-> 2. 그 화면에 `PoAgentSection`(또는 동등 픽커)이 «노출» 되는가? `decidable` 같은 한 상태에만 픽커를 달면 다른 상태(shipped/rejected)의 액션은 선택 UI 가 없다 — 액션이 보이는 모든 상태에 픽커가 따라와야 한다.
-> 3. 선택값은 `po.brief.lastAgentId`(@AppStorage `execAgentId`) 를 공유해 브리프 전역에서 한 도구로 일관되게(매번 같은 도구로 도는 흐름 한 탭 단축).
-> 4. daemon `routes/po.ts` 의 해당 핸들러가 `agent` 를 읽어 세션 spawn 에 넘기는지 확인(iOS 만 고치고 daemon 이 버리면 무음 실패).
+> **Checklist — «every» iOS entry point that calls collect/research/decide/cleanup**:
+> 1. Does the call carry the `agent:` argument? (the `agents.isEmpty ? nil : execAgentId` pattern — leave it nil for a hidden picker/old daemon so it falls back to claude_code)
+> 2. Is `PoAgentSection` (or an equivalent picker) «exposed» on that screen? If you attach the picker to only one state like `decidable`, the actions of other states (shipped/rejected) have no selection UI — the picker must follow into every state where an action is visible.
+> 3. The selected value shares `po.brief.lastAgentId` (@AppStorage `execAgentId`) so it is consistent across all briefs with one tool (a one-tap shortcut for the run-with-the-same-tool-each-time flow).
+> 4. Confirm the corresponding handler in the daemon's `routes/po.ts` reads `agent` and passes it to the session spawn (if you fix only iOS and the daemon discards it, it fails silently).
 >
-> 현재 iOS 진입점(`ios/.../Views/BacklogView.swift`): `startCollect`/`startVerifyCollect`(collect) · `startResearch`(research) · `decide("approve")`(decide) · `cleanup`/`rejectAndCleanup`(cleanup) — 전부 위 패턴을 따른다.
+> Current iOS entry points (`ios/.../Views/BacklogView.swift`): `startCollect`/`startVerifyCollect` (collect) · `startResearch` (research) · `decide("approve")` (decide) · `cleanup`/`rejectAndCleanup` (cleanup) — all follow the pattern above.
 
-### 14.5 리서치 · 수정 · 기각 정리 · 통계
-- **리서치**(`POST /api/po/research`): 내부 신호만으론 «완전히 새로운 일» 근거가 없다는 한계의 답 — 에이전트가 웹+레포 조사(모든 주장 출처 URL 필수) → 보고서(`po_research.report` markdown) + 브리프(evidence 에 web/market 최소 1). 0건도 정답(«하지 말 것»). 성공 시 세션 자동 제거(보고서가 영구 산출물).
-- **수정 지시**(`POST /briefs/:id/revise`): proposed/held 브리프를 한 줄 코멘트로 재종합(스토리 다듬기).
-- **기각 정리(`po_cleanup_v1`, `POST /briefs/:id/cleanup`)**: 기각된 아이디어의 신호원(TODO/FIXME 주석·죽은 코드)을 제거해 다음 수집의 같은 제안 반복을 막는다(중복 체크는 살아있는 제목만 본다). 커밋 없이 작업 트리에만 — 사용자 검토 몫. `po_briefs.cleanup_session_id` 진입점.
-- **통계(`po_stats_v1`, `GET /api/po/stats`)**: 레포별/전체 제안 수·승인율·shipped·verified/missed·결재 중앙값 시간. 백로그 상단 성적표 카드 — 에이전트 정확성을 수치로 보여 신뢰 콜드스타트를 데이터로 푼다.
+### 14.5 Research · Revise · Reject-Cleanup · Stats
+- **Research** (`POST /api/po/research`): the answer to the limit that internal signals alone lack evidence for «something entirely new» — the agent investigates web+repo (every claim requires a source URL) → a report (`po_research.report` markdown) + briefs (at least 1 web/market in evidence). Zero is also a valid answer («do not do it»). On success the session auto-removes (the report is the permanent artifact).
+- **Revise instruction** (`POST /briefs/:id/revise`): re-synthesize a proposed/held brief with a one-line comment (polishing the story).
+- **Reject cleanup (`po_cleanup_v1`, `POST /briefs/:id/cleanup`)**: removes the signal sources of a rejected idea (TODO/FIXME comments·dead code) to stop the next collection from repeating the same proposal (the duplication check looks only at live titles). To the working tree only, without a commit — the user's review responsibility. The `po_briefs.cleanup_session_id` entry point.
+- **Stats (`po_stats_v1`, `GET /api/po/stats`)**: per-repo/overall proposal count·approval rate·shipped·verified/missed·median approval time. A report-card card at the top of the Backlog — showing agent accuracy numerically to solve the trust cold-start with data.
 
-### 14.6 DB + 라우트 + iOS 노출
-- **DB**: `po_briefs`(title·problem·evidence·impact·effort·score·scope·spec·status·decided_at·collect/exec/revising/cleanup_session_id·research_id·exec_workflow_id·exec_run_id·verify_note) / `po_profiles` / `po_research`. 상태: proposed → held / rejected / approved → running → shipped → verified / missed.
-- **라우트**(`routes/po.ts`): `GET /briefs`·`/stats`, `POST /collect`(async ingest)·`/briefs/:id/decide`·`/cleanup`·`/revise`, `DELETE /briefs/:id`, `GET/POST/DELETE /research(/:id)`, `GET/PUT /profile`, `GET/PUT/DELETE /asc-key` + `/asc-key/verify`.
-- **iOS `BacklogView`**: 성적표 카드(`po_stats_v1`) · 프로젝트 필터 · 진행/GitHub 안내 배너(`po_gh_check_v1`) · 리서치 · 결재 대기(proposed, score 정렬) · 진행 중(running, session 탭/workflow 상세) · 출시됨 · 처리됨 섹션. 「만들기」 = 레포 수집 / 리서치 요청. 모든 하위 기능은 capability + 프로(`.poLoop`) soft-gate. 딥링크 `pocketsisyphus://backlog`(새 브리프) · `…/workflow/<runId>`(머지 승인 대기).
+### 14.6 DB + Routes + iOS Exposure
+- **DB**: `po_briefs` (title·problem·evidence·impact·effort·score·scope·spec·status·decided_at·collect/exec/revising/cleanup_session_id·research_id·exec_workflow_id·exec_run_id·verify_note) / `po_profiles` / `po_research`. States: proposed → held / rejected / approved → running → shipped → verified / missed.
+- **Routes** (`routes/po.ts`): `GET /briefs`·`/stats`, `POST /collect` (async ingest)·`/briefs/:id/decide`·`/cleanup`·`/revise`, `DELETE /briefs/:id`, `GET/POST/DELETE /research(/:id)`, `GET/PUT /profile`, `GET/PUT/DELETE /asc-key` + `/asc-key/verify`.
+- **iOS `BacklogView`**: a report-card card (`po_stats_v1`) · project filter · progress/GitHub notice banner (`po_gh_check_v1`) · research · awaiting approval (proposed, score-sorted) · in progress (running, Sessions tab/workflow detail) · shipped · handled sections. "Create" = repo collection / research request. Every sub-feature is capability + pro (`.poLoop`) soft-gated. Deeplinks `pocketsisyphus://backlog` (new brief) · `…/workflow/<runId>` (awaiting merge approval).

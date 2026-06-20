@@ -7,44 +7,46 @@ description: >-
   인자로 ios / mac 을 주면 해당 플랫폼만, 없으면 둘 다.
 ---
 
-# /dev — dev 앱 빌드 + 설치
+**English** · [한국어](SKILL.ko.md)
 
-iOS(실기기) + Mac dev 빌드를 한 번에 빌드·설치한다. 모든 로직은
-`scripts/dev.sh` 에 있다 — 이 스킬은 그것을 실행하고 결과를 보고한다.
+# /dev — Build + install the dev apps
 
-## 실행
+Builds and installs the iOS (physical device) + Mac dev builds in one go. All the logic lives in
+`scripts/dev.sh` — this skill runs it and reports the result.
 
-`$ARGUMENTS` 에 `ios` 또는 `mac` 가 있으면 그 인자를 그대로 넘기고, 없으면 인자 없이
-(= 둘 다) 실행한다:
+## Run
+
+If `$ARGUMENTS` contains `ios` or `mac`, pass that argument through; if not, run with no argument
+(= both):
 
 ```bash
-./scripts/dev.sh            # 인자 없음 → iOS(실기기) + Mac
-./scripts/dev.sh ios        # iOS 실기기만
-./scripts/dev.sh mac        # Mac 만
+./scripts/dev.sh            # no argument → iOS (physical device) + Mac
+./scripts/dev.sh ios        # iOS physical device only
+./scripts/dev.sh mac        # Mac only
 ```
 
-빌드는 수 분 걸릴 수 있으니 충분한 타임아웃으로 foreground 실행하고, 출력을 그대로
-사용자에게 전달한다. 끝나면 각 플랫폼의 설치 성공/실패를 한 줄로 요약한다.
+The build can take several minutes, so run it in the foreground with a generous timeout and relay the output
+directly to the user. When it finishes, summarize each platform's install success/failure in one line.
 
-## 동작 요약
+## Behavior summary
 
-- **iOS dev** → `xcodebuild build`(Debug, `platform=iOS,id=<iPhone 13 mini UDID>`)
-  후 `xcrun devicectl device install app` 로 실기기에 in-place 설치(컨테이너/Keychain
-  보존 → 페어링 유지). Tor 셀프링크 충돌 시 산출물 자동 청소 후 1회 재시도.
-- **Mac dev** → `xcodebuild build`(Debug, macOS, daemon/tor nested 서명 포함) 후
-  실행 중 `PocketSisyphusMac` 을 종료하고 새 빌드를 `open`.
+- **iOS dev** → after `xcodebuild build` (Debug, `platform=iOS,id=<iPhone 13 mini UDID>`),
+  installs in-place onto the physical device with `xcrun devicectl device install app` (container/Keychain
+  preserved → pairing kept). On a Tor self-link collision, auto-cleans artifacts and retries once.
+- **Mac dev** → after `xcodebuild build` (Debug, macOS, including daemon/tor nested signing),
+  terminates the running `PocketSisyphusMac` and `open`s the new build.
 
-## 전제 / 주의
+## Prerequisites / cautions
 
-- iOS: iPhone 13 mini 가 케이블로 연결 + 잠금 해제 + 개발자 모드/신뢰 설정돼 있어야 함.
-  다른 기기는 `PS_DEV_DEVICE_UDID=<udid>`.
-- Mac: 설치(재실행) 과정에서 실행 중이던 Mac 앱이 잠깐 종료된다 → 그 앱이 띄운
-  daemon 도 재기동되므로 연결 중인 폰이 잠시 끊겼다 다시 붙는다.
-- `project.yml` 을 바꿨다면 `PS_DEV_REGEN=1 ./scripts/dev.sh` 로 xcodegen 재생성까지.
+- iOS: the iPhone 13 mini must be cable-connected + unlocked + have developer mode / trust set up.
+  For a different device, use `PS_DEV_DEVICE_UDID=<udid>`.
+- Mac: during install (re-launch), the running Mac app is briefly terminated → the daemon it launched
+  is also restarted, so a connected phone briefly disconnects and reconnects.
+- If you changed `project.yml`, also regenerate via xcodegen with `PS_DEV_REGEN=1 ./scripts/dev.sh`.
 
-## 실패 시
+## On failure
 
-스크립트가 마지막 빌드 로그 40줄을 출력한다. 흔한 원인:
-- iOS: 기기 미연결/미신뢰, 개발자 모드 off, 프로비저닝.
-- Mac: 서명 identity 누락(nested 바이너리 서명 단계).
-그대로 사용자에게 전달하고, 코드 수정이 필요하면 알린다.
+The script prints the last 40 lines of the build log. Common causes:
+- iOS: device not connected/not trusted, developer mode off, provisioning.
+- Mac: missing signing identity (nested-binary signing step).
+Relay it as is to the user, and flag if a code fix is needed.

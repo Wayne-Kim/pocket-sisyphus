@@ -339,7 +339,7 @@ export function buildPoCollectPrompt(opts: {
   decisionHistory?: PoDecisionRecord[];
   /**
    * GitHub «피드백 repo» 오버라이드 (선택, po_profiles.github_feedback_repo, owner/name).
-   * 이 레포의 origin 은 개발용 private repo 라 사용자가 글을 안 쓴다 — 실제 피드백(이슈·
+   * 이 레포의 origin 은 개발용 소스 repo 라 사용자에게 직접 안내하지 않아 글이 안 모인다 — 실제 피드백(이슈·
    * Discussions)은 별도 공개 repo 에 모인다. 설정되면 GitHub 신호 분기가 로컬 origin 대신
    * 이 repo 를 `gh -R <repo>` 로 읽는다. 비면 현행대로 로컬 origin. 코드/TODO/git/문서 신호는
    * 설정 여부와 무관하게 항상 로컬 repoPath 기준 (피드백 repo 는 이슈·Discussions 에만 영향).

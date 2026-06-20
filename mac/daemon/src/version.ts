@@ -219,7 +219,7 @@ export const DAEMON_CAPABILITIES: readonly string[] = [
   // 옛 daemon 은 gh 필드 자체가 없어 iOS 가 조용히 폴백 (거짓 «설정 필요» 표시 금지).
   "po_gh_check_v1",
   // PO 프로필에 GitHub «피드백 repo» 오버라이드 — po_profiles.github_feedback_repo (owner/name).
-  // 이 레포의 origin 은 개발용 private repo 라 사용자가 글을 안 쓰고, 실제 피드백(이슈·Discussions)
+  // 이 레포의 origin 은 개발용 소스 repo 라 사용자에게 직접 안내하지 않아 글이 안 쌓이고, 실제 피드백(이슈·Discussions)
   // 은 별도 공개 repo 에 모인다. 설정 시 수집 프롬프트의 GitHub 분기가 로컬 origin 대신 그 repo 를
   // `gh -R <repo>` 로 읽고, gh-check 도 그 repo 의 접근성으로 판정한다 (코드·TODO·git·문서 신호는
   // 그대로 로컬 repoPath). iOS 가 이 capability 보고 수집 시트에 «GitHub 피드백 repo» 입력 1줄을

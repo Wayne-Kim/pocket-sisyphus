@@ -3,7 +3,9 @@
 #
 # 배경: 앱의 「도움받기·공유하기」 링크가 한동안 존재하지 않는 옛 repo
 #   github.com/Wayne-Kim/pocket-claude 를 가리켜 404 가 났다. 공개 가이드/배포 repo 는
-#   github.com/Wayne-Kim/pocket-sisyphus-mac 이다 (이 메인 저장소 pocket-sisyphus 는 private).
+#   github.com/Wayne-Kim/pocket-sisyphus-mac 이다 (사용자에게 보이는 다운로드·가이드
+#   링크는 릴리스 미러 pocket-sisyphus-mac 을 쓴다 — DMG·install.sh 가 거기 있다. 이
+#   소스 저장소 pocket-sisyphus 가 공개됐더라도 사용자 링크로는 쓰지 않는다).
 #
 # 이 훅은 방금 Edit/Write/MultiEdit 한 «소스 파일» 이 금지 패턴을 담고 있으면 exit 2 로
 # Claude 에게 피드백을 돌려준다. 보존 대상인 `pocket-claude.db`(DB 파일명, github.com 없음)는
@@ -34,7 +36,7 @@ if grep -nE 'github\.com/Wayne-Kim/pocket-claude' "$file_path" >/dev/null 2>&1; 
   {
     echo "✋ 잘못된 공개 repo 링크가 박혔습니다 — github.com/Wayne-Kim/pocket-claude 는 존재하지 않는 옛 repo 입니다 (404)."
     echo "   공개 가이드/배포 repo 는 github.com/Wayne-Kim/pocket-sisyphus-mac 입니다."
-    echo "   (이 메인 저장소 pocket-sisyphus 는 private — 사용자에게 보이는 링크로 쓰지 마세요.)"
+    echo "   (사용자에게 보이는 다운로드·가이드 링크는 릴리스 미러 pocket-sisyphus-mac 으로 — 이 소스 저장소 링크를 쓰지 마세요.)"
     echo "   파일: $file_path"
     echo "$hits" | sed 's/^/     /'
     echo "   → pocket-claude 를 pocket-sisyphus-mac 으로 고치세요."

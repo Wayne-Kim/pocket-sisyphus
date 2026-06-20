@@ -301,7 +301,7 @@ CREATE TABLE IF NOT EXISTS po_profiles (
   -- 켠 레포의 수집만 App Store 고객 리뷰를 fetch 해 프롬프트에 첨부한다 (API 키는 config.json).
   asc_app_id TEXT,
   -- GitHub «피드백 repo» 오버라이드 (owner/name). NULL = 현행대로 로컬 origin 을 GitHub 신호로.
-  -- 배경: 이 레포의 origin 은 개발용 private repo 인데, 모든 사용자 피드백(질문·버그·아이디어·
+  -- 배경: 이 레포의 origin 은 개발용 소스 repo 라 사용자에게 직접 안내하지 않고, 모든 사용자 피드백(질문·버그·아이디어·
   -- Show&Tell)은 welcome.md 가 안내하는 «공개» repo 의 Discussions/Issues 에 모인다. 비우면
   -- gh 가 로컬 origin(=글 안 쓰는 개발 repo)을 읽어 0건 — 이 컬럼이 «사용자가 실제로 글을 쓰는»
   -- repo 를 명시해 수집 프롬프트가 `gh -R <repo>` 로 읽게 한다. 코드/TODO/git/문서 신호는 그대로
