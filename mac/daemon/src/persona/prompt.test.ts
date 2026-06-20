@@ -86,7 +86,7 @@ describe("buildPoCollectPrompt — GitHub 피드백 repo 분기", () => {
   });
 
   it("설정되면 GitHub 분기가 `gh -R <repo>` 로 그 repo 를 읽도록 지시한다", () => {
-    const repo = "Wayne-Kim/pocket-sisyphus-mac";
+    const repo = "Wayne-Kim/pocket-sisyphus";
     const out = buildPoCollectPrompt({ ...base, githubFeedbackRepo: repo });
     // 피드백 repo 를 -R 로 명시해 «로컬 origin 이 아니다» 를 분명히 한다.
     expect(out).toContain(`피드백 repo: ${repo}`);

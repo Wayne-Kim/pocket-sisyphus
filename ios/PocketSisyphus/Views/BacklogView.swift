@@ -3230,7 +3230,7 @@ private struct CollectRepoSettingsView: View {
         }
         if supportsFeedbackRepo {
             Section {
-                TextField("owner/name (예: Wayne-Kim/pocket-sisyphus-mac)", text: $feedbackRepo)
+                TextField("owner/name (예: Wayne-Kim/pocket-sisyphus)", text: $feedbackRepo)
                     .font(.callout.monospaced())
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
@@ -3425,7 +3425,7 @@ private struct CollectRepoSettingsView: View {
 
     /// 형식 오류 안내 문구 (유효하거나 비었으면 nil → 표시 안 함).
     private var feedbackRepoFormatWarning: LocalizedStringKey? {
-        feedbackRepoFormatValid ? nil : "owner/name 형식으로 적어주세요 (예: Wayne-Kim/pocket-sisyphus-mac)"
+        feedbackRepoFormatValid ? nil : "owner/name 형식으로 적어주세요 (예: Wayne-Kim/pocket-sisyphus)"
     }
 
     /// 현재 토글/시각 → 5필드 cron 식 ("분 시 * * *"). 꺼짐이면 nil.

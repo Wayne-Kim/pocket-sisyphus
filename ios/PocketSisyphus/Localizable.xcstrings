@@ -2984,67 +2984,67 @@
         }
       }
     },
-    "1단계 — Mac 에 Pocket Sisyphus 데스크탑 앱 (.dmg) 을 다운로드해 설치합니다. https://github.com/Wayne-Kim/pocket-sisyphus-mac 의 Releases 에서 받아 «응용 프로그램» 으로 드래그.": {
+    "1단계 — Mac 에 Pocket Sisyphus 데스크탑 앱 (.dmg) 을 다운로드해 설치합니다. https://github.com/Wayne-Kim/pocket-sisyphus 의 Releases 에서 받아 «응용 프로그램» 으로 드래그.": {
       "extractionState": "manual",
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "الخطوة 1 — نزّل تطبيق Pocket Sisyphus لسطح المكتب (.dmg) وثبّته. احصل عليه من قسم Releases على https://github.com/Wayne-Kim/pocket-sisyphus-mac واسحبه إلى مجلد «Applications»."
+            "value": "الخطوة 1 — نزّل تطبيق Pocket Sisyphus لسطح المكتب (.dmg) وثبّته. احصل عليه من قسم Releases على https://github.com/Wayne-Kim/pocket-sisyphus واسحبه إلى مجلد «Applications»."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Step 1 — Download the Pocket Sisyphus desktop app (.dmg) and install it. Grab it from Releases at https://github.com/Wayne-Kim/pocket-sisyphus-mac and drag it into «Applications»."
+            "value": "Step 1 — Download the Pocket Sisyphus desktop app (.dmg) and install it. Grab it from Releases at https://github.com/Wayne-Kim/pocket-sisyphus and drag it into «Applications»."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Paso 1 — Descarga la app de escritorio Pocket Sisyphus (.dmg) e instálala. Bájala de Releases en https://github.com/Wayne-Kim/pocket-sisyphus-mac y arrástrala a «Aplicaciones»."
+            "value": "Paso 1 — Descarga la app de escritorio Pocket Sisyphus (.dmg) e instálala. Bájala de Releases en https://github.com/Wayne-Kim/pocket-sisyphus y arrástrala a «Aplicaciones»."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Étape 1 — Téléchargez l’app de bureau Pocket Sisyphus (.dmg) et installez-la. Récupérez-la dans Releases sur https://github.com/Wayne-Kim/pocket-sisyphus-mac et glissez-la dans « Applications »."
+            "value": "Étape 1 — Téléchargez l’app de bureau Pocket Sisyphus (.dmg) et installez-la. Récupérez-la dans Releases sur https://github.com/Wayne-Kim/pocket-sisyphus et glissez-la dans « Applications »."
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "चरण 1 — Pocket Sisyphus डेस्कटॉप ऐप (.dmg) डाउनलोड करके इंस्टॉल करें। https://github.com/Wayne-Kim/pocket-sisyphus-mac के Releases से लें और «Applications» में ड्रैग करें।"
+            "value": "चरण 1 — Pocket Sisyphus डेस्कटॉप ऐप (.dmg) डाउनलोड करके इंस्टॉल करें। https://github.com/Wayne-Kim/pocket-sisyphus के Releases से लें और «Applications» में ड्रैग करें।"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ステップ 1 — Pocket Sisyphus デスクトップアプリ (.dmg) をダウンロードしてインストールします。https://github.com/Wayne-Kim/pocket-sisyphus-mac の Releases から入手し、「アプリケーション」フォルダにドラッグしてください。"
+            "value": "ステップ 1 — Pocket Sisyphus デスクトップアプリ (.dmg) をダウンロードしてインストールします。https://github.com/Wayne-Kim/pocket-sisyphus の Releases から入手し、「アプリケーション」フォルダにドラッグしてください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "1단계 — Mac 에 Pocket Sisyphus 데스크탑 앱 (.dmg) 을 다운로드해 설치합니다. https://github.com/Wayne-Kim/pocket-sisyphus-mac 의 Releases 에서 받아 «응용 프로그램» 으로 드래그."
+            "value": "1단계 — Mac 에 Pocket Sisyphus 데스크탑 앱 (.dmg) 을 다운로드해 설치합니다. https://github.com/Wayne-Kim/pocket-sisyphus 의 Releases 에서 받아 «응용 프로그램» 으로 드래그."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Passo 1 — Baixe o app de desktop Pocket Sisyphus (.dmg) e instale. Pegue em Releases em https://github.com/Wayne-Kim/pocket-sisyphus-mac e arraste para «Aplicativos»."
+            "value": "Passo 1 — Baixe o app de desktop Pocket Sisyphus (.dmg) e instale. Pegue em Releases em https://github.com/Wayne-Kim/pocket-sisyphus e arraste para «Aplicativos»."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Шаг 1 — Скачайте десктоп-приложение Pocket Sisyphus (.dmg) и установите. Берите из Releases на https://github.com/Wayne-Kim/pocket-sisyphus-mac и перетащите в «Программы»."
+            "value": "Шаг 1 — Скачайте десктоп-приложение Pocket Sisyphus (.dmg) и установите. Берите из Releases на https://github.com/Wayne-Kim/pocket-sisyphus и перетащите в «Программы»."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "步骤 1 — 下载 Pocket Sisyphus 桌面应用 (.dmg) 并安装。从 https://github.com/Wayne-Kim/pocket-sisyphus-mac 的 Releases 下载,拖入「应用程序」。"
+            "value": "步骤 1 — 下载 Pocket Sisyphus 桌面应用 (.dmg) 并安装。从 https://github.com/Wayne-Kim/pocket-sisyphus 的 Releases 下载,拖入「应用程序」。"
           }
         }
       }
@@ -16485,132 +16485,132 @@
         }
       }
     },
-    "owner/name (예: Wayne-Kim/pocket-sisyphus-mac)": {
+    "owner/name (예: Wayne-Kim/pocket-sisyphus)": {
       "extractionState": "manual",
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "owner/name (예: Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "owner/name (예: Wayne-Kim/pocket-sisyphus)"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "owner/name (e.g. Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "owner/name (e.g. Wayne-Kim/pocket-sisyphus)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "owner/name (例: Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "owner/name (例: Wayne-Kim/pocket-sisyphus)"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "owner/name（例如 Wayne-Kim/pocket-sisyphus-mac）"
+            "value": "owner/name（例如 Wayne-Kim/pocket-sisyphus）"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "owner/name (p. ej. Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "owner/name (p. ej. Wayne-Kim/pocket-sisyphus)"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "owner/name (ex. Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "owner/name (ex. Wayne-Kim/pocket-sisyphus)"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "owner/name (ex.: Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "owner/name (ex.: Wayne-Kim/pocket-sisyphus)"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "owner/name (напр. Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "owner/name (напр. Wayne-Kim/pocket-sisyphus)"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "owner/name (مثال: Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "owner/name (مثال: Wayne-Kim/pocket-sisyphus)"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "owner/name (उदा. Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "owner/name (उदा. Wayne-Kim/pocket-sisyphus)"
           }
         }
       }
     },
-    "owner/name 형식으로 적어주세요 (예: Wayne-Kim/pocket-sisyphus-mac)": {
+    "owner/name 형식으로 적어주세요 (예: Wayne-Kim/pocket-sisyphus)": {
       "extractionState": "manual",
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "owner/name 형식으로 적어주세요 (예: Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "owner/name 형식으로 적어주세요 (예: Wayne-Kim/pocket-sisyphus)"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Please use the owner/name format (e.g. Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "Please use the owner/name format (e.g. Wayne-Kim/pocket-sisyphus)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "owner/name の形式で入力してください (例: Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "owner/name の形式で入力してください (例: Wayne-Kim/pocket-sisyphus)"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请使用 owner/name 格式（例如 Wayne-Kim/pocket-sisyphus-mac）"
+            "value": "请使用 owner/name 格式（例如 Wayne-Kim/pocket-sisyphus）"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usa el formato owner/name (p. ej. Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "Usa el formato owner/name (p. ej. Wayne-Kim/pocket-sisyphus)"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Utilisez le format owner/name (ex. Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "Utilisez le format owner/name (ex. Wayne-Kim/pocket-sisyphus)"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Use o formato owner/name (ex.: Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "Use o formato owner/name (ex.: Wayne-Kim/pocket-sisyphus)"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Используйте формат owner/name (напр. Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "Используйте формат owner/name (напр. Wayne-Kim/pocket-sisyphus)"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "الرجاء استخدام صيغة owner/name (مثال: Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "الرجاء استخدام صيغة owner/name (مثال: Wayne-Kim/pocket-sisyphus)"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "कृपया owner/name प्रारूप में लिखें (उदा. Wayne-Kim/pocket-sisyphus-mac)"
+            "value": "कृपया owner/name प्रारूप में लिखें (उदा. Wayne-Kim/pocket-sisyphus)"
           }
         }
       }

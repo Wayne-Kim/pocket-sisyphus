@@ -484,7 +484,7 @@ function parseFeedbackRepo(value: unknown): { repo: string | null; error?: strin
   if (!v) return { repo: null };
   // owner/name — 각 세그먼트는 GitHub 허용 문자(영숫자·._-)만, 슬래시 정확히 하나.
   if (!/^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(v)) {
-    return { repo: null, error: "owner/name 형식이어야 합니다 (예: Wayne-Kim/pocket-sisyphus-mac)" };
+    return { repo: null, error: "owner/name 형식이어야 합니다 (예: Wayne-Kim/pocket-sisyphus)" };
   }
   return { repo: v.slice(0, 200) };
 }

@@ -1,9 +1,30 @@
 [English](README.md) · **한국어**
 
+<div align="center">
+
+<img src="docs/assets/icon.png" alt="Pocket Sisyphus 아이콘" width="116" height="116" />
+
 # Pocket Sisyphus
 
-> 맥에서 돌아가는 코드 에이전트 CLI를 폰의 LTE/5G에서 안전하게 제어.
-> **듀얼 채널 (SSH-first + Tor fallback) + iOS 네이티브 앱**. (두 앱 기준) 외부 서버 0 · 유료 인프라 0 · 100% OSS 스택으로 구현. 앱은 무료 + 선택형 Pro.
+<p><strong>맥에서 돌아가는 코드 에이전트 CLI를 폰의 LTE/5G에서 안전하게 제어.</strong></p>
+
+<p>듀얼 채널 (SSH-first + Tor fallback) + iOS 네이티브 앱. (두 앱 기준) 외부 서버 0 · 유료 인프라 0 · 100% OSS 스택. 앱은 무료 + 선택형 Pro.</p>
+
+<p>
+  <a href="https://apps.apple.com/app/pocket-sisyphus/id6772206998"><strong>📱 App Store (iPhone)</strong></a> &nbsp;·&nbsp;
+  <a href="#설치-mac"><strong>💻 Mac 설치</strong></a> &nbsp;·&nbsp;
+  <a href="https://pocketsisyphus.app"><strong>🌐 pocketsisyphus.app</strong></a>
+</p>
+
+<p>
+  <img src="docs/assets/screenshots/0_sessions.png" width="19%" alt="세션 보드" />
+  <img src="docs/assets/screenshots/2_chat.png" width="19%" alt="채팅 / 터미널" />
+  <img src="docs/assets/screenshots/3_workflow.png" width="19%" alt="워크플로우 캔버스" />
+  <img src="docs/assets/screenshots/4_backlog.png" width="19%" alt="백로그 AI" />
+  <img src="docs/assets/screenshots/5_security.png" width="19%" alt="보안" />
+</p>
+
+</div>
 
 ## 지원하는 코드 에이전트
 
@@ -92,19 +113,23 @@ Mac (Pocket Sisyphus.app, 메뉴바 전용)
        └─ PTY spawn → claude / agy / codex / copilot CLI
 ```
 
-**클라우드 경유 0**. 시판 공유기 (UPnP 활성) + IPv6 환경에선 **공유기 설정 0**, KT/LG 기본 공유기 (UPnP OFF) 는 UPnP 활성화만 한 번 (또는 Tor fallback 으로 동작). iOS는 TestFlight, Mac은 Developer ID + notarized DMG 직접 배포 + Sparkle in-app 업데이트.
+**클라우드 경유 0**. 시판 공유기 (UPnP 활성) + IPv6 환경에선 **공유기 설정 0**, KT/LG 기본 공유기 (UPnP OFF) 는 UPnP 활성화만 한 번 (또는 Tor fallback 으로 동작). iPhone 은 App Store, Mac은 Developer ID + notarized DMG 직접 배포 + Sparkle in-app 업데이트.
+
+## 설치 (iPhone)
+
+App Store 에서 받는다: **[App Store 의 Pocket Sisyphus](https://apps.apple.com/app/pocket-sisyphus/id6772206998)**. 아래 Mac 동반 앱도 설치·실행돼 있어야 한다 — iPhone 앱과 Mac 앱은 한 «세트» 로 동작한다(버전을 동일하게 맞춘다).
 
 ## 설치 (Mac)
 
 터미널에 한 줄 붙여넣으면 최신 버전이 자동으로 `/Applications` 에 설치되고 실행된다 — 사전 의존성 0 (macOS 기본 탑재 `curl` 만 필요):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Wayne-Kim/pocket-sisyphus-mac/445689ca0199985fcc527facd9b45af70d8aa571/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Wayne-Kim/pocket-sisyphus/main/install.sh | bash
 ```
 
-`install.sh` 는 공개 배포 repo [`Wayne-Kim/pocket-sisyphus-mac`](https://github.com/Wayne-Kim/pocket-sisyphus-mac/blob/main/install.sh) 의 tracked 파일이다 (사용자가 파이프 전에 소스를 읽어볼 수 있게 — release asset 이 아니라 raw URL 로 받는다). raw URL 은 «이동성 있는 main» 이 아니라 **핀 커밋(`445689c`)** 으로 고정해 사용자가 받는 스크립트 바이트를 감사 가능하게 한다 (install.sh 가 바뀌면 새 커밋 SHA 로 안내 문구를 bump). 스크립트가 하는 일: 최신 release 의 `appcast.xml` 에서 최신 DMG 직링크를 읽어 → 다운로드 → **DMG SHA-256 을 `appcast.xml`(또는 release 노트) 공표값과 대조 + Apple notarization staple·코드 서명 검증** (실패 시 중단) → 마운트 → `.app` 을 `/Applications` 로 복사 → 언마운트 → 실행. DMG 는 Apple notarize + staple 완료본이라 Gatekeeper 경고 없이 통과한다. 설치 이후 업데이트는 앱 내장 Sparkle 이 자동 감지한다.
+`install.sh` 는 이 저장소의 tracked 파일이다 ([`install.sh`](install.sh)) — 파이프 전에 소스를 읽어볼 수 있다. 스크립트가 하는 일: 최신 release 의 `appcast.xml` 에서 최신 DMG 직링크를 읽어 → 다운로드 → **DMG SHA-256 을 `appcast.xml`(또는 release 노트) 공표값과 대조 + Apple notarization staple·코드 서명 검증** (실패 시 중단) → 마운트 → `.app` 을 `/Applications` 로 복사 → 언마운트 → 실행. DMG 는 Apple notarize + staple 완료본이라 Gatekeeper 경고 없이 통과한다. 설치 이후 업데이트는 앱 내장 Sparkle 이 자동 감지한다.
 
-수동 설치를 원하면 [releases/latest](https://github.com/Wayne-Kim/pocket-sisyphus-mac/releases/latest) 에서 DMG 를 받아 `.app` 을 `Applications` 로 드래그하면 된다. (iOS 는 TestFlight.)
+수동 설치를 원하면 [releases/latest](https://github.com/Wayne-Kim/pocket-sisyphus/releases/latest) 에서 DMG 를 받아 `.app` 을 `Applications` 로 드래그하면 된다.
 
 ## 문서
 

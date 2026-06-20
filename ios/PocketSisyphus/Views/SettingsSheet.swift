@@ -696,7 +696,7 @@ struct SettingsSheet: View {
 /// (인프라·비용 0). 백엔드 없이 도움받기·공유·버그 제보가 한 곳에서 이뤄진다.
 /// SettingsSheet 「커뮤니티」 외에 막힘 상태 뷰의 `StuckHelpLink` 도 같은 URL 을 재사용한다.
 enum CommunityLinks {
-    static let discussions = URL(string: "https://github.com/Wayne-Kim/pocket-sisyphus-mac/discussions")!
+    static let discussions = URL(string: "https://github.com/Wayne-Kim/pocket-sisyphus/discussions")!
 }
 
 /// 커뮤니티 SafariView 시트의 목적지 — 일반 「도움받기」 와 「버그 제보」 가 같은 시트를 쓰되
@@ -716,7 +716,7 @@ struct CommunityDestination: Identifiable {
 /// 과 같은 원칙: 외부로 나가는 텍스트엔 민감값을 싣지 않는다.
 enum BugReportDiagnostics {
     /// 공개 피드백 repo 의 Discussions 새 글 작성 엔드포인트. CommunityLinks 와 같은 repo.
-    private static let discussionsNew = "https://github.com/Wayne-Kim/pocket-sisyphus-mac/discussions/new"
+    private static let discussionsNew = "https://github.com/Wayne-Kim/pocket-sisyphus/discussions/new"
 
     /// 연결 모드 라벨 — directIPv4/IPv6 → SSH(직접), torOnion → Tor, nil → 미연결.
     /// 미연결(연결 모드 미상)이어도 막지 않고 «미연결» 로 표기한다.

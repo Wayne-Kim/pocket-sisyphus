@@ -1,9 +1,30 @@
 **English** · [한국어](README.ko.md)
 
+<div align="center">
+
+<img src="docs/assets/icon.png" alt="Pocket Sisyphus icon" width="116" height="116" />
+
 # Pocket Sisyphus
 
-> Securely drive the code-agent CLIs running on your Mac, from your phone over LTE/5G.
-> **Dual channel (SSH-first + Tor fallback) + a native iOS app.** Built (for the two apps) with zero external servers · zero paid infrastructure · a 100% OSS stack. The apps are free, with an optional Pro tier.
+<p><strong>Securely drive the code-agent CLIs running on your Mac, from your phone over LTE/5G.</strong></p>
+
+<p>Dual channel (SSH-first + Tor fallback) + a native iOS app. Zero external servers · zero paid infrastructure · a 100% OSS stack (for the two apps). Free, with an optional Pro tier.</p>
+
+<p>
+  <a href="https://apps.apple.com/app/pocket-sisyphus/id6772206998"><strong>📱 App Store (iPhone)</strong></a> &nbsp;·&nbsp;
+  <a href="#install-mac"><strong>💻 Install on Mac</strong></a> &nbsp;·&nbsp;
+  <a href="https://pocketsisyphus.app"><strong>🌐 pocketsisyphus.app</strong></a>
+</p>
+
+<p>
+  <img src="docs/assets/screenshots/0_sessions.png" width="19%" alt="Session board" />
+  <img src="docs/assets/screenshots/2_chat.png" width="19%" alt="Chat / terminal" />
+  <img src="docs/assets/screenshots/3_workflow.png" width="19%" alt="Workflow canvas" />
+  <img src="docs/assets/screenshots/4_backlog.png" width="19%" alt="Backlog AI" />
+  <img src="docs/assets/screenshots/5_security.png" width="19%" alt="Security" />
+</p>
+
+</div>
 
 ## Supported code agents
 
@@ -96,19 +117,23 @@ Mac (Pocket Sisyphus.app, menu-bar only)
        └─ PTY spawn → claude / agy / codex / copilot CLI
 ```
 
-**Zero cloud hops.** On a retail router (UPnP enabled) + IPv6 environment it needs **zero router config**; default KT/LG routers (UPnP OFF) need UPnP enabled just once (or it works via Tor fallback). iOS ships via TestFlight; Mac ships via Developer ID + notarized DMG direct download + Sparkle in-app updates.
+**Zero cloud hops.** On a retail router (UPnP enabled) + IPv6 environment it needs **zero router config**; default KT/LG routers (UPnP OFF) need UPnP enabled just once (or it works via Tor fallback). iPhone ships via the App Store; Mac ships via Developer ID + notarized DMG direct download + Sparkle in-app updates.
+
+## Install (iPhone)
+
+Get it on the App Store: **[Pocket Sisyphus on the App Store](https://apps.apple.com/app/pocket-sisyphus/id6772206998)**. The Mac companion app below must also be installed and running — the iPhone app and the Mac app work as one set (keep their versions matched).
 
 ## Install (Mac)
 
 Paste one line into your terminal and the latest version installs automatically into `/Applications` and launches — zero prerequisites (only `curl`, which ships with macOS, is needed):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Wayne-Kim/pocket-sisyphus-mac/445689ca0199985fcc527facd9b45af70d8aa571/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Wayne-Kim/pocket-sisyphus/main/install.sh | bash
 ```
 
-`install.sh` is a tracked file in the public distribution repo [`Wayne-Kim/pocket-sisyphus-mac`](https://github.com/Wayne-Kim/pocket-sisyphus-mac/blob/main/install.sh) (so you can read the source before piping it — it's fetched as a raw URL, not a release asset). The raw URL is pinned to a **fixed commit (`445689c`)** rather than «mobile main», so the script bytes you receive are auditable (when install.sh changes, the guidance is bumped to the new commit SHA). What the script does: read the latest DMG direct link from the latest release's `appcast.xml` → download → **verify the DMG SHA-256 against the published value in `appcast.xml` (or the release notes) + verify the Apple notarization staple & code signature** (aborts on failure) → mount → copy the `.app` into `/Applications` → unmount → launch. The DMG is Apple-notarized + stapled, so it passes Gatekeeper with no warning. After install, updates are detected automatically by the app's built-in Sparkle.
+`install.sh` is a tracked file in this repository ([`install.sh`](install.sh)) — you can read the source before piping it. What it does: read the latest DMG direct link from the latest release's `appcast.xml` → download → **verify the DMG SHA-256 against the published value in `appcast.xml` (or the release notes) + verify the Apple notarization staple & code signature** (aborts on failure) → mount → copy the `.app` into `/Applications` → unmount → launch. The DMG is Apple-notarized + stapled, so it passes Gatekeeper with no warning. After install, updates are detected automatically by the app's built-in Sparkle.
 
-For a manual install, grab the DMG from [releases/latest](https://github.com/Wayne-Kim/pocket-sisyphus-mac/releases/latest) and drag the `.app` into `Applications`. (iOS is via TestFlight.)
+For a manual install, grab the DMG from [releases/latest](https://github.com/Wayne-Kim/pocket-sisyphus/releases/latest) and drag the `.app` into `Applications`.
 
 ## Documentation
 

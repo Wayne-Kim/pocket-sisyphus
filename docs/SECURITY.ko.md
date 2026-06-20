@@ -37,10 +37,10 @@ iOS 앱과 Mac 앱은 한 «세트» 로 동작하며 marketing version(`MAJOR.M
 
 ### 1차 채널 — GitHub 비공개 보안 권고 (권장)
 
-공개 배포 저장소 [`Wayne-Kim/pocket-sisyphus-mac`](https://github.com/Wayne-Kim/pocket-sisyphus-mac) 의
+공개 배포 저장소 [`Wayne-Kim/pocket-sisyphus`](https://github.com/Wayne-Kim/pocket-sisyphus) 의
 **Security → Report a vulnerability** (Private Vulnerability Reporting) 로 신고해 주세요:
 
-→ <https://github.com/Wayne-Kim/pocket-sisyphus-mac/security/advisories/new>
+→ <https://github.com/Wayne-Kim/pocket-sisyphus/security/advisories/new>
 
 이 경로는 비공개 advisory 스레드를 만들어 패치·CVE 발급·공개 시점을 메인테이너와 함께 조율하기에
 가장 적합합니다(coordinated disclosure).

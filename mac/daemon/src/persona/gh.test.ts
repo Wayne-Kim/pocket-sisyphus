@@ -36,7 +36,7 @@ describe("checkGhForCollect", () => {
     // «명시된 GitHub 타깃» 이라 항상 githubRemote=true 이고 feedbackRepo 를 echo 한다.
     // (installed/authed/accessible 은 실행 환경의 gh 유무에 따라 달라지므로 단정하지 않는다 —
     //  단, runProbe 타임아웃이 아닌 이상 객체를 돌려준다.)
-    const repo = "Wayne-Kim/pocket-sisyphus-mac";
+    const repo = "Wayne-Kim/pocket-sisyphus";
     const result = await checkGhForCollect("/tmp", repo);
     if (result === null) return; // gh 프로브가 타임아웃(불확실)이면 조용히 — 드묾.
     expect(result.githubRemote).toBe(true);

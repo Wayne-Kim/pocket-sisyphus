@@ -31,7 +31,7 @@
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>
-	<string>https://github.com/Wayne-Kim/pocket-sisyphus-mac/releases/latest/download/appcast.xml</string>
+	<string>https://github.com/Wayne-Kim/pocket-sisyphus/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>lCTOjukeIsw6q0okF78zUcztq/7EgLJ8uqpnokLd0X4=</string>
 	<key>SUScheduledCheckInterval</key>

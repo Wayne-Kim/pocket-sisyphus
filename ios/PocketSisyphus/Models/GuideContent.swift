@@ -61,7 +61,7 @@ enum GuideContent {
     /// Mac 데스크탑 앱 «한 줄 설치» 명령. 페어링 화면(PairView)과 «시작하기» 가이드가
     /// 같이 보여주므로 한곳에서만 정의해 드리프트를 막는다. 명령/URL 이라 번역 대상 아님
     /// (Text(verbatim:) 로 노출). install.sh 는 공개 repo 의 raw 경로 (commit a1796db).
-    static let macInstallCommand = "curl -fsSL https://raw.githubusercontent.com/Wayne-Kim/pocket-sisyphus-mac/main/install.sh | bash"
+    static let macInstallCommand = "curl -fsSL https://raw.githubusercontent.com/Wayne-Kim/pocket-sisyphus/main/install.sh | bash"
 
     // MARK: 1) 시작하기
     static let start = GuideCategory(
@@ -78,7 +78,7 @@ enum GuideContent {
             .code(GuideContent.macInstallCommand),
             .paragraph("Mac 쪽 설치 순서:"),
             .bullets([
-                "1단계 — Mac 에 Pocket Sisyphus 데스크탑 앱 (.dmg) 을 다운로드해 설치합니다. https://github.com/Wayne-Kim/pocket-sisyphus-mac 의 Releases 에서 받아 «응용 프로그램» 으로 드래그.",
+                "1단계 — Mac 에 Pocket Sisyphus 데스크탑 앱 (.dmg) 을 다운로드해 설치합니다. https://github.com/Wayne-Kim/pocket-sisyphus 의 Releases 에서 받아 «응용 프로그램» 으로 드래그.",
                 "2단계 — 앱을 실행합니다. 메뉴바 우측에 작은 보라색 아이콘이 뜹니다. Dock 에는 안 뜹니다 — 메뉴바 상주 앱입니다.",
                 "3단계 — 메뉴바 아이콘 클릭 → «페어링 QR 보기». 화면에 QR 이미지가 뜹니다.",
                 "4단계 — iPhone 앱의 페어링 화면에서 그 QR 을 스캔합니다. SSH 가 닿는 환경이면 곧바로 연결, Tor fallback 환경이면 5–30초 회로 빌드 후 마무리됩니다.",

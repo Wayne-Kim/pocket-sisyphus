@@ -38,9 +38,9 @@ there is no backport to older versions.
 ### Primary channel — GitHub private security advisory (recommended)
 
 Please report via **Security → Report a vulnerability** (Private Vulnerability Reporting) on the public distribution repository
-[`Wayne-Kim/pocket-sisyphus-mac`](https://github.com/Wayne-Kim/pocket-sisyphus-mac):
+[`Wayne-Kim/pocket-sisyphus`](https://github.com/Wayne-Kim/pocket-sisyphus):
 
-→ <https://github.com/Wayne-Kim/pocket-sisyphus-mac/security/advisories/new>
+→ <https://github.com/Wayne-Kim/pocket-sisyphus/security/advisories/new>
 
 This path creates a private advisory thread, which is best suited for coordinating the patch, CVE issuance, and disclosure timing
 together with the maintainer (coordinated disclosure).

@@ -15,12 +15,12 @@
  */
 const URLS = {
   appStore: "https://apps.apple.com/app/pocket-sisyphus/id6772206998",
-  repo: "https://github.com/Wayne-Kim/pocket-sisyphus-mac",
-  discussions: "https://github.com/Wayne-Kim/pocket-sisyphus-mac/discussions",
+  repo: "https://github.com/Wayne-Kim/pocket-sisyphus",
+  discussions: "https://github.com/Wayne-Kim/pocket-sisyphus/discussions",
   installShRaw:
-    "https://raw.githubusercontent.com/Wayne-Kim/pocket-sisyphus-mac/main/install.sh",
+    "https://raw.githubusercontent.com/Wayne-Kim/pocket-sisyphus/main/install.sh",
   installShBlob:
-    "https://github.com/Wayne-Kim/pocket-sisyphus-mac/blob/main/install.sh",
+    "https://github.com/Wayne-Kim/pocket-sisyphus/blob/main/install.sh",
 } as const;
 
 export const site = {
