@@ -82,6 +82,7 @@
 		72FABFAB5A988DFDB4A308A2 /* DeepLinkRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0DF8F92EA4D36A25A52BB2 /* DeepLinkRouter.swift */; };
 		736EDE18E38A5CBCD5248D71 /* EntitlementDecision.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14EB8F126A76632C211AB3B6 /* EntitlementDecision.swift */; };
 		73C4012487B19796D669DF8C /* PocketSisyphusApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B249A2219FE8DB512F311FD /* PocketSisyphusApp.swift */; };
+		73C53E9CC5685AF2439D29EC /* Pods_PocketSisyphus.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 359252CC0EFB22D14688AC5A /* Pods_PocketSisyphus.framework */; };
 		74D39E005C717A34E46F2557 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33A591178D465778118A8184 /* ChatViewModel.swift */; };
 		75B35588D58CD01A0C50BE59 /* AppRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025890686C239ACA73F6D57A /* AppRoot.swift */; };
 		76CC7421F512B485027BDEA8 /* OrientationLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EA63E77E6C51EE5FABF70A8 /* OrientationLock.swift */; };
@@ -163,7 +164,6 @@
 		F3FFEC76D8959A6AC3D773B3 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 8AA6B23AB3C4269E6C50091A /* InfoPlist.xcstrings */; };
 		F55FBF885DEDA9DFF3F4AE47 /* AttachmentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9FAF2999A4DF28D646BF295 /* AttachmentSheet.swift */; };
 		F69537A3692D6235448A2B73 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 934F7FF0F6039E2A8B333DFC /* ChatView.swift */; };
-		F725DA07DBB39790CB62C747 /* Pods_PocketSisyphus.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA07758EB4BE837C14AFD52E /* Pods_PocketSisyphus.framework */; };
 		F8BD3B3D546496C3E350AFA7 /* TreeSitterRubyRunestone in Frameworks */ = {isa = PBXBuildFile; productRef = D723199DBC2BF68E3CBE9B69 /* TreeSitterRubyRunestone */; };
 		FD13CAA054C6DA7EB8AADF11 /* ShortcutEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35700C5F373E239122BD5C63 /* ShortcutEditorSheet.swift */; };
 		FF869CF8C31300B68740F567 /* CronJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F04D3E7926CB9CAEFA2AF9A /* CronJob.swift */; };
@@ -184,7 +184,6 @@
 		00F7E634B977D4D62474C04E /* WSClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WSClient.swift; sourceTree = "<group>"; };
 		025890686C239ACA73F6D57A /* AppRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRoot.swift; sourceTree = "<group>"; };
 		04E7B06E2C74E8A7F789D8CD /* DiffComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffComponents.swift; sourceTree = "<group>"; };
-		06D182781649F5987E93869D /* Pods-PocketSisyphus.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PocketSisyphus.release.xcconfig"; path = "Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus.release.xcconfig"; sourceTree = "<group>"; };
 		100D06F509E70FBB46164D81 /* DeepLinkContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkContractTests.swift; sourceTree = "<group>"; };
 		108D76182E4D18942223E62A /* ChatItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatItem.swift; sourceTree = "<group>"; };
 		13B45B28D458AF9363E81913 /* EntitlementDecisionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntitlementDecisionTests.swift; sourceTree = "<group>"; };
@@ -205,15 +204,16 @@
 		2EAC582EC5B3759EEFF3DAD2 /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
 		325B0C98B9FD65F658CF2FC2 /* PocketSisyphusTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PocketSisyphusTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		33384F210E3D8F03C35963A6 /* WhisperSpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperSpeechRecognizer.swift; sourceTree = "<group>"; };
+		3341D59021239F50EB92BF7B /* Pods-PocketSisyphus.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PocketSisyphus.debug.xcconfig"; path = "Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus.debug.xcconfig"; sourceTree = "<group>"; };
 		3373B0E6D8EFCE1A97A6D1E1 /* THIRD-PARTY-NOTICES.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "THIRD-PARTY-NOTICES.txt"; sourceTree = "<group>"; };
 		33A591178D465778118A8184 /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
 		342B0CDDD171962AFE1F8818 /* AttestSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttestSession.swift; sourceTree = "<group>"; };
 		35700C5F373E239122BD5C63 /* ShortcutEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutEditorSheet.swift; sourceTree = "<group>"; };
+		359252CC0EFB22D14688AC5A /* Pods_PocketSisyphus.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PocketSisyphus.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A83B5423C5FF506F4C117C5 /* ZoomableScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomableScreenView.swift; sourceTree = "<group>"; };
 		3B249A2219FE8DB512F311FD /* PocketSisyphusApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketSisyphusApp.swift; sourceTree = "<group>"; };
 		3C8BF6E4D52BCFCEBD068476 /* DirectoryPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryPickerSheet.swift; sourceTree = "<group>"; };
 		3DF0A97072C639702EC4E3AD /* WakeBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeBox.swift; sourceTree = "<group>"; };
-		3E594721894B71364C2E254F /* Pods-PocketSisyphus.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PocketSisyphus.debug.xcconfig"; path = "Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus.debug.xcconfig"; sourceTree = "<group>"; };
 		426C2552FA18AF408484816F /* KnownHostStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnownHostStore.swift; sourceTree = "<group>"; };
 		44D37ED49BCC873D7C215282 /* DevicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesView.swift; sourceTree = "<group>"; };
 		461EEC1A5E37F0D1D0B76306 /* AgentKindTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentKindTests.swift; sourceTree = "<group>"; };
@@ -221,6 +221,7 @@
 		495F586D14655A0E2D009699 /* WorkflowListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowListView.swift; sourceTree = "<group>"; };
 		4B36EC7B975EB47EE6C2A675 /* SentMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentMessage.swift; sourceTree = "<group>"; };
 		4B6C7F119E67B15E22DDC989 /* H264Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = H264Decoder.swift; sourceTree = "<group>"; };
+		4E55C2355AC7BC5BB9798F01 /* Pods-PocketSisyphus.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PocketSisyphus.release.xcconfig"; path = "Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus.release.xcconfig"; sourceTree = "<group>"; };
 		4FF68C1A34E7BBF13215CAEC /* SessionShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionShare.swift; sourceTree = "<group>"; };
 		5362D4492297C33AD7DB94D6 /* DeepLinkConsumeGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkConsumeGate.swift; sourceTree = "<group>"; };
 		537B1E3D683DFAF556163379 /* PurchaseStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseStore.swift; sourceTree = "<group>"; };
@@ -288,7 +289,6 @@
 		C0FE98D9BD1E98D84E0DF162 /* CronListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronListView.swift; sourceTree = "<group>"; };
 		C630E89A4B74E1631D3E43C0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C691E4F7495453C90686A864 /* WorkflowCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowCanvasView.swift; sourceTree = "<group>"; };
-		CA07758EB4BE837C14AFD52E /* Pods_PocketSisyphus.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PocketSisyphus.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CB0C45898E0D9661298502B5 /* DiffSyntaxHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffSyntaxHighlighter.swift; sourceTree = "<group>"; };
 		CDCF258B0965188064FCC44D /* IncompatibleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncompatibleView.swift; sourceTree = "<group>"; };
 		D188284EF33D7065AD9707F9 /* ProductCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductCatalog.swift; sourceTree = "<group>"; };
@@ -344,7 +344,7 @@
 				164A36D201B0D8DB5D45CADF /* TreeSitterJavaRunestone in Frameworks */,
 				89724EBCF4A3D9B8B178EB36 /* TreeSitterPHPRunestone in Frameworks */,
 				C5D42C99027F202178CF6D40 /* TreeSitterSQLRunestone in Frameworks */,
-				F725DA07DBB39790CB62C747 /* Pods_PocketSisyphus.framework in Frameworks */,
+				73C53E9CC5685AF2439D29EC /* Pods_PocketSisyphus.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -380,16 +380,6 @@
 			path = PocketSisyphusUITests;
 			sourceTree = "<group>";
 		};
-		333CF9B0CA8FFFE0B371F7A1 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				3E594721894B71364C2E254F /* Pods-PocketSisyphus.debug.xcconfig */,
-				06D182781649F5987E93869D /* Pods-PocketSisyphus.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
-			sourceTree = "<group>";
-		};
 		336E7961BAC3F6C962229D70 /* PocketSisyphus */ = {
 			isa = PBXGroup;
 			children = (
@@ -423,14 +413,6 @@
 				7E7698B437E6425741682B53 /* WorkflowSessionsSheet.swift */,
 			);
 			path = Workflow;
-			sourceTree = "<group>";
-		};
-		46BDF5222F50B9C171D55058 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				CA07758EB4BE837C14AFD52E /* Pods_PocketSisyphus.framework */,
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		4F40C3A053B37C32DE624298 /* Services */ = {
@@ -548,8 +530,8 @@
 				2ACE45603250B0DB1181BD8A /* PocketSisyphusUITests */,
 				7F59CEC3B2477198C559A034 /* Shared */,
 				C3783434D7A7A23B1FC07A86 /* Products */,
-				333CF9B0CA8FFFE0B371F7A1 /* Pods */,
-				46BDF5222F50B9C171D55058 /* Frameworks */,
+				EF8148FAB1170EBC87939AAB /* Pods */,
+				EA6A0F833245831CB979370C /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -579,12 +561,30 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		EA6A0F833245831CB979370C /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				359252CC0EFB22D14688AC5A /* Pods_PocketSisyphus.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		EC50B2841FB0BF9DA9D9E683 /* DesignSystem */ = {
 			isa = PBXGroup;
 			children = (
 				9BA655C84BB1BF2A99BF886C /* DesignTokens.swift */,
 			);
 			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		EF8148FAB1170EBC87939AAB /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				3341D59021239F50EB92BF7B /* Pods-PocketSisyphus.debug.xcconfig */,
+				4E55C2355AC7BC5BB9798F01 /* Pods-PocketSisyphus.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -610,11 +610,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 7B88EEBFA28589BE142DF566 /* Build configuration list for PBXNativeTarget "PocketSisyphus" */;
 			buildPhases = (
-				B91668F4ED57181B429CBB57 /* [CP] Check Pods Manifest.lock */,
+				2F8F920424AA67FF8085B2FC /* [CP] Check Pods Manifest.lock */,
 				A3B6BFA3AD5BDD7DF6F807DA /* Sources */,
 				CC95CCEEDF26BD0FDA9C912E /* Resources */,
 				E8929BAF82F6F517D44BB206 /* Frameworks */,
-				0C469BAC8B1D4C4ED461B61B /* [CP] Embed Pods Frameworks */,
+				F2F28D232CBBE1DFD16BBDB1 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -743,24 +743,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		0C469BAC8B1D4C4ED461B61B /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		B91668F4ED57181B429CBB57 /* [CP] Check Pods Manifest.lock */ = {
+		2F8F920424AA67FF8085B2FC /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -780,6 +763,23 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		F2F28D232CBBE1DFD16BBDB1 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -1075,7 +1075,7 @@
 		};
 		DB85191AA7338F5DA532E518 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 06D182781649F5987E93869D /* Pods-PocketSisyphus.release.xcconfig */;
+			baseConfigurationReference = 4E55C2355AC7BC5BB9798F01 /* Pods-PocketSisyphus.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -1098,7 +1098,7 @@
 		};
 		DBFE0D0D47E5CD98821E9662 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 3E594721894B71364C2E254F /* Pods-PocketSisyphus.debug.xcconfig */;
+			baseConfigurationReference = 3341D59021239F50EB92BF7B /* Pods-PocketSisyphus.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
