@@ -1648,7 +1648,12 @@ final class ApiClient {
     /// `GET /api/workflows/templates` — 「출발 템플릿」(노드/간선 프리셋) 목록 (workflow_templates_v1).
     /// 옛 daemon 은 이 라우트가 404 — 호출처가 capability(workflow_templates_v1)로 게이팅해 도달 안 함.
     func listWorkflowTemplates(label: String? = String(localized: "워크플로우 템플릿")) async throws -> [WorkflowTemplate] {
-        let resp: WorkflowTemplatesResponse = try await send("GET", "/api/workflows/templates", label: label)
+        // 프리셋 노드 prompt 를 앱 언어로 (po_locale_v1). GET 이라 쿼리로 싣는다.
+        var path = "/api/workflows/templates"
+        if let loc = Self.appOutputLocale(), let enc = loc.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
+            path += "?locale=\(enc)"
+        }
+        let resp: WorkflowTemplatesResponse = try await send("GET", path, label: label)
         return resp.templates
     }
 
@@ -1724,7 +1729,9 @@ final class ApiClient {
     /// (WhisperSpeechRecognizer.appLocale 의 preferredLanguages 패턴과 같은 의도 — 표시 언어 기준).
     /// daemon 이 normalizePoLocale 로 한 번 더 거르므로, ko/누락/미지원이면 한국어 산출로 graceful
     /// fallback (회귀 0). ko 도 그대로 보낸다 — daemon 이 ko 와 누락을 동일하게 한국어 산출로 취급.
-    static func appOutputLocale() -> String? {
+    // nonisolated — Bundle.main 만 읽어 스레드 안전. DesignWorkflowRequest 의 기본값(비-격리 컨텍스트)
+    // 에서도 호출 가능해야 하므로 메인 액터 격리에서 뺀다 (기존 호출부는 격리 컨텍스트라 그대로 OK).
+    nonisolated static func appOutputLocale() -> String? {
         Bundle.main.preferredLocalizations.first
     }
 
@@ -1820,11 +1827,13 @@ final class ApiClient {
             let mode: String?
             let reason: String?
             let note: String?
+            // 산출 언어 (po_locale_v1) — approve 시 구현 세션 프롬프트를 앱 언어로.
+            let locale: String?
         }
         struct Resp: Decodable { let brief: PoBrief; let execSessionId: String? }
         let resp: Resp = try await send(
             "POST", "/api/po/briefs/\(id)/decide",
-            body: Req(action: action, useWorktree: useWorktree, agent: agent, mode: mode, reason: reason, note: note),
+            body: Req(action: action, useWorktree: useWorktree, agent: agent, mode: mode, reason: reason, note: note, locale: Self.appOutputLocale()),
             label: label)
         return (resp.brief, resp.execSessionId)
     }
@@ -1866,10 +1875,11 @@ final class ApiClient {
         agent: String? = nil,
         label: String? = String(localized: "코드 흔적 정리"),
     ) async throws -> (brief: PoBrief, cleanupSessionId: String) {
-        struct Req: Encodable { let agent: String? }
+        struct Req: Encodable { let agent: String?; let locale: String? }
         struct Resp: Decodable { let brief: PoBrief; let cleanupSessionId: String }
         let resp: Resp = try await send(
-            "POST", "/api/po/briefs/\(id)/cleanup", body: Req(agent: agent), label: label)
+            "POST", "/api/po/briefs/\(id)/cleanup",
+            body: Req(agent: agent, locale: Self.appOutputLocale()), label: label)
         return (resp.brief, resp.cleanupSessionId)
     }
 
@@ -1890,10 +1900,11 @@ final class ApiClient {
         agent: String? = nil,
         label: String? = String(localized: "구현 다시 시작"),
     ) async throws -> (brief: PoBrief, execSessionId: String) {
-        struct Req: Encodable { let agent: String? }
+        struct Req: Encodable { let agent: String?; let locale: String? }
         struct Resp: Decodable { let brief: PoBrief; let execSessionId: String }
         let resp: Resp = try await send(
-            "POST", "/api/po/briefs/\(id)/restart", body: Req(agent: agent), label: label)
+            "POST", "/api/po/briefs/\(id)/restart",
+            body: Req(agent: agent, locale: Self.appOutputLocale()), label: label)
         return (resp.brief, resp.execSessionId)
     }
 
@@ -2002,10 +2013,11 @@ final class ApiClient {
         repoPath: String,
         label: String? = String(localized: "디자인 초안 생성"),
     ) async throws -> String {
-        struct Req: Encodable { let repoPath: String }
+        struct Req: Encodable { let repoPath: String; let locale: String? }
         struct Resp: Decodable { let sessionId: String }
         let resp: Resp = try await send(
-            "POST", "/api/po/design-directive/bootstrap", body: Req(repoPath: repoPath), label: label)
+            "POST", "/api/po/design-directive/bootstrap",
+            body: Req(repoPath: repoPath, locale: Self.appOutputLocale()), label: label)
         return resp.sessionId
     }
 

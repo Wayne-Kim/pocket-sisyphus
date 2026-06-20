@@ -716,12 +716,22 @@ enum DaemonAPI {
         }
     }
 
+    /// body 에 싣는 로케일 코드 (po_locale_v1, iOS ApiClient.appOutputLocale 과 동형). 「지금 표시
+    /// 중인」 앱 언어 — preferredLocalizations 는 LanguageOverride(AppleLanguages) 까지 반영한다.
+    /// daemon 이 normalizePoLocale 로 한 번 더 거르므로 ko/누락/미지원이면 한국어 산출로 폴백(회귀 0).
+    static func appOutputLocale() -> String? {
+        Bundle.main.preferredLocalizations.first
+    }
+
     /// `POST /api/po/design-directive/bootstrap` — 디자이너 에이전트가 레포 디자인 SSOT 를 스캔해
     /// directive 초안 작성을 시작한다. 이미 생성 중이면 daemon 이 400 (bootstrap_failed).
     static func bootstrapPoDesignDirective(repoPath: String) async throws {
+        var body: [String: Any] = ["repoPath": repoPath]
+        // 산출 언어 (po_locale_v1) — directive 초안 프롬프트를 앱 언어로. nil 이면 생략 → daemon ko 폴백.
+        if let loc = appOutputLocale() { body["locale"] = loc }
         let req = try notifyRequest(
             path: "/api/po/design-directive/bootstrap", method: "POST",
-            jsonBody: ["repoPath": repoPath])
+            jsonBody: body)
         let (data, resp) = try await URLSession.shared.data(for: req)
         guard let http = resp as? HTTPURLResponse else {
             throw Error.http(status: -1, body: "non-http response")

@@ -31,6 +31,7 @@ import {
 import { startWorkflowRun, cancelWorkflowRun, resolveWorkflowDecision } from "../workflow/engine.js";
 import { startWorkflowDesign, getWorkflowDesign } from "../workflow/design.js";
 import { listWorkflowTemplates } from "../po/templates.js";
+import { normalizePoLocale } from "../po/prompt.js";
 import { getWorkflowTriggerScheduler } from "../workflow/triggers.js";
 import { db, type WorkflowRow } from "../db/index.js";
 
@@ -107,8 +108,9 @@ workflows.post("/design", async (c) => {
   const repoInput = nonEmptyString(body.repoPath);
   if (!repoInput) return c.json({ error: "repoPath required" }, 400);
   const agentId = nonEmptyString(body.agent) ?? undefined;
+  const locale = normalizePoLocale(body.locale);
 
-  const res = startWorkflowDesign({ description, repoPath: repoInput, agentId });
+  const res = startWorkflowDesign({ description, repoPath: repoInput, agentId, locale });
   if ("error" in res) return c.json({ error: "design_failed", message: res.error }, 400);
   return c.json(res, 201);
 });
@@ -131,7 +133,9 @@ workflows.get("/design/:id", (c) => {
 // 캔버스에 시드된다. 노드 «종류» 는 start/task/end 뿐이라 캔버스 종류색은 그대로 유지된다.
 // 노드 «제목»·템플릿 «이름/설명» 같은 화면 노출 문자열은 클라이언트가 카탈로그로 지역화한다.
 workflows.get("/templates", (c) => {
-  return c.json({ templates: listWorkflowTemplates() });
+  // 산출 언어 (po_locale_v1) — 프리셋 노드 prompt 를 앱 언어로. GET 이라 쿼리 ?locale= 로 받는다.
+  const locale = normalizePoLocale(c.req.query("locale"));
+  return c.json({ templates: listWorkflowTemplates(locale) });
 });
 
 workflows.get("/:id", (c) => {

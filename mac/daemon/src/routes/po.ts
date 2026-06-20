@@ -653,12 +653,15 @@ po.post("/briefs/:id/decide", async (c) => {
     mode?: unknown;
     reason?: unknown;
     note?: unknown;
+    locale?: unknown;
   };
   try {
     body = await c.req.json();
   } catch {
     return c.json({ error: "invalid_json" }, 400);
   }
+  // 산출 언어 (po_locale_v1) — 구현 세션 프롬프트를 앱 언어로. 누락/ko/미지원은 ko (회귀 0).
+  const locale = normalizePoLocale(body.locale);
   const action = typeof body.action === "string" ? body.action : "";
   if (!["approve", "hold", "reject"].includes(action)) {
     return c.json({ error: "invalid_action" }, 400);
@@ -709,7 +712,7 @@ po.post("/briefs/:id/decide", async (c) => {
   // per-run worktree 생성(po_run_worktree_v1)은 동기로 await 한다 — 실패 시 조용히 공유 repo 로
   // 폴백하지 않고(충돌 버그의 원인) 승인을 거절해 브리프를 proposed/held 로 남긴다 (재시도 가능).
   if (mode === "workflow") {
-    const wf = await startPoWorkflowApproval(row, agentId);
+    const wf = await startPoWorkflowApproval(row, agentId, locale);
     if (wf.status === "error") {
       return c.json({ error: "workflow_approve_failed", message: wf.error }, 400);
     }
@@ -752,7 +755,7 @@ po.post("/briefs/:id/decide", async (c) => {
   const sessionId = createSession(cwd, `📋 ${row.title}`.slice(0, 120), undefined, true, agentId);
   void runUserMessagePty(
     { sessionId, cwd, adapter: getAgent(agentId) },
-    buildPoExecPrompt(row, designDirective ?? undefined),
+    buildPoExecPrompt(row, designDirective ?? undefined, locale),
     { bypassPermissions: true },
   ).catch((e) => {
     console.warn(`[po] exec runUserMessagePty failed session=${sessionId}:`, (e as Error).message);
@@ -783,12 +786,13 @@ po.post("/briefs/:id/decide", async (c) => {
 //   • 이전 exec_session 은 orphan (강제 종료 안 함 — 비-목표) — 사용자가 세션 탭에서 정리 가능.
 po.post("/briefs/:id/restart", async (c) => {
   const id = c.req.param("id");
-  let body: { agent?: unknown };
+  let body: { agent?: unknown; locale?: unknown };
   try {
     body = await c.req.json();
   } catch {
     body = {};
   }
+  const locale = normalizePoLocale(body.locale);
 
   const row = db().prepare(`SELECT * FROM po_briefs WHERE id = ?`).get(id) as
     | PoBriefRow
@@ -822,7 +826,7 @@ po.post("/briefs/:id/restart", async (c) => {
   const sessionId = createSession(dir.path, `🔁 ${row.title}`.slice(0, 120), undefined, true, agentId);
   void runUserMessagePty(
     { sessionId, cwd: dir.path, adapter: getAgent(agentId) },
-    buildPoExecPrompt(row, designDirective ?? undefined),
+    buildPoExecPrompt(row, designDirective ?? undefined, locale),
     { bypassPermissions: true },
   ).catch((e) => {
     console.warn(`[po] restart runUserMessagePty failed session=${sessionId}:`, (e as Error).message);
@@ -856,12 +860,13 @@ po.post("/briefs/:id/restart", async (c) => {
 // 재호출 허용 — 정리 세션이 실패했을 때 다시 돌릴 수 있게 cleanup_session_id 를 덮어쓴다.
 po.post("/briefs/:id/cleanup", async (c) => {
   const id = c.req.param("id");
-  let body: { agent?: unknown };
+  let body: { agent?: unknown; locale?: unknown };
   try {
     body = await c.req.json();
   } catch {
     body = {};
   }
+  const locale = normalizePoLocale(body.locale);
 
   const row = db().prepare(`SELECT * FROM po_briefs WHERE id = ?`).get(id) as
     | PoBriefRow
@@ -886,7 +891,7 @@ po.post("/briefs/:id/cleanup", async (c) => {
   );
   void runUserMessagePty(
     { sessionId, cwd: dir.path, adapter: getAgent(agentId) },
-    buildPoCleanupPrompt(row),
+    buildPoCleanupPrompt(row, locale),
     { bypassPermissions: true },
   ).catch((e) => {
     console.warn(
@@ -1126,7 +1131,7 @@ po.put("/profile", async (c) => {
 
 // POST — 부트스트랩 시작. 즉시 세션 id 반환, 스캔·초안 산출은 백그라운드(생성 중 표시는 프로필).
 po.post("/design-directive/bootstrap", async (c) => {
-  let body: { repoPath?: unknown; agent?: unknown };
+  let body: { repoPath?: unknown; agent?: unknown; locale?: unknown };
   try {
     body = await c.req.json();
   } catch {
@@ -1136,8 +1141,9 @@ po.post("/design-directive/bootstrap", async (c) => {
   if (!repoPath) return c.json({ error: "missing_repo_path" }, 400);
   const agent = parseAgent(body.agent);
   if (agent && !hasAgent(agent)) return c.json({ error: "agent_missing", message: agent }, 400);
+  const locale = normalizePoLocale(body.locale);
 
-  const result = startPoDesignBootstrap(repoPath, agent);
+  const result = startPoDesignBootstrap(repoPath, agent, locale);
   if (result.status === "error") {
     return c.json({ error: "bootstrap_failed", message: result.error }, 400);
   }

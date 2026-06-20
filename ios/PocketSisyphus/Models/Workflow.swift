@@ -199,6 +199,8 @@ struct DesignWorkflowRequest: Encodable {
     let repoPath: String
     /// 설계 노드 기본 에이전트 (생략 시 daemon 기본 claude_code).
     let agent: String?
+    /// 산출 언어 (po_locale_v1) — 설계 프롬프트를 앱 언어로. 기본은 앱 표시 언어.
+    let locale: String? = ApiClient.appOutputLocale()
 }
 
 /// `POST /api/workflows/design` 응답 — 설계는 백그라운드라 designId(폴링 키) 만 즉시 돌려준다.

@@ -24,6 +24,8 @@ import { markCronSession, unmarkCronSession } from "../cron/registry.js";
 import { waitForSessionSettle } from "../cron/executor.js";
 import { sanitizeDesignedDef } from "../po/workflow-exec.js";
 import { validateDef, type NodeDef, type EdgeDef } from "./types.js";
+import { poLoc } from "../po/prompt.js";
+import { t } from "../po/i18n/t.js";
 
 /** 진행 중/완료된 설계 작업의 in-memory 상태. designId = 설계 세션 id (1:1). */
 type DesignStatus = "designing" | "ready" | "failed";
@@ -65,6 +67,8 @@ export function startWorkflowDesign(opts: {
   description: string;
   repoPath: string;
   agentId?: string;
+  /** 산출 언어 (po_locale_v1) — 설계 프롬프트·세션 라벨을 앱 언어로. */
+  locale?: string;
 }): StartDesignResult {
   sweepJobs();
   const dir = resolveAndEnsureRepoDir(opts.repoPath);
@@ -76,7 +80,7 @@ export function startWorkflowDesign(opts: {
 
   const sessionId = createSession(
     repoPath,
-    "🎨 워크플로우 설계 초안".slice(0, 120),
+    t("wf.session.designDraftLabel", poLoc(opts.locale)).slice(0, 120),
     undefined,
     true,
     agentId,
@@ -94,6 +98,7 @@ export function startWorkflowDesign(opts: {
     outFile,
     agentIds: eligible.length > 0 ? eligible : [agentId],
     defaultAgent: agentId,
+    locale: opts.locale,
   });
 
   console.log(`[workflow] design start session=${sessionId} agent=${agentId}`);
@@ -192,32 +197,15 @@ export function buildWorkflowDesignPrompt(opts: {
   agentIds: string[];
   /** 노드 기본 에이전트. */
   defaultAgent: string;
+  /** 산출 언어 (선택, po_locale_v1) — 누락/ko/미지원이면 ko verbatim. */
+  locale?: string;
 }): string {
-  return `너는 이 저장소의 워크플로우 설계 에이전트다. 사용자가 «한 문장» 으로 만들고 싶은 멀티 에이전트 워크플로우를 설명했다. 그 의도를 실현하는 워크플로우(DAG) «초안» 을 설계하라. 코드를 수정하지 마라 — 레포를 읽어 맥락·검증 방법을 파악하는 조사만 하고, 산출은 워크플로우 정의 JSON 하나다.
-
-## 사용자 설명 (만들고 싶은 워크플로우)
-${opts.description}
-
-## 설계 지침
-- 사용자 의도를 «start → task … → end» 흐름으로 구체화하라. 각 task 는 «그 노드만 보는 새 에이전트 세션» 이 수행하는 하나의 일이다.
-- 각 task 의 prompt 는 그 세션에 들어가는 «전체 지시» 다 — 필요한 컨텍스트를 prompt 안에 직접 담아라. 이전 노드의 결과물은 «Task 폴더» 로 자동 전달되니 "이전 단계 결과 폴더를 읽어라" 라고 지시하면 된다.
-- task 가 실패할 수 있고 재시도가 의미 있으면, 그 task 의 «실패(fail)» 간선을 앞 task 로 이어 재시도 루프를 만들어라.
-- 이건 «초안» 이다 — 사용자가 캔버스에서 검토·수정한 뒤 «직접» 저장/실행한다. 무인 자동 실행을 가정하지 마라.
-
-## 정의 스키마 (이 형식 그대로)
-노드(NodeDef): { "id": "고유 문자열", "type": "start" | "task" | "end", "title": "한 줄", "prompt": "task 필수 — 이 노드 세션에 보낼 전체 지시", "agent"?: ${JSON.stringify(opts.agentIds)} 중 하나 (생략 시 ${opts.defaultAgent}), "requires_approval"?: true (사람 승인 게이트가 필요한 노드만), "x": 숫자, "y": 숫자 }
-간선(EdgeDef): { "id": "고유 문자열", "from": "노드 id", "to": "노드 id", "condition"?: "fail" }
-
-규칙:
-- start 노드 1개, end 노드 1개 필수. task 노드는 prompt 필수.
-- 루프(뒤로 가는 간선)는 작업의 "fail" 간선으로만 — 그 외 간선으로 순환을 만들면 거부된다.
-- 노드는 4±2개 정도로 — 과도하게 쪼개지 마라. 좌표는 위→아래 흐름으로 보기 좋게 (x 60~400, y 60 간격 170).
-
-## 산출
-다음 경로에 JSON «단일 객체» { "nodes": [...], "edges": [...] } 를 써라 (다른 곳에 쓰지 마라):
-${opts.outFile}
-
-파일을 쓴 뒤 «워크플로우 설계 완료» 한 줄로 끝내라.`;
+  return t("wf.design.body", poLoc(opts.locale), {
+    description: opts.description,
+    agentIds: JSON.stringify(opts.agentIds),
+    defaultAgent: opts.defaultAgent,
+    outFile: opts.outFile,
+  });
 }
 
 // 타입 재노출 — 라우트가 NodeDef/EdgeDef 를 다룰 때 한 곳에서.
