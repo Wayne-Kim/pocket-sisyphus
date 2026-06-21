@@ -28,7 +28,7 @@ export const site = {
     title: "Pocket Sisyphus — coding agents in your pocket",
     description:
       "Drive Claude Code, Codex, Antigravity, Copilot & OpenCode running on your Mac — securely, from your iPhone. Dual-channel SSH-first with Tor fallback, or a private same-Wi-Fi-only mode. The app keeps zero servers of its own.",
-    url: "https://pocketsisyphus.app",
+    url: "https://wayne-kim.github.io/pocket-sisyphus",
   },
 
   brand: {

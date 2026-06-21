@@ -188,7 +188,7 @@ describe("buildDiscordBody", () => {
     // 커스텀 scheme(pocketsisyphus://)은 메시지에 직접 넣지 않는다 (죽은 평문/400 거부).
     expect(body.content).not.toContain("pocketsisyphus://");
     expect(body.content).toContain(
-      "https://pocketsisyphus.app/open/#abc-123",
+      "https://wayne-kim.github.io/pocket-sisyphus/open/#abc-123",
     );
     // 마스크 링크 + embed unfurl 억제(<>) 형태.
     expect(body.content).toContain("[Open in app](<https://");
@@ -221,7 +221,7 @@ describe("buildDiscordBody", () => {
     });
     // 경로 구분자 / 는 fragment 에서 합법 — 인코딩하지 않고 그대로 싣는다.
     expect(body.content).toContain(
-      "https://pocketsisyphus.app/open/#backlog/brief-42",
+      "https://wayne-kim.github.io/pocket-sisyphus/open/#backlog/brief-42",
     );
     // 세션 딥링크로 폴백하지 않는다.
     expect(body.content).not.toContain("collect-session-1");
@@ -263,7 +263,7 @@ describe("buildDiscordBody", () => {
     expect(e?.color).toBe(0x57f287); // 여전히 test 색(green)
     expect(e?.title).toContain("예시 작업"); // 요약 제목
     expect(body.content).toContain(
-      "https://pocketsisyphus.app/open/#abc-123",
+      "https://wayne-kim.github.io/pocket-sisyphus/open/#abc-123",
     ); // 딥링크 미리보기(content) — https 브리지
     expect(e?.fields?.find((f) => f.name === "Repo")?.value).toContain("my-repo");
   });
@@ -361,7 +361,7 @@ describe("checkDeepLinkBridgeHealth", () => {
     const r = await checkDeepLinkBridgeHealth(null);
     expect(r.status).toBe("ok");
     expect(r.custom).toBe(false);
-    expect(r.base).toBe("https://pocketsisyphus.app/open");
+    expect(r.base).toBe("https://wayne-kim.github.io/pocket-sisyphus/open");
   });
 
   it("사용자 지정 주소도 동일하게 점검 (custom=true)", async () => {

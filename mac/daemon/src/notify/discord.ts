@@ -139,8 +139,8 @@ const WEBHOOK_USERNAME = "Pocket Sisyphus";
  * `<pocketsisyphus://…>` 꺾쇠도 `[label](pocketsisyphus://…)` 마스크 링크도 전부 죽은
  * 평문으로 렌더되고, 버튼에 넣으면 400(`Scheme … is not supported`)으로 거부된다.
  * (예전 steam:// 시절엔 됐지만 막힘.) 그래서 daemon 은 커스텀 scheme 대신 공개 레포
- * pocket-sisyphus 의 GitHub Pages(pocketsisyphus.app) 정적 페이지(`/open`)로 가는 «https» 링크를 싣고,
- * 그 페이지가 클라이언트에서 `pocketsisyphus://session/<id>` 로 핸드오프한다.
+ * pocket-sisyphus 의 GitHub Pages(wayne-kim.github.io/pocket-sisyphus) 정적 페이지(`/open`)로
+ * 가는 «https» 링크를 싣고, 그 페이지가 클라이언트에서 `pocketsisyphus://session/<id>` 로 핸드오프한다.
  *
  * 외부서버 0: 정적 호스팅이라 운영 서버가 없고, 세션 id 는 URL fragment(`#<id>`)로만
  * 다뤄 네트워크에 흘리지 않는다 (페이지에 비밀값 없음 — 한 장이 모든 빌드 공용).
@@ -153,7 +153,8 @@ const WEBHOOK_USERNAME = "Pocket Sisyphus";
  * 사용자가 config.notify.discord.deepLinkBaseUrl 로 자기 GitHub Pages 등에 올린 브리지
  * 페이지를 지정할 수 있다 — 미지정이면 이 기본값.
  */
-export const DEFAULT_DEEP_LINK_BRIDGE_BASE = "https://pocketsisyphus.app/open";
+export const DEFAULT_DEEP_LINK_BRIDGE_BASE =
+  "https://wayne-kim.github.io/pocket-sisyphus/open";
 
 /**
  * 사용자 지정 딥링크 브리지 base URL 검증. https 만 — http 는 Discord 인앱 브라우저에서

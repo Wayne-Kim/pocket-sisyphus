@@ -22,9 +22,10 @@
     Links — but a custom-scheme redirect still works there (it prompts "Open in
     Pocket Sisyphus?"), which is exactly why a redirect page beats AASA here.
 
-    NOTE: served by the web/ static export (web/public/open/) so it survives the
-    GitHub Pages switch from docs/ → Actions. URL is unchanged:
-    https://pocketsisyphus.app/open/#<id>
+    NOTE: served by the web/ static export (web/public/open/) on the repo's
+    GitHub Pages project site. The page is path-agnostic (it only reads the URL
+    fragment and builds a custom-scheme URL), so the basePath subdir is fine:
+    https://wayne-kim.github.io/pocket-sisyphus/open/#<id>
   -->
   <style>
     :root { color-scheme: light dark; }
