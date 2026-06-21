@@ -1,0 +1,52 @@
+# Pocket Sisyphus iOS - CocoaPods 의존성
+# 사용:
+#   xcodegen generate           # .xcodeproj 생성 (project.yml 기반)
+#   pod install                 # Pods + .xcworkspace 생성
+#   open PocketSisyphus.xcworkspace
+#
+# 빌드 (CLI):
+#   xcodebuild -workspace PocketSisyphus.xcworkspace \
+#     -scheme PocketSisyphus -destination 'generic/platform=iOS Simulator' build
+
+platform :ios, '17.0'
+use_frameworks!
+inhibit_all_warnings!
+
+# 메인 앱 / 익스텐션이 둘 다 Tor.framework 가 필요하다. 메인 앱은 현재 import 중
+# (Phase E 완료 후 제거 후보), 익스텐션은 실제 TorThread 를 띄운다.
+#
+# CocoaPods 는 익스텐션이 host (PocketSisyphus) 의 "Target Dependencies" 로 등록돼 있으면
+# 자동으로 dedup 한다 — 두 target 이 같은 pod 을 link 하더라도 .framework 는 host 의
+# Frameworks/ 에만 embed 되고 익스텐션은 search path 만 받아 dyld 가 host 의 dylib 를
+# 찾아 쓴다. project.yml 의 PocketSisyphus.dependencies 에 PocketTunnel 을 박아둔 것이
+# 이 dedup 의 트리거.
+target 'PocketSisyphus' do
+  # iCepa의 Tor.framework — Tor 0.4.9.x 임베드, iCepa/Onion Browser 등 운영 검증.
+  # 듀얼 채널 모델에서는 메인 앱 프로세스 내에서 직접 운용 (NEPacketTunnelProvider 제거).
+  pod 'Tor', '~> 409.8'
+  # 듀얼 채널의 SSH client 는 Citadel (Swift native, swift-nio 기반) 로 — SwiftPM (project.yml).
+  # NMSSH 2.3.1 의 vendored libcrypto.a 가 Xcode 16+ arm64 simulator linker 와 alignment 충돌이라
+  # CocoaPods 경로로는 안 됨.
+
+  # obfs4 pluggable transport (Tor bridge) — IPtProxy 는 lyrebird/obfs4proxy 를 gomobile 로
+  # «프로세스 내» 라이브러리로 컴파일한 xcframework (Onion Browser / Orbot 운영 검증). iOS 는
+  # 별도 바이너리 exec 가 막혀 데스크탑식 `ClientTransportPlugin obfs4 exec` 가 불가능하므로,
+  # in-process PT 가 여는 로컬 SOCKS 포트에 Tor 를 `socks5` 로 붙인다 (PluggableTransport.swift).
+  # Swift 쪽은 전부 `#if canImport(IPtProxy)` 로 감싸 미링크 빌드도 컴파일된다(평문/ vanilla 경로).
+  pod 'IPtProxy', '~> 5.5'
+end
+
+# PocketTunnel 익스텐션은 듀얼 채널 모델 전환 (2026-05-27) 으로 제거됨 — Pod 의존도 같이.
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '17.0'
+      config.build_settings['ENABLE_BITCODE'] = 'NO'
+      # Xcode 26+ eager linking 충돌 회피 — Tor.framework 의 TBD 가 자기 자신을 link 시도.
+      config.build_settings['EAGER_LINKING'] = 'NO'
+      config.build_settings['EAGER_LINKING_TBDS'] = 'NO'
+      config.build_settings['EAGER_COMPILATION_DISABLE'] = 'YES'
+    end
+  end
+end

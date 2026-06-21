@@ -1,0 +1,131 @@
+name: app unit-test gate
+
+# 아이폰·맥 앱의 «호스트 없는 단위 테스트» 를 main push + 모든 PR 에서 강제한다.
+# 왜: daemon 은 daemon-test.yml 로 머지 전 자동 차단이 걸렸지만, 정작 두 앱에는 같은
+#   관문이 없어 워크플로우 분기·구독 판정·딥링크 계약·재연결 정책 같은 «검증된 코어 로직»
+#   이 깨진 PR 이 조용히 머지될 수 있었다. 두 앱 모두 host-less 단위 테스트라 코드 서명·
+#   프로비저닝 없이 시뮬레이터/맥 호스트에서 곧장 돌릴 수 있는데도 자동 게이트가 없었다.
+# 무엇: 테스트가 1개라도 실패하면 xcodebuild 가 비-0 종료 → 잡 실패 → PR 차단.
+#
+# ── 러너 전략 ──────────────────────────────────────────────────────────────────
+# runs-on: macos-latest — xcodebuild/시뮬레이터/Swift 툴체인은 macOS 러너에만 있다.
+# 서명·배포 빌드는 «비-목표» 다 (후속 별도 브리프). 여기선 코드 서명을 끈
+# (CODE_SIGNING_ALLOWED=NO) host-less 단위 테스트 타겟«만» 빌드·실행한다 — 서명 필요한
+# 메인 앱·위젯·UI 테스트는 스킴의 test 액션에 안 들어가 딸려 빌드되지 않는다.
+# ──────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # 앱 소스/프로젝트가 바뀐 변경에서만 — daemon-test.yml 의 paths 결을 따른다.
+      # mac/daemon 은 자기 게이트(daemon-test.yml)가 있어 제외.
+      - "ios/**"
+      - "mac/**"
+      - "!mac/daemon/**"
+      - ".github/workflows/app-test.yml"
+  pull_request:
+    paths:
+      - "ios/**"
+      - "mac/**"
+      - "!mac/daemon/**"
+      - ".github/workflows/app-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  # ── iOS host-less 단위 테스트 ────────────────────────────────────────────────
+  # PocketSisyphusTests: 딥링크 계약·워크플로우 분기·구독 판정·재연결 정책 등 13종.
+  # 「Library tests」 패턴이라 메인 앱(Tor.framework) 없이 시뮬레이터에서 독립 실행.
+  ios-tests:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v4
+
+      # .xcodeproj/.xcworkspace 는 generated artifact (project.yml = SSOT) 라 재생성한다.
+      # xcodegen 은 러너 이미지에 없어 brew 로 설치. CocoaPods 는 GitHub macOS 러너에 기본
+      # 동봉되어 별도 설치 불필요.
+      - name: install xcodegen
+        run: brew install xcodegen
+
+      # xcodegen generate 가 postGenCommand 로 `pod install` 까지 돌려 Pods + .xcworkspace
+      # 를 재현 가능하게 복원한다 (Tor / IPtProxy pod). 의존성 복원이 워크플로 안에서 완결.
+      - name: xcodegen generate (+ pod install)
+        run: xcodegen generate
+
+      # 러너 이미지마다 동봉 시뮬레이터/런타임이 달라 이름 하드코딩은 깨지기 쉽다 —
+      # 사용 가능한 iPhone 시뮬레이터를 «결정적으로» 골라 UDID 를 고정하고 부팅한다.
+      - name: select & boot iOS simulator
+        run: |
+          set -euo pipefail
+          SIM_UDID="$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          chosen = None
+          for runtime, devs in devices.items():
+              if "iOS" not in runtime:
+                  continue
+              for dev in devs:
+                  if dev.get("isAvailable") and dev["name"].startswith("iPhone"):
+                      chosen = dev["udid"]
+                      break
+              if chosen:
+                  break
+          if not chosen:
+              sys.exit("사용 가능한 iPhone 시뮬레이터가 없음")
+          print(chosen)
+          ')"
+          echo "선택된 시뮬레이터 UDID=${SIM_UDID}"
+          echo "SIM_UDID=${SIM_UDID}" >> "$GITHUB_ENV"
+          xcrun simctl bootstatus "$SIM_UDID" -b
+
+      # 스킴의 test 액션이 PocketSisyphusTests «만» 빌드한다(메인 앱은 test 에 미포함).
+      # -only-testing 으로 한 번 더 못박고, CODE_SIGNING_ALLOWED=NO 로 서명 없이 통과.
+      # EAGER_LINKING=NO 는 Xcode 26 + Tor 의 셀프링크 회피용(레포 표준 빌드 플래그).
+      - name: xcodebuild test (PocketSisyphusTests)
+        run: |
+          set -euo pipefail
+          xcodebuild test \
+            -workspace PocketSisyphus.xcworkspace \
+            -scheme PocketSisyphus \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=${SIM_UDID}" \
+            -only-testing:PocketSisyphusTests \
+            CODE_SIGNING_ALLOWED=NO \
+            EAGER_LINKING=NO EAGER_LINKING_TBDS=NO
+
+  # ── Mac host-less 단위 테스트 ────────────────────────────────────────────────
+  # PocketSisyphusMacTests: 메인 앱(Sparkle/SwiftTerm SPM + daemon 291MB rsync) 없이
+  # 도는 순수 struct/enum 단위. 맥 호스트에서 직접 실행.
+  mac-tests:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: mac
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install xcodegen
+        run: brew install xcodegen
+
+      # .xcodeproj 재생성(project.yml = SSOT). Mac 은 pod 미사용 — SPM 패키지는
+      # xcodebuild 가 빌드 시 resolve 한다. test 액션은 패키지 의존 없는 테스트 타겟만 빌드.
+      - name: xcodegen generate
+        run: xcodegen generate
+
+      # 스킴의 test 액션이 PocketSisyphusMacTests «만» 빌드(메인 앱·embed/sign 스크립트
+      # 미실행). CODE_SIGNING_ALLOWED=NO 로 서명 없이 통과. 테스트 실패 시 비-0 종료.
+      - name: xcodebuild test (PocketSisyphusMacTests)
+        run: |
+          set -euo pipefail
+          xcodebuild test \
+            -project PocketSisyphusMac.xcodeproj \
+            -scheme PocketSisyphusMac \
+            -configuration Debug \
+            -destination "platform=macOS" \
+            -only-testing:PocketSisyphusMacTests \
+            CODE_SIGNING_ALLOWED=NO

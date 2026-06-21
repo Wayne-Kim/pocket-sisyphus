@@ -1,0 +1,136 @@
+# Dependencies
+node_modules/
+.npm/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Coverage reports (vitest v8 — text 는 콘솔, html 는 ./coverage/ 산출물)
+coverage/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Playwright (router-config tools)
+tools/router-config/test-results/
+tools/router-config/playwright-report/
+tools/router-config/explore-*.png
+tools/router-config/step*.png
+tools/router-config/router-session.json
+tools/router-config/login-output.log
+tools/**/*.png
+
+# Generated WireGuard / pairing artifacts (개인 키 포함, 절대 커밋 금지)
+**/*.qr.png
+**/wg-*.conf
+**/wg-server.json
+**/pocket-sisyphus.db
+**/pocket-sisyphus.db-*
+
+# 사용자가 디버깅용으로 임시 추가한 스크린샷 / 이미지
+image.png
+image*.png
+스크린샷*.png
+Screenshot*.png
+
+# Spike / smoke test 부산물
+spike-*.txt
+spike-test*.txt
+spike-smoke*.txt
+hello-from-*.txt
+
+# OS thumbnails
+Thumbs.db
+ehthumbs.db
+
+# Xcode (project regenerated from ios/project.yml & mac/project.yml via `xcodegen generate`)
+#
+# .xcodeproj / .xcworkspace 자체는 generated artifact 라서 ignore.
+# 단, build 동작에 영향 주는 share scheme (xcshareddata/) 은 force-include 해서
+# 변경점이 git history 에 잡히게 한다. 그래야 "어느 커밋부터 scheme 깨졌다"
+# 같은 디버깅이 가능. (xcuserdata/ 만 ignore — 사용자별 GUI 상태)
+ios/*.xcodeproj/*
+ios/*.xcworkspace/*
+mac/*.xcodeproj/*
+mac/*.xcworkspace/*
+!ios/*.xcodeproj/project.pbxproj
+!ios/*.xcodeproj/xcshareddata/
+!ios/*.xcworkspace/contents.xcworkspacedata
+!ios/*.xcworkspace/xcshareddata/
+!mac/*.xcodeproj/project.pbxproj
+!mac/*.xcodeproj/xcshareddata/
+!mac/*.xcworkspace/contents.xcworkspacedata
+!mac/*.xcworkspace/xcshareddata/
+
+ios/.build/
+ios/build/
+ios/DerivedData/
+ios/Pods/
+*.xcuserdata*
+*.xcuserstate
+ios/.swiftpm/
+
+# Xcode local Info.plist (regenerated)
+# (ios/PocketSisyphus/Info.plist 는 xcodegen이 갱신하므로 commit하되 stub은 무관)
+
+.playwright-mcp
+build
+secrets
+
+# scripts/embed-daemon-binaries.sh 가 생성하는 번들 산출물 — Node.js 공식 + Homebrew tor.
+# 결정적으로 재생성되므로 vcs 트래킹 불필요. 매 Xcode 빌드 전 자동 실행.
+mac/daemon/bin/
+mac/daemon/share/
+
+# 사진 첨부 기능 기본 폴더
+attachments
+.posiworkflow
+.psworkflow
+__pycache__/
+
+# iOS 프리뷰 «화면 피드백» 이 가리킨 요소 스크린샷을 떨구는 폴더 — 일회성 산출물, 추적 불필요.
+.ps-preview-feedback/
+
+# 배포/심사 스크립트 — git 추적 제외 (배포·릴리스·App Store 제출은 메인테이너만 수행).
+store
+scripts/deploy-release-mac.sh
+scripts/deploy-testflight.sh
+scripts/deploy-web.sh
+scripts/store-shot.sh
+scripts/bump-version.sh
+
+# 배포/심사 export 설정 — App Store 제출·Developer ID 릴리스 export 전용(미추적 deploy
+# 스크립트만 사용; dev 빌드는 안 씀). 배포/심사 관련이라 공유하지 않는다.
+ios/build-config/ExportOptions-AppStore.plist
+mac/build-config/ExportOptions-DeveloperID.plist
+
+# 운영(메인테이너 전용) Claude 스킬 — 배포·웹배포·심사 제출 «방법» 비공개.
+# dev/commit/verify-ios 등 «개발 도움» 스킬은 기여자용으로 추적 유지.
+.claude/skills/deploy/
+.claude/skills/deploy-web/
+.claude/skills/submitting/
+
+# 메인테이너 전용 운영 문서 (배포 자격증명 세팅·서명·업로드 절차) — 공개 안 함.
+docs/ops/

@@ -1,0 +1,291 @@
+name: PocketSisyphusMac
+options:
+  bundleIdPrefix: pe.wayne
+  deploymentTarget:
+    macOS: "13.0"
+  developmentLanguage: ko
+  # 다국어 — 한국어 source + 화자 수 상위 8개 + 일본어 (총 10개).
+  # Localizable.xcstrings 는 sources 안에 있어 자동으로 리소스로 포함된다.
+  knownRegions: [ko, en, zh-Hans, hi, es, fr, ar, pt-BR, ru, ja, Base]
+  createIntermediateGroups: true
+
+schemes:
+  PocketSisyphusMac:
+    # 메인 앱은 test 액션에서 빌드 안 함 — Sparkle/SwiftTerm 등 SPM 의존성 + 매 빌드마다
+    # daemon (291 MB) 을 Resources/ 로 rsync 하는 postCompileScript 가 돌아서 30s+ 추가.
+    # 단위 테스트가 host-less 라 메인 앱 없이도 독립 실행 가능.
+    build:
+      targets:
+        PocketSisyphusMac: [run, archive, profile, analyze]
+        PocketSisyphusMacTests: [test]
+    run:
+      config: Debug
+    archive:
+      config: Release
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - PocketSisyphusMacTests
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    DEVELOPMENT_TEAM: AZ9NKP8D9G
+    # 빌드 시 외부에서 override 가능 (배포 절차가 git commit count 로 덮어씀).
+    # Info.plist 가 $(MARKETING_VERSION) / $(CURRENT_PROJECT_VERSION) 로 치환해 받는다.
+    # iOS 와 동일한 single source of truth — 버전 bump 절차가 양쪽 yml 의
+    # MARKETING_VERSION 만 갱신한다.
+    MARKETING_VERSION: "2.20.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+# Sparkle — Developer ID + DMG 직접 배포에 표준. 앱 안에서 «업데이트 확인»
+# 한 번 누르면 EdDSA 검증된 DMG 다운로드 + .app 자동 교체 + 재실행.
+# https://sparkle-project.org. MIT. macOS 13+ 지원.
+#
+# SwiftTerm — iOS 와 같은 xterm-호환 터미널 에뮬레이터. Mac 앱의 «미러 터미널»
+# 윈도우가 daemon WS 의 pty_output 을 그대로 feed 해서 폰과 동일한 화면을
+# 보여 준다. iOS 에서 쓰는 버전과 동일하게 박아 두 플랫폼의 렌더 차이 0.
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.9.0"
+  SwiftTerm:
+    url: https://github.com/migueldeicaza/SwiftTerm
+    exactVersion: 1.13.0
+
+targets:
+  PocketSisyphusMac:
+    type: application
+    platform: macOS
+    deploymentTarget: "13.0"
+    sources:
+      - PocketSisyphusMac
+    dependencies:
+      - package: Sparkle
+      - package: SwiftTerm
+      # IOKit — PowerManager 의 IOPMAssertion(잠자기 방지). import IOKit.pm autolink 으로도
+      # 대개 충분하나 명시적으로 링크해 결정적으로.
+      - sdk: IOKit.framework
+    preBuildScripts:
+      - name: "Embed node + tor binaries"
+        # mac/daemon/bin/ 에 self-contained Node.js + Homebrew tor + 의존 dylib 들을 배치.
+        # 빌드 전에 실행 — postCompileScript 가 daemon/ 전체를 .app 으로 복사할 때 이게 들어가 있어야 함.
+        # 멱등 + 결정적 — 이미 최신이면 빠르게 통과.
+        basedOnDependencyAnalysis: false
+        script: |
+          set -e
+          "${SRCROOT}/../scripts/embed-daemon-binaries.sh"
+        shell: /bin/bash
+    postCompileScripts:
+      - name: "Bundle daemon into Resources/daemon"
+        # Debug/Release 모두 daemon 을 번들. 외부 워크스페이스 경로 (예: mac/daemon) 를
+        # runtime 에 안 보게 하려면 Debug 도 번들이 필요. rsync incremental 로 두 번째
+        # 빌드부턴 빠름. node_modules 포함 ~291 MB → 최초 빌드 ~30s. 개인용 .app 이라 수용.
+        # basedOnDependencyAnalysis=false: outputs 명시 불가능 (291 MB 트리) → Xcode 의
+        # dependency analysis 끄고 항상 실행. 어차피 rsync 자체가 idempotent.
+        basedOnDependencyAnalysis: false
+        script: |
+          set -e
+          SRC="${SRCROOT}/daemon"
+          DST="${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Contents/Resources/daemon"
+          mkdir -p "${DST}"
+          # 'dist' 글로벌 제외는 NO — tsx, esbuild 같은 패키지의 node_modules/.../dist/
+          # 까지 같이 날아가서 spawn 실패 원인이 된다. daemon 자체엔 dist/ 없음.
+          rsync -a --delete \
+            --exclude '.git' \
+            --exclude '.DS_Store' \
+            --exclude 'node_modules/.cache' \
+            --exclude '*.log' \
+            "${SRC}/" "${DST}/"
+          echo "[bundle-daemon] copied to ${DST}"
+        shell: /bin/bash
+      - name: "Sign nested binaries (hardened-runtime, JIT for V8)"
+        # Hardened runtime 활성 상태에선 .app 안의 모든 nested executable 이 hardened
+        # runtime 으로 사인돼 있어야 notarytool 통과. V8 JIT (node, claude SDK CLI) 는
+        # 추가로 cs.allow-jit + cs.allow-unsigned-executable-memory 가 박혀야 페이지
+        # 만들 때 SIGTRAP 으로 안 죽음.
+        #
+        # Sandbox 는 비활성. 그래서 nested binary 에 app-sandbox/inherit 키를 박지 않음.
+        # 일반 native (tor=C, esbuild=Go, dylib 들) 은 hardened runtime 사인만으로 충분 —
+        # entitlements 자체를 안 넘긴다.
+        #
+        # Release 만 실행. Debug 는 Xcode 가 ad-hoc 으로 자동 사인하므로 우리가 손댈 일 없음.
+        basedOnDependencyAnalysis: false
+        script: |
+          set -e
+          if [ "${CONFIGURATION}" != "Release" ]; then
+            echo "[sign-nested] skip (CONFIGURATION=${CONFIGURATION})"
+            exit 0
+          fi
+          DAEMON="${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Contents/Resources/daemon"
+          ENT_NODE="${SRCROOT}/PocketSisyphusMac/PocketSisyphusMac-NodeRuntime.entitlements"
+          IDENTITY="${EXPANDED_CODE_SIGN_IDENTITY:-${CODE_SIGN_IDENTITY}}"
+          if [ -z "${IDENTITY}" ]; then
+            echo "[sign-nested] error: CODE_SIGN_IDENTITY 비어 있음" >&2
+            exit 1
+          fi
+
+          # sign_jit: V8 JIT 쓰는 바이너리. NodeRuntime entitlements 박음.
+          sign_jit() {
+            local f="$1"
+            if [ ! -e "${f}" ]; then
+              echo "[sign-nested] warn: ${f} 없음 — 스킵"
+              return
+            fi
+            /usr/bin/codesign \
+              --force \
+              --sign "${IDENTITY}" \
+              --options runtime \
+              --entitlements "${ENT_NODE}" \
+              --timestamp \
+              "${f}"
+            echo "[sign-nested] signed ${f#${DAEMON}/}  (JIT)"
+          }
+
+          # sign_plain: hardened runtime 만. tor / esbuild / dylib / .node native module.
+          sign_plain() {
+            local f="$1"
+            if [ ! -e "${f}" ]; then
+              echo "[sign-nested] warn: ${f} 없음 — 스킵"
+              return
+            fi
+            /usr/bin/codesign \
+              --force \
+              --sign "${IDENTITY}" \
+              --options runtime \
+              --timestamp \
+              "${f}"
+            echo "[sign-nested] signed ${f#${DAEMON}/}"
+          }
+
+          # V8 JIT — node + Claude Agent SDK 내장 V8.
+          sign_jit "${DAEMON}/bin/node"
+          sign_jit "${DAEMON}/node_modules/@anthropic-ai/claude-agent-sdk-darwin-arm64/claude"
+
+          # 일반 native — hardened runtime 만.
+          sign_plain "${DAEMON}/bin/tor"
+          sign_plain "${DAEMON}/bin/sshd"
+          # OpenSSH 9.8+ re-exec 헬퍼 — sshd 가 연결마다 spawn. 빠지면 notarize 거부 +
+          # 런타임 library validation 으로 sshd 가 헬퍼 spawn 실패.
+          sign_plain "${DAEMON}/bin/sshd-session"
+          sign_plain "${DAEMON}/bin/sshd-auth"
+          # capture-helper: swiftc 가 adhoc(linker-signed)으로 떨궈서 Team ID 사인이 빠지면
+          # notarize 가 거부한다. 시스템 프레임워크만 의존 → JIT 불필요(sign_plain).
+          sign_plain "${DAEMON}/bin/capture-helper"
+          sign_plain "${DAEMON}/node_modules/@esbuild/darwin-arm64/bin/esbuild"
+          sign_plain "${DAEMON}/node_modules/esbuild/bin/esbuild"
+
+          # bin/libs/ 의 dylib 들 — install_name_tool 이 무효화한 사인 복구.
+          for f in "${DAEMON}/bin/libs/"*.dylib; do
+            sign_plain "${f}"
+          done
+
+          # node_modules 안의 .node native module — dlopen 으로 로드되는 dylib.
+          # 처음엔 unsigned 라 hardened runtime 의 library validation 에 걸린다.
+          # find 결과를 정확한 목록으로 사인해 빠진 항목 없게.
+          while IFS= read -r f; do
+            sign_plain "${f}"
+          done < <(find "${DAEMON}/node_modules" -type f -name "*.node" 2>/dev/null)
+
+          # node-pty 의 spawn-helper — 일반 Mach-O 실행파일. .node 가 아니라서 위 find 에
+          # 안 잡힘. 추가로 npm 의 tarball 추출이 +x 비트를 떨굴 때가 있어 chmod 도 같이.
+          # 두 아키텍처(arm64/x64) 모두 처리 — darwin-arm64 가 실 타겟이지만 안전망.
+          for f in "${DAEMON}/node_modules/node-pty/prebuilds/"*/spawn-helper; do
+            [ -e "${f}" ] || continue
+            chmod +x "${f}"
+            sign_plain "${f}"
+          done
+        shell: /bin/bash
+    info:
+      path: PocketSisyphusMac/Info.plist
+      properties:
+        # 표시 이름은 빌드 설정(PS_APP_DISPLAY_NAME)에서 주입 — Release="Pocket Sisyphus",
+        # Debug="Pocket Sisyphus Dev". 시스템 설정의 권한 목록·앱 이름이 Dev/Release 로 구분된다.
+        CFBundleDisplayName: $(PS_APP_DISPLAY_NAME)
+        # 실제 값은 build settings(MARKETING_VERSION / CURRENT_PROJECT_VERSION)에서 주입.
+        # 빌드 번호는 git commit count 로 자동 증가한다(메인테이너 배포 절차).
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSUIElement: true   # 메뉴바 전용 (Dock 아이콘 X)
+        LSMinimumSystemVersion: "13.0"
+        ITSAppUsesNonExemptEncryption: false
+        # Mac App Store 필수. 개발자 도구 카테고리 — 타겟이 Claude Code 사용자라.
+        LSApplicationCategoryType: public.app-category.developer-tools
+        # Sparkle 업데이트 ─────────────────────────────────────────────────────
+        # SUFeedURL: GitHub Releases 의 «latest» 가 자동 follow 되는 안정 URL.
+        # 매 deploy 마다 같은 파일명 (appcast.xml) 으로 새 release 에 attach 하면
+        # 이 주소가 새 appcast 를 자동으로 가리킨다 — 별도 호스팅 불필요.
+        SUFeedURL: https://github.com/Wayne-Kim/pocket-sisyphus/releases/latest/download/appcast.xml
+        # SUPublicEDKey: EdDSA 공개키. 개인키는 macOS Keychain 에 있고 (sign_update
+        # 가 자동 발견), 이 공개키와 매칭 안 되는 DMG 는 Sparkle 이 install 거부.
+        # GitHub 가 털려도 가짜 업데이트가 배포될 수 없게 한다 — codesign 과 별도
+        # 의 두 번째 무결성 레이어.
+        SUPublicEDKey: lCTOjukeIsw6q0okF78zUcztq/7EgLJ8uqpnokLd0X4=
+        # SUEnableAutomaticChecks: 자동으로 새 버전 체크. 첫 실행 시 사용자에게
+        # «자동 체크 허용?» 묻고, 답이 저장된다. 사용자가 끄면 «업데이트 확인…» 메뉴로
+        # 수동 트리거.
+        SUEnableAutomaticChecks: true
+        # SUScheduledCheckInterval: 자동 체크 주기 (초). Sparkle 기본값 86400 (24h) 는 deploy
+        # 한 직후에도 사용자가 «옛 버전» 으로 하루를 더 도는 경우가 많아 1h 로 단축. GitHub
+        # appcast.xml 한 번 GET 만 발생 — 비용 무시 가능. 즉시 받고 싶은 사용자는 메뉴의
+        # «업데이트 확인…» 으로 수동 트리거.
+        SUScheduledCheckInterval: 3600
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pe.wayne.pocketsisyphus.mac
+        # 표시 이름 — Info.plist CFBundleDisplayName 이 $(PS_APP_DISPLAY_NAME) 로 참조.
+        PS_APP_DISPLAY_NAME: Pocket Sisyphus
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+        CODE_SIGN_ENTITLEMENTS: PocketSisyphusMac/PocketSisyphusMac.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # 앱 전역 액센트 = AccentColor 에셋(보라, iOS 와 통일). 없으면 시스템 기본 파랑이 떠서
+        # 색 안 정한 컨트롤이 전부 파랑이 된다.
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # Sandbox 비활성. 이 앱의 본질이 "사용자가 가진 임의 repo 폴더 + ~/.claude/projects
+        # 전체 스캔" 이라 sandbox 컨테이너 안에 갇히면 동작 자체가 불가. Mac App Store
+        # 배포는 포기 — 대신 Developer ID + notarization + DMG 로 직접 배포.
+        # 자세한 의사결정 배경은 README 의 "Mac 배포 (Developer ID)" 섹션 참고.
+        ENABLE_APP_SANDBOX: NO
+      configs:
+        # Dev(Debug) 빌드는 «별도» 번들 ID + 표시 이름 — Release(/Applications)와 LaunchServices·
+        # TCC 가 헷갈리지 않게. 같은 번들 ID 면 «앱 재시작» 이 Release 를 띄우고, 시스템 설정
+        # 권한 목록에서 Dev/Release 구분이 안 됐다(근본 원인). 별도 ID 라 각자 권한·재실행이 독립.
+        # PRODUCT_NAME 은 그대로(PocketSisyphusMac) — dev-mac.sh 경로/번들명 가정 유지.
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: pe.wayne.pocketsisyphus.mac.dev
+          PS_APP_DISPLAY_NAME: Pocket Sisyphus Dev
+          # PRODUCT_NAME 도 Dev 로 — 시스템 설정 «화면 기록» 목록은 CFBundleDisplayName 이 아니라
+          # 실행 파일/CFBundleName(=PRODUCT_NAME)을 표시한다. 그래서 이걸 바꿔야 목록에서
+          # Release("PocketSisyphusMac")와 «실제로» 구분된다. .app/실행파일/CFBundleName 이 모두
+          # "Pocket Sisyphus Dev". 빌드 페이즈는 $WRAPPER_NAME 를 써서 이름 무관.
+          PRODUCT_NAME: "Pocket Sisyphus Dev"
+
+  # PocketSisyphusMacTests — host-less 단위 테스트 타겟.
+  #
+  # iOS 의 PocketSisyphusTests 와 같은 「Library tests」 패턴: 메인 앱을 host 로 두지
+  # 않고 필요한 source 파일만 직접 컴파일해 테스트 번들에 박는다. 이유:
+  #   - Sparkle / SwiftTerm SPM 의존성 + daemon (291 MB) rsync postCompileScript 가
+  #     매 빌드마다 돌아서 단위 테스트 사이클이 30s+ 로 부풀음.
+  #   - 단위 테스트 대상은 모두 의존성 적은 순수 struct/enum 이라 호스트 불필요.
+  PocketSisyphusMacTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "13.0"
+    sources:
+      - PocketSisyphusMacTests
+      # 의존성 큰 (Sparkle / SwiftTerm / NIO / AppKit) 파일은 절대 끌어오지 말 것.
+      - path: PocketSisyphusMac/DaemonPaths.swift
+      - path: PocketSisyphusMac/LanguageOverride.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pe.wayne.pocketsisyphus.mac.tests
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: YES

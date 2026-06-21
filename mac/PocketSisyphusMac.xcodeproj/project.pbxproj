@@ -1,0 +1,669 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		04A01CB4CBBD80BB1820E509 /* GuideContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8848FE086EBA060BA38E8F38 /* GuideContent.swift */; };
+		06554EE2C46CC6C446BDB5B7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3B4721F04777A69D07411C12 /* Assets.xcassets */; };
+		097B63BA3158DDD6A5F005E2 /* FullDiskAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B90A1C9C3988A4EDAB32F9A /* FullDiskAccess.swift */; };
+		25301442A098E1E7E7B47052 /* NetworkChangeMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7449A4183672CE2CD032882C /* NetworkChangeMonitor.swift */; };
+		25CE92711D0D9CCD1A040B6B /* DataMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA5C4EB7BAE0DD341B5749E5 /* DataMigration.swift */; };
+		3CA1049581CE29CC69CA4A0C /* DaemonManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F5A5B0FA7C5DA7783DB5B75 /* DaemonManager.swift */; };
+		484FE8DC4863F37D725E69EB /* AscSettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA84FC6C587C8610B90CC3C5 /* AscSettingsWindow.swift */; };
+		5543C3970BE004C6D90A1FDE /* PocketSisyphusMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C9FEC9021BC9F0CC23DA31 /* PocketSisyphusMacApp.swift */; };
+		58729231358E2A05BCD7B809 /* PowerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3123DDAF78D81D7E76AD1575 /* PowerManager.swift */; };
+		5FD7F6D4CE92F77EE57AE15D /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2093FCB77147581EBDFA6078 /* IOKit.framework */; };
+		6510D9063244FEBC47FEF648 /* DaemonPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58A33206EA4C4B4F85D6B0F1 /* DaemonPaths.swift */; };
+		6AD20F1D4DC968AD940D235B /* QRWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E188DAB1C768B8B84C37A7B /* QRWindow.swift */; };
+		6C3192A579D8E39F234D0CB7 /* UpdaterBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D7754AD02988D2FC694DB7 /* UpdaterBridge.swift */; };
+		8421AE0C26ABD24A707B9AC6 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = D0557DDC85C0792B8795018F /* Sparkle */; };
+		8D49DCCD931C95C100B52C9A /* MenuContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 470271CEDD8BD111AEE81CAE /* MenuContent.swift */; };
+		95344FDD8778173335D2E7CC /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22F5AFAD618708819171F0AC /* DesignTokens.swift */; };
+		97C9D93608D0E315C435889E /* DaemonPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58A33206EA4C4B4F85D6B0F1 /* DaemonPaths.swift */; };
+		9902D9619FE61AAC718CDD13 /* THIRD-PARTY-NOTICES.txt in Resources */ = {isa = PBXBuildFile; fileRef = 89B81B2FD2269331540B5BD8 /* THIRD-PARTY-NOTICES.txt */; };
+		9E599A2FD0C929C71F9FD821 /* UnifiedLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C02C8839E978856322665489 /* UnifiedLog.swift */; };
+		A55425CA1496E0D9C33978B1 /* RemoteControlPermissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 178C40D567D1533D9405CB2D /* RemoteControlPermissions.swift */; };
+		A8667509A34A904560CA08BF /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = B066070C0DCB43A5A9400454 /* Localizable.xcstrings */; };
+		B668BF9F4834482B4FA02661 /* GuideWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5ECB816166974FE3C341C099 /* GuideWindow.swift */; };
+		B8954891A2BD89A50089C549 /* DiscordSettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E946F13CC1FA5DD8A2744374 /* DiscordSettingsWindow.swift */; };
+		BE97D085861037CB50ABF1D1 /* SettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6625D648130CC07DC011EF9E /* SettingsWindow.swift */; };
+		C00FC7BEDA982B44442C8802 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 65C250B8B777432C77388436 /* SwiftTerm */; };
+		C20F28C57C0802EBB6D4040A /* PortSettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13DE7FC8947A17486FAC4FBA /* PortSettingsWindow.swift */; };
+		C58504502329EA878A0C60A3 /* LocalDaemonClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE4185AC9092D0927B22D52E /* LocalDaemonClient.swift */; };
+		D48E7BFA1CC9BD059208128E /* LanguageOverrideTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EE9BBA5D99EF28860F80579 /* LanguageOverrideTests.swift */; };
+		DB1C39B76DAB55B88EC131F3 /* LanguageOverride.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4E03FE2F1FF8BE9763642D0 /* LanguageOverride.swift */; };
+		DFDBC6BFDB5DDB1BEF64EF62 /* LanguageOverride.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4E03FE2F1FF8BE9763642D0 /* LanguageOverride.swift */; };
+		EC731FE0F5E3F9E6B2ED4A3B /* DaemonAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 461FE490ED4364EF04227A57 /* DaemonAPI.swift */; };
+		FB5BD06141C7B35BFA85A60A /* DaemonPathsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DCCEB8B930B2C61EEAE49E4 /* DaemonPathsTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0D4C7C9F009AF55D6E724380 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		13DE7FC8947A17486FAC4FBA /* PortSettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortSettingsWindow.swift; sourceTree = "<group>"; };
+		178C40D567D1533D9405CB2D /* RemoteControlPermissions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteControlPermissions.swift; sourceTree = "<group>"; };
+		2093FCB77147581EBDFA6078 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
+		22F5AFAD618708819171F0AC /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
+		29D7754AD02988D2FC694DB7 /* UpdaterBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdaterBridge.swift; sourceTree = "<group>"; };
+		3123DDAF78D81D7E76AD1575 /* PowerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerManager.swift; sourceTree = "<group>"; };
+		3B4721F04777A69D07411C12 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		461FE490ED4364EF04227A57 /* DaemonAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaemonAPI.swift; sourceTree = "<group>"; };
+		470271CEDD8BD111AEE81CAE /* MenuContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuContent.swift; sourceTree = "<group>"; };
+		4A7265B969620B477A55194E /* PocketSisyphusMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PocketSisyphusMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4B90A1C9C3988A4EDAB32F9A /* FullDiskAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullDiskAccess.swift; sourceTree = "<group>"; };
+		58A33206EA4C4B4F85D6B0F1 /* DaemonPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaemonPaths.swift; sourceTree = "<group>"; };
+		5E188DAB1C768B8B84C37A7B /* QRWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRWindow.swift; sourceTree = "<group>"; };
+		5ECB816166974FE3C341C099 /* GuideWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuideWindow.swift; sourceTree = "<group>"; };
+		6625D648130CC07DC011EF9E /* SettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindow.swift; sourceTree = "<group>"; };
+		6AF5A6E4FA0C6635832EFC86 /* PocketSisyphusMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PocketSisyphusMac.entitlements; sourceTree = "<group>"; };
+		6EE9BBA5D99EF28860F80579 /* LanguageOverrideTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageOverrideTests.swift; sourceTree = "<group>"; };
+		7449A4183672CE2CD032882C /* NetworkChangeMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkChangeMonitor.swift; sourceTree = "<group>"; };
+		8848FE086EBA060BA38E8F38 /* GuideContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuideContent.swift; sourceTree = "<group>"; };
+		89B81B2FD2269331540B5BD8 /* THIRD-PARTY-NOTICES.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "THIRD-PARTY-NOTICES.txt"; sourceTree = "<group>"; };
+		8DCCEB8B930B2C61EEAE49E4 /* DaemonPathsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaemonPathsTests.swift; sourceTree = "<group>"; };
+		9F5A5B0FA7C5DA7783DB5B75 /* DaemonManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaemonManager.swift; sourceTree = "<group>"; };
+		A1627129D5E1F71DAC64AA4A /* PocketSisyphusMac-NodeRuntime.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "PocketSisyphusMac-NodeRuntime.entitlements"; sourceTree = "<group>"; };
+		A29065DB080FE85CCE262663 /* PocketSisyphusMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PocketSisyphusMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B066070C0DCB43A5A9400454 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		BA5C4EB7BAE0DD341B5749E5 /* DataMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataMigration.swift; sourceTree = "<group>"; };
+		C02C8839E978856322665489 /* UnifiedLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnifiedLog.swift; sourceTree = "<group>"; };
+		CA84FC6C587C8610B90CC3C5 /* AscSettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AscSettingsWindow.swift; sourceTree = "<group>"; };
+		D4C9FEC9021BC9F0CC23DA31 /* PocketSisyphusMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketSisyphusMacApp.swift; sourceTree = "<group>"; };
+		DE4185AC9092D0927B22D52E /* LocalDaemonClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalDaemonClient.swift; sourceTree = "<group>"; };
+		E4E03FE2F1FF8BE9763642D0 /* LanguageOverride.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageOverride.swift; sourceTree = "<group>"; };
+		E946F13CC1FA5DD8A2744374 /* DiscordSettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscordSettingsWindow.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B217DB53689F45EEFA3A89FD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8421AE0C26ABD24A707B9AC6 /* Sparkle in Frameworks */,
+				C00FC7BEDA982B44442C8802 /* SwiftTerm in Frameworks */,
+				5FD7F6D4CE92F77EE57AE15D /* IOKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		397FA0454F51D2535DBB4B7D /* PocketSisyphusMac */ = {
+			isa = PBXGroup;
+			children = (
+				3B4721F04777A69D07411C12 /* Assets.xcassets */,
+				461FE490ED4364EF04227A57 /* DaemonAPI.swift */,
+				9F5A5B0FA7C5DA7783DB5B75 /* DaemonManager.swift */,
+				58A33206EA4C4B4F85D6B0F1 /* DaemonPaths.swift */,
+				BA5C4EB7BAE0DD341B5749E5 /* DataMigration.swift */,
+				22F5AFAD618708819171F0AC /* DesignTokens.swift */,
+				4B90A1C9C3988A4EDAB32F9A /* FullDiskAccess.swift */,
+				8848FE086EBA060BA38E8F38 /* GuideContent.swift */,
+				0D4C7C9F009AF55D6E724380 /* Info.plist */,
+				E4E03FE2F1FF8BE9763642D0 /* LanguageOverride.swift */,
+				DE4185AC9092D0927B22D52E /* LocalDaemonClient.swift */,
+				B066070C0DCB43A5A9400454 /* Localizable.xcstrings */,
+				7449A4183672CE2CD032882C /* NetworkChangeMonitor.swift */,
+				A1627129D5E1F71DAC64AA4A /* PocketSisyphusMac-NodeRuntime.entitlements */,
+				6AF5A6E4FA0C6635832EFC86 /* PocketSisyphusMac.entitlements */,
+				D4C9FEC9021BC9F0CC23DA31 /* PocketSisyphusMacApp.swift */,
+				3123DDAF78D81D7E76AD1575 /* PowerManager.swift */,
+				178C40D567D1533D9405CB2D /* RemoteControlPermissions.swift */,
+				89B81B2FD2269331540B5BD8 /* THIRD-PARTY-NOTICES.txt */,
+				29D7754AD02988D2FC694DB7 /* UpdaterBridge.swift */,
+				5308A0C5FF0235682BE9EB6E /* Logging */,
+				A461EC69CB2E2C40D83AE0B1 /* Views */,
+			);
+			path = PocketSisyphusMac;
+			sourceTree = "<group>";
+		};
+		4ECD41FAE90BB183CDC96256 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4A7265B969620B477A55194E /* PocketSisyphusMac.app */,
+				A29065DB080FE85CCE262663 /* PocketSisyphusMacTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5308A0C5FF0235682BE9EB6E /* Logging */ = {
+			isa = PBXGroup;
+			children = (
+				C02C8839E978856322665489 /* UnifiedLog.swift */,
+			);
+			path = Logging;
+			sourceTree = "<group>";
+		};
+		870BEC50FA2CFA8526F339EB /* PocketSisyphusMacTests */ = {
+			isa = PBXGroup;
+			children = (
+				8DCCEB8B930B2C61EEAE49E4 /* DaemonPathsTests.swift */,
+				6EE9BBA5D99EF28860F80579 /* LanguageOverrideTests.swift */,
+			);
+			path = PocketSisyphusMacTests;
+			sourceTree = "<group>";
+		};
+		A461EC69CB2E2C40D83AE0B1 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				CA84FC6C587C8610B90CC3C5 /* AscSettingsWindow.swift */,
+				E946F13CC1FA5DD8A2744374 /* DiscordSettingsWindow.swift */,
+				5ECB816166974FE3C341C099 /* GuideWindow.swift */,
+				470271CEDD8BD111AEE81CAE /* MenuContent.swift */,
+				13DE7FC8947A17486FAC4FBA /* PortSettingsWindow.swift */,
+				5E188DAB1C768B8B84C37A7B /* QRWindow.swift */,
+				6625D648130CC07DC011EF9E /* SettingsWindow.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		B9213B44F2138638C4C46D86 = {
+			isa = PBXGroup;
+			children = (
+				397FA0454F51D2535DBB4B7D /* PocketSisyphusMac */,
+				870BEC50FA2CFA8526F339EB /* PocketSisyphusMacTests */,
+				F23A8311F62D91EF780641FE /* Frameworks */,
+				4ECD41FAE90BB183CDC96256 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		F23A8311F62D91EF780641FE /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				2093FCB77147581EBDFA6078 /* IOKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		20CE897D9F3BD8F39154C4FD /* PocketSisyphusMacTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F663D7C5803501384F1C6F98 /* Build configuration list for PBXNativeTarget "PocketSisyphusMacTests" */;
+			buildPhases = (
+				B972209906BB7DEA75BF627F /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PocketSisyphusMacTests;
+			packageProductDependencies = (
+			);
+			productName = PocketSisyphusMacTests;
+			productReference = A29065DB080FE85CCE262663 /* PocketSisyphusMacTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		BDCD7F204377084A51F1F797 /* PocketSisyphusMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1DC51DFD9EE3BCB4BAF33DA5 /* Build configuration list for PBXNativeTarget "PocketSisyphusMac" */;
+			buildPhases = (
+				CAEE946834F402BA63B7E628 /* Embed node + tor binaries */,
+				BDC16141FC0DBFB1D7675835 /* Sources */,
+				B375D026949AFBE740618389 /* Bundle daemon into Resources/daemon */,
+				7522C1AA5285DE592D1A65C7 /* Sign nested binaries (hardened-runtime, JIT for V8) */,
+				EADFD2BD54BA449F4C8F4460 /* Resources */,
+				B217DB53689F45EEFA3A89FD /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PocketSisyphusMac;
+			packageProductDependencies = (
+				D0557DDC85C0792B8795018F /* Sparkle */,
+				65C250B8B777432C77388436 /* SwiftTerm */,
+			);
+			productName = PocketSisyphusMac;
+			productReference = 4A7265B969620B477A55194E /* PocketSisyphusMac.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		4B36212474B7B395619BBB64 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					20CE897D9F3BD8F39154C4FD = {
+						DevelopmentTeam = AZ9NKP8D9G;
+						ProvisioningStyle = Automatic;
+					};
+					BDCD7F204377084A51F1F797 = {
+						DevelopmentTeam = AZ9NKP8D9G;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = FA8E885E4CD3DC5EBE147FF6 /* Build configuration list for PBXProject "PocketSisyphusMac" */;
+			developmentRegion = ko;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				ar,
+				en,
+				es,
+				fr,
+				hi,
+				ja,
+				ko,
+				"pt-BR",
+				ru,
+				"zh-Hans",
+			);
+			mainGroup = B9213B44F2138638C4C46D86;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				9CCD479AD194A0DB945F83AF /* XCRemoteSwiftPackageReference "Sparkle" */,
+				71A631AF374C30FAE7784A34 /* XCRemoteSwiftPackageReference "SwiftTerm" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 4ECD41FAE90BB183CDC96256 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				BDCD7F204377084A51F1F797 /* PocketSisyphusMac */,
+				20CE897D9F3BD8F39154C4FD /* PocketSisyphusMacTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		EADFD2BD54BA449F4C8F4460 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				06554EE2C46CC6C446BDB5B7 /* Assets.xcassets in Resources */,
+				A8667509A34A904560CA08BF /* Localizable.xcstrings in Resources */,
+				9902D9619FE61AAC718CDD13 /* THIRD-PARTY-NOTICES.txt in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		7522C1AA5285DE592D1A65C7 /* Sign nested binaries (hardened-runtime, JIT for V8) */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Sign nested binaries (hardened-runtime, JIT for V8)";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "set -e\nif [ \"${CONFIGURATION}\" != \"Release\" ]; then\n  echo \"[sign-nested] skip (CONFIGURATION=${CONFIGURATION})\"\n  exit 0\nfi\nDAEMON=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Contents/Resources/daemon\"\nENT_NODE=\"${SRCROOT}/PocketSisyphusMac/PocketSisyphusMac-NodeRuntime.entitlements\"\nIDENTITY=\"${EXPANDED_CODE_SIGN_IDENTITY:-${CODE_SIGN_IDENTITY}}\"\nif [ -z \"${IDENTITY}\" ]; then\n  echo \"[sign-nested] error: CODE_SIGN_IDENTITY 비어 있음\" >&2\n  exit 1\nfi\n\n# sign_jit: V8 JIT 쓰는 바이너리. NodeRuntime entitlements 박음.\nsign_jit() {\n  local f=\"$1\"\n  if [ ! -e \"${f}\" ]; then\n    echo \"[sign-nested] warn: ${f} 없음 — 스킵\"\n    return\n  fi\n  /usr/bin/codesign \\\n    --force \\\n    --sign \"${IDENTITY}\" \\\n    --options runtime \\\n    --entitlements \"${ENT_NODE}\" \\\n    --timestamp \\\n    \"${f}\"\n  echo \"[sign-nested] signed ${f#${DAEMON}/}  (JIT)\"\n}\n\n# sign_plain: hardened runtime 만. tor / esbuild / dylib / .node native module.\nsign_plain() {\n  local f=\"$1\"\n  if [ ! -e \"${f}\" ]; then\n    echo \"[sign-nested] warn: ${f} 없음 — 스킵\"\n    return\n  fi\n  /usr/bin/codesign \\\n    --force \\\n    --sign \"${IDENTITY}\" \\\n    --options runtime \\\n    --timestamp \\\n    \"${f}\"\n  echo \"[sign-nested] signed ${f#${DAEMON}/}\"\n}\n\n# V8 JIT — node + Claude Agent SDK 내장 V8.\nsign_jit \"${DAEMON}/bin/node\"\nsign_jit \"${DAEMON}/node_modules/@anthropic-ai/claude-agent-sdk-darwin-arm64/claude\"\n\n# 일반 native — hardened runtime 만.\nsign_plain \"${DAEMON}/bin/tor\"\nsign_plain \"${DAEMON}/bin/sshd\"\n# OpenSSH 9.8+ re-exec 헬퍼 — sshd 가 연결마다 spawn. 빠지면 notarize 거부 +\n# 런타임 library validation 으로 sshd 가 헬퍼 spawn 실패.\nsign_plain \"${DAEMON}/bin/sshd-session\"\nsign_plain \"${DAEMON}/bin/sshd-auth\"\n# capture-helper: swiftc 가 adhoc(linker-signed)으로 떨궈서 Team ID 사인이 빠지면\n# notarize 가 거부한다. 시스템 프레임워크만 의존 → JIT 불필요(sign_plain).\nsign_plain \"${DAEMON}/bin/capture-helper\"\nsign_plain \"${DAEMON}/node_modules/@esbuild/darwin-arm64/bin/esbuild\"\nsign_plain \"${DAEMON}/node_modules/esbuild/bin/esbuild\"\n\n# bin/libs/ 의 dylib 들 — install_name_tool 이 무효화한 사인 복구.\nfor f in \"${DAEMON}/bin/libs/\"*.dylib; do\n  sign_plain \"${f}\"\ndone\n\n# node_modules 안의 .node native module — dlopen 으로 로드되는 dylib.\n# 처음엔 unsigned 라 hardened runtime 의 library validation 에 걸린다.\n# find 결과를 정확한 목록으로 사인해 빠진 항목 없게.\nwhile IFS= read -r f; do\n  sign_plain \"${f}\"\ndone < <(find \"${DAEMON}/node_modules\" -type f -name \"*.node\" 2>/dev/null)\n\n# node-pty 의 spawn-helper — 일반 Mach-O 실행파일. .node 가 아니라서 위 find 에\n# 안 잡힘. 추가로 npm 의 tarball 추출이 +x 비트를 떨굴 때가 있어 chmod 도 같이.\n# 두 아키텍처(arm64/x64) 모두 처리 — darwin-arm64 가 실 타겟이지만 안전망.\nfor f in \"${DAEMON}/node_modules/node-pty/prebuilds/\"*/spawn-helper; do\n  [ -e \"${f}\" ] || continue\n  chmod +x \"${f}\"\n  sign_plain \"${f}\"\ndone\n";
+		};
+		B375D026949AFBE740618389 /* Bundle daemon into Resources/daemon */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Bundle daemon into Resources/daemon";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "set -e\nSRC=\"${SRCROOT}/daemon\"\nDST=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Contents/Resources/daemon\"\nmkdir -p \"${DST}\"\n# 'dist' 글로벌 제외는 NO — tsx, esbuild 같은 패키지의 node_modules/.../dist/\n# 까지 같이 날아가서 spawn 실패 원인이 된다. daemon 자체엔 dist/ 없음.\nrsync -a --delete \\\n  --exclude '.git' \\\n  --exclude '.DS_Store' \\\n  --exclude 'node_modules/.cache' \\\n  --exclude '*.log' \\\n  \"${SRC}/\" \"${DST}/\"\necho \"[bundle-daemon] copied to ${DST}\"\n";
+		};
+		CAEE946834F402BA63B7E628 /* Embed node + tor binaries */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Embed node + tor binaries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "set -e\n\"${SRCROOT}/../scripts/embed-daemon-binaries.sh\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B972209906BB7DEA75BF627F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6510D9063244FEBC47FEF648 /* DaemonPaths.swift in Sources */,
+				FB5BD06141C7B35BFA85A60A /* DaemonPathsTests.swift in Sources */,
+				DFDBC6BFDB5DDB1BEF64EF62 /* LanguageOverride.swift in Sources */,
+				D48E7BFA1CC9BD059208128E /* LanguageOverrideTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BDC16141FC0DBFB1D7675835 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				484FE8DC4863F37D725E69EB /* AscSettingsWindow.swift in Sources */,
+				EC731FE0F5E3F9E6B2ED4A3B /* DaemonAPI.swift in Sources */,
+				3CA1049581CE29CC69CA4A0C /* DaemonManager.swift in Sources */,
+				97C9D93608D0E315C435889E /* DaemonPaths.swift in Sources */,
+				25CE92711D0D9CCD1A040B6B /* DataMigration.swift in Sources */,
+				95344FDD8778173335D2E7CC /* DesignTokens.swift in Sources */,
+				B8954891A2BD89A50089C549 /* DiscordSettingsWindow.swift in Sources */,
+				097B63BA3158DDD6A5F005E2 /* FullDiskAccess.swift in Sources */,
+				04A01CB4CBBD80BB1820E509 /* GuideContent.swift in Sources */,
+				B668BF9F4834482B4FA02661 /* GuideWindow.swift in Sources */,
+				DB1C39B76DAB55B88EC131F3 /* LanguageOverride.swift in Sources */,
+				C58504502329EA878A0C60A3 /* LocalDaemonClient.swift in Sources */,
+				8D49DCCD931C95C100B52C9A /* MenuContent.swift in Sources */,
+				25301442A098E1E7E7B47052 /* NetworkChangeMonitor.swift in Sources */,
+				5543C3970BE004C6D90A1FDE /* PocketSisyphusMacApp.swift in Sources */,
+				C20F28C57C0802EBB6D4040A /* PortSettingsWindow.swift in Sources */,
+				58729231358E2A05BCD7B809 /* PowerManager.swift in Sources */,
+				6AD20F1D4DC968AD940D235B /* QRWindow.swift in Sources */,
+				A55425CA1496E0D9C33978B1 /* RemoteControlPermissions.swift in Sources */,
+				BE97D085861037CB50ABF1D1 /* SettingsWindow.swift in Sources */,
+				9E599A2FD0C929C71F9FD821 /* UnifiedLog.swift in Sources */,
+				6C3192A579D8E39F234D0CB7 /* UpdaterBridge.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		0EBCEADB2592C4B0020D4C6A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = pe.wayne.pocketsisyphus.mac.tests;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		44C2E94BB8660758FA56A132 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = PocketSisyphusMac/PocketSisyphusMac.entitlements;
+				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = PocketSisyphusMac/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = pe.wayne.pocketsisyphus.mac.dev;
+				PRODUCT_NAME = "Pocket Sisyphus Dev";
+				PS_APP_DISPLAY_NAME = "Pocket Sisyphus Dev";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		49A4EFB9FC394CB9E77BB3DA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = PocketSisyphusMac/PocketSisyphusMac.entitlements;
+				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = PocketSisyphusMac/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = pe.wayne.pocketsisyphus.mac;
+				PS_APP_DISPLAY_NAME = "Pocket Sisyphus";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		7FC655D0393A6C607AF1507B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = AZ9NKP8D9G;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 2.20.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.10;
+			};
+			name = Debug;
+		};
+		91E04368929B7D7F90332FBF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = AZ9NKP8D9G;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 2.20.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.10;
+			};
+			name = Release;
+		};
+		B716D46A5CC07D92D46809C3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = pe.wayne.pocketsisyphus.mac.tests;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DC51DFD9EE3BCB4BAF33DA5 /* Build configuration list for PBXNativeTarget "PocketSisyphusMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				44C2E94BB8660758FA56A132 /* Debug */,
+				49A4EFB9FC394CB9E77BB3DA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F663D7C5803501384F1C6F98 /* Build configuration list for PBXNativeTarget "PocketSisyphusMacTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0EBCEADB2592C4B0020D4C6A /* Debug */,
+				B716D46A5CC07D92D46809C3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FA8E885E4CD3DC5EBE147FF6 /* Build configuration list for PBXProject "PocketSisyphusMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7FC655D0393A6C607AF1507B /* Debug */,
+				91E04368929B7D7F90332FBF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		71A631AF374C30FAE7784A34 /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/migueldeicaza/SwiftTerm";
+			requirement = {
+				kind = exactVersion;
+				version = 1.13.0;
+			};
+		};
+		9CCD479AD194A0DB945F83AF /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.9.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		65C250B8B777432C77388436 /* SwiftTerm */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 71A631AF374C30FAE7784A34 /* XCRemoteSwiftPackageReference "SwiftTerm" */;
+			productName = SwiftTerm;
+		};
+		D0557DDC85C0792B8795018F /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9CCD479AD194A0DB945F83AF /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 4B36212474B7B395619BBB64 /* Project object */;
+}

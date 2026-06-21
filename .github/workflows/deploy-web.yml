@@ -1,0 +1,77 @@
+# web/ 소개 사이트를 GitHub Pages 로 정적 배포한다 (커스텀 도메인 pocketsisyphus.app).
+# - 이 저장소(pocket-sisyphus)가 공개되면서 web/ 를 «직접» Pages 로 배포한다
+#   (예전엔 별도 공개 repo 로 미러했지만 더 이상 불필요).
+# - 커스텀 도메인 루트 서빙이라 basePath 는 비운다(아래 NEXT_PUBLIC_BASE_PATH="").
+#   web/public/CNAME 이 도메인을 고정한다.
+# - 최초 1회(메인테이너): repo Settings → Pages → Build and deployment → Source = "GitHub Actions".
+#   그리고 커스텀 도메인은 «한 repo 에만» 붙으므로, pocket-sisyphus-mac 의 Pages 도메인을
+#   먼저 해제한 뒤 이 repo 에 pocketsisyphus.app 이 잡히게 한다.
+name: Deploy web to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/deploy-web.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 동시 배포 1개로 제한(중복 실행 시 진행 중인 것 유지하고 대기열 정리)
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build static export
+        env:
+          # 커스텀 도메인 루트 서빙 — basePath 없음, origin 은 pocketsisyphus.app.
+          NEXT_PUBLIC_BASE_PATH: ""
+          NEXT_PUBLIC_SITE_URL: "https://pocketsisyphus.app"
+        run: pnpm build
+
+      # .nojekyll 보장 — 없으면 Pages 가 Jekyll 로 처리해 «_next» (밑줄 디렉터리)를 통째로
+      # 떨궈 모든 자산이 404 난다. public 의 dotfile 이 아티팩트에 안 실리는 경우가 있어 여기서 강제 생성.
+      - name: Disable Jekyll
+        run: touch out/.nojekyll # working-directory 가 web 이라 web/out 아님
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

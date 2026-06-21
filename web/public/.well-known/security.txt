@@ -1,0 +1,13 @@
+# Pocket Sisyphus — security contact (RFC 9116)
+# Full policy: https://github.com/Wayne-Kim/pocket-sisyphus/blob/main/docs/SECURITY.md
+# Threat model: https://github.com/Wayne-Kim/pocket-sisyphus/blob/main/docs/THREAT_MODEL.md
+#
+# Please report vulnerabilities privately. Do NOT open public issues/PRs for
+# undisclosed security findings — use the GitHub private advisory link below.
+
+Contact: https://github.com/Wayne-Kim/pocket-sisyphus/security/advisories/new
+Contact: mailto:wayne@soomgo.com
+Policy: https://github.com/Wayne-Kim/pocket-sisyphus/blob/main/docs/SECURITY.md
+Preferred-Languages: ko, en
+Canonical: https://pocketsisyphus.app/.well-known/security.txt
+Expires: 2027-06-14T00:00:00.000Z

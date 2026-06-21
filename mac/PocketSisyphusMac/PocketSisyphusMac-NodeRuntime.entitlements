@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- V8/JIT 런타임 (Node.js, Claude CLI 내장 V8) 전용 hardened-runtime 완화.
+         이게 없으면 hardened runtime 이 JIT 페이지를 만들 때 SIGTRAP 으로 죽이고
+         (exit 133), 운 좋게 살아남아도 Node 가 V8 fatal error 로 exit 5 로 종료. -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+
+    <!-- Node 는 native module (.node = dlopen 되는 dylib) 을 런타임에 로드한다.
+         (better-sqlite3, fsevents 등.) Hardened runtime 의 library validation 은
+         자식 dylib 도 동일 Team ID 사인을 요구. 우리가 빌드 시 그것들을 재사인하면
+         같은 팀이라 통과하지만, 미래에 사인 누락이 생겨도 daemon 이 부팅 자체는
+         하도록 안전망으로 켠다. -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+
+    <!-- sandbox / inherit 키 없음 — sandbox 가 꺼져 있으므로 (project.yml). -->
+</dict>
+</plist>

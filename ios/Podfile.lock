@@ -1,0 +1,24 @@
+PODS:
+  - IPtProxy (5.5.0)
+  - Tor (409.9.1):
+    - Tor/CTor (= 409.9.1)
+  - Tor/Core (409.9.1)
+  - Tor/CTor (409.9.1):
+    - Tor/Core
+
+DEPENDENCIES:
+  - IPtProxy (~> 5.5)
+  - Tor (~> 409.8)
+
+SPEC REPOS:
+  trunk:
+    - IPtProxy
+    - Tor
+
+SPEC CHECKSUMS:
+  IPtProxy: 7366257e5c296bf9735c14b431ccb248972f173e
+  Tor: 721c24883922fe8c04e6ae0d91fbbbb677e09bb3
+
+PODFILE CHECKSUM: 45a443f56b42300caa6e1a36f4c1c814a8048e7e
+
+COCOAPODS: 1.16.2

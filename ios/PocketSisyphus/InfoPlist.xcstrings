@@ -1,0 +1,135 @@
+{
+  "sourceLanguage": "ko",
+  "strings": {
+    "NSMicrophoneUsageDescription": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يستخدم الميكروفون لإدخال الأوامر بالصوت."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uses the microphone to enter commands by voice."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa el micrófono para introducir comandos por voz."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilise le microphone pour saisir des commandes à la voix."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आवाज़ से कमांड दर्ज करने के लिए माइक्रोफ़ोन का उपयोग करता है।"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音声でコマンドを入力するためにマイクを使用します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음성으로 명령을 입력하기 위해 마이크를 사용합니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa o microfone para inserir comandos por voz."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Использует микрофон для голосового ввода команд."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用麦克风以通过语音输入命令。"
+          }
+        }
+      }
+    },
+    "NSLocalNetworkUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يلزم الوصول إلى الشبكة المحلية للاتصال مباشرة بجهاز Mac على نفس شبكة Wi-Fi."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local network access is needed to connect directly to your Mac on the same Wi-Fi."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se necesita acceso a la red local para conectarse directamente a tu Mac en la misma Wi-Fi."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'accès au réseau local est nécessaire pour se connecter directement à votre Mac sur le même Wi-Fi."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "उसी Wi-Fi पर अपने Mac से सीधे कनेक्ट होने के लिए स्थानीय नेटवर्क एक्सेस आवश्यक है।"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同じWi-FiのMacに直接接続するためにローカルネットワークへのアクセスが必要です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "같은 Wi-Fi의 Mac에 직접 연결하기 위해 로컬 네트워크 접근이 필요합니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O acesso à rede local é necessário para se conectar diretamente ao seu Mac na mesma Wi-Fi."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для прямого подключения к вашему Mac в той же сети Wi-Fi требуется доступ к локальной сети."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要本地网络访问权限，以便直接连接同一 Wi-Fi 下的 Mac。"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

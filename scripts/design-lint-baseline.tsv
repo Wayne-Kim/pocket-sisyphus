@@ -1,0 +1,778 @@
+# design-lint-baseline.tsv — design-lint.sh --strict(CI 게이트)가 «차감»하는 기존/의도된 부채.
+#
+# 형식: 한 줄당 fingerprint  `코드<TAB>레포상대경로<TAB>발췌`  (TAB 구분). «#» 주석·빈 줄 허용.
+#   - 코드 L/W/T/A/S/R/O/I = design-lint 의 탐지 패밀리(발췌=스캔된 라인, 라인번호 비포함).
+#   - iOS(ios/PocketSisyphus)·Mac(mac/PocketSisyphusMac) 양 앱 경로를 포괄한다(둘 다 스캔하므로).
+#   - 여기 등재된 후보는 게이트(종료코드)에서 빠진다. «새»(미등재) 후보만 PR 을 막는다(diff-집중 래칫).
+#   - 휴리스틱 거짓 양성(오프-그리드 spacing 등)도 baseline 차감 + 사람 판정으로 흡수한다 —
+#     차단은 «미등재 새 후보» 에만 건다.
+#   - 갱신법(i18n-lint-baseline 의 BASELINE-PASTE 블록과 동일): ./scripts/design-lint.sh --strict 가
+#     막을 때 찍는 «### BASELINE-PASTE-BEGIN..END» 블록을 그대로 붙여넣는다. 전체 재생성은:
+#       (head -N 으로 이 헤더만 남기고)  ./scripts/design-lint.sh --strict --soft --quiet --baseline=/dev/null \
+#         | sed -n '/BASELINE-PASTE-BEGIN/,/BASELINE-PASTE-END/p' | grep -v BASELINE-PASTE | grep -Ev '^[[:space:]]*$'
+#     부채/후보를 «고치면» 해당 줄을 지운다(스테일 항목은 무해하나 청소 권장).
+#
+I	ios/PocketSisyphus/Views/ChatView.swift	.frame(width: 44, height: 44)
+I	ios/PocketSisyphus/Views/ShortcutEditorSheet.swift	.frame(width: 44, height: 44)
+I	ios/PocketSisyphus/Views/VoiceDictation.swift	.frame(width: 44, height: 44)
+L	mac/PocketSisyphusMac/Views/MenuContent.swift	.foregroundStyle(.orange)
+L	mac/PocketSisyphusMac/Views/MenuContent.swift	.foregroundStyle(.yellow)
+L	mac/PocketSisyphusMac/Views/MenuContent.swift	.foregroundStyle(.yellow)
+L	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.yellow.opacity(0.12))
+L	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.yellow.opacity(0.12))
+L	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.yellow.opacity(0.12))
+L	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.foregroundStyle(.yellow)
+L	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.foregroundStyle(.yellow)
+L	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.foregroundStyle(.yellow)
+L	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.foregroundStyle(.yellow)
+L	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.foregroundStyle(ok ? Color.green : Color.yellow)
+L	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.foregroundStyle(ok ? Color.green : Color.yellow)
+L	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.foregroundStyle(tight ? Color.yellow : Color.secondary)
+L	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.strokeBorder(Color.yellow, lineWidth: highlighted ? 3 : 0)
+O	ios/PocketSisyphus/Views/AttachmentAnnotationEditor.swift	tool == t ? Theme.accent.opacity(0.18) : Color.clear,
+O	ios/PocketSisyphus/Views/ChatView.swift	.background(Theme.warning.opacity(0.12))
+O	ios/PocketSisyphus/Views/ChatView.swift	.shadow(color: .black.opacity(0.18), radius: 10, y: 3)
+O	ios/PocketSisyphus/Views/DevicesView.swift	.background(Theme.accent.opacity(0.18))
+O	ios/PocketSisyphus/Views/DevicesView.swift	.background(Theme.success.opacity(0.18))
+O	ios/PocketSisyphus/Views/DiffComponents.swift	.background(tint.opacity(0.12))
+O	ios/PocketSisyphus/Views/FileViewer.swift	.background(isSelected ? Theme.pro.opacity(0.18) : Color.clear)
+O	ios/PocketSisyphus/Views/NewSessionSheet.swift	.background(color.opacity(0.18))
+O	ios/PocketSisyphus/Views/PreviewFeedbackSheet.swift	tool == t ? Theme.accent.opacity(0.18) : Color.clear,
+O	ios/PocketSisyphus/Views/SessionListBadges.swift	.background(color.opacity(0.18))
+O	ios/PocketSisyphus/Views/VoiceDictation.swift	.shadow(color: .black.opacity(0.18), radius: 10, y: 3)
+O	ios/PocketSisyphus/Views/Workflow/WorkflowEditorView.swift	.stroke(Color.white.opacity(0.12), lineWidth: 1)
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.black.opacity(0.06))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.black.opacity(0.06))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.green.opacity(0.18))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.secondary.opacity(0.06))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.secondary.opacity(0.06))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.secondary.opacity(0.06))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.secondary.opacity(0.06))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.secondary.opacity(0.06))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.secondary.opacity(0.06))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.secondary.opacity(0.06))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.secondary.opacity(0.06))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.secondary.opacity(0.06))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.secondary.opacity(0.06))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.secondary.opacity(0.06))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.secondary.opacity(0.06))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.yellow.opacity(0.12))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.yellow.opacity(0.12))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(Color.yellow.opacity(0.12))
+O	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.background(color.opacity(0.18))
+R	ios/PocketSisyphus/Views/AttachmentAnnotationEditor.swift	in: RoundedRectangle(cornerRadius: 7, style: .continuous),
+R	ios/PocketSisyphus/Views/AttachmentSheet.swift	.clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+R	ios/PocketSisyphus/Views/BacklogCollect.swift	.clipShape(RoundedRectangle(cornerRadius: 8))
+R	ios/PocketSisyphus/Views/BacklogCollect.swift	RoundedRectangle(cornerRadius: 8, style: .continuous)
+R	ios/PocketSisyphus/Views/BranchSheet.swift	.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+R	ios/PocketSisyphus/Views/BriefDetailView.swift	.background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+R	ios/PocketSisyphus/Views/BriefDetailView.swift	RoundedRectangle(cornerRadius: 16)
+R	ios/PocketSisyphus/Views/CommitsView.swift	.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+R	ios/PocketSisyphus/Views/CommitsView.swift	.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+R	ios/PocketSisyphus/Views/DiffComponents.swift	.clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+R	ios/PocketSisyphus/Views/DiffSheet.swift	RoundedRectangle(cornerRadius: 10, style: .continuous)
+R	ios/PocketSisyphus/Views/GuideView.swift	.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+R	ios/PocketSisyphus/Views/GuideView.swift	.clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+R	ios/PocketSisyphus/Views/GuideView.swift	RoundedRectangle(cornerRadius: 10, style: .continuous)
+R	ios/PocketSisyphus/Views/PairView.swift	.clipShape(RoundedRectangle(cornerRadius: 16))
+R	ios/PocketSisyphus/Views/PairView.swift	RoundedRectangle(cornerRadius: 12, style: .continuous)
+R	ios/PocketSisyphus/Views/PairView.swift	RoundedRectangle(cornerRadius: 12, style: .continuous)
+R	ios/PocketSisyphus/Views/PairView.swift	RoundedRectangle(cornerRadius: 8, style: .continuous)
+R	ios/PocketSisyphus/Views/PaywallView.swift	RoundedRectangle(cornerRadius: 12, style: .continuous)
+R	ios/PocketSisyphus/Views/PaywallView.swift	RoundedRectangle(cornerRadius: 16, style: .continuous)
+R	ios/PocketSisyphus/Views/PreviewFeedbackSheet.swift	.clipShape(RoundedRectangle(cornerRadius: 12))
+R	ios/PocketSisyphus/Views/PreviewFeedbackSheet.swift	.overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.separator))
+R	ios/PocketSisyphus/Views/PreviewFeedbackSheet.swift	in: RoundedRectangle(cornerRadius: 7, style: .continuous),
+R	ios/PocketSisyphus/Views/ScheduleBuilder.swift	.clipShape(RoundedRectangle(cornerRadius: 8))
+R	ios/PocketSisyphus/Views/SessionListRows.swift	RoundedRectangle(cornerRadius: 4)
+R	ios/PocketSisyphus/Views/ShortcutEditorSheet.swift	.background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+R	ios/PocketSisyphus/Views/ShortcutEditorSheet.swift	.background(Theme.accent.opacity(0.15), in: RoundedRectangle(cornerRadius: 10))
+R	ios/PocketSisyphus/Views/ShortcutEditorSheet.swift	in: RoundedRectangle(cornerRadius: 10))
+R	ios/PocketSisyphus/Views/ShortcutEditorSheet.swift	in: RoundedRectangle(cornerRadius: 8))
+R	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 10))
+R	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 12))
+R	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 10))
+R	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 12))
+R	mac/PocketSisyphusMac/Views/GuideWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+R	mac/PocketSisyphusMac/Views/GuideWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+R	mac/PocketSisyphusMac/Views/GuideWindow.swift	RoundedRectangle(cornerRadius: 10, style: .continuous)
+R	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 10))
+R	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 12))
+R	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 12))
+R	mac/PocketSisyphusMac/Views/QRWindow.swift	.background(RoundedRectangle(cornerRadius: 8).fill(Color.secondary.opacity(0.1)))
+R	mac/PocketSisyphusMac/Views/QRWindow.swift	.cornerRadius(12)
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 10))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 10))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 10))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 10))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 12))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 12))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 12))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 12))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 12))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 12))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 12))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 12))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 12))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 12))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 12))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 8))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 8))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 8))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.clipShape(RoundedRectangle(cornerRadius: 8))
+R	mac/PocketSisyphusMac/Views/SettingsWindow.swift	RoundedRectangle(cornerRadius: 12)
+S	ios/PocketSisyphus/Views/AppRoot.swift	.padding(.horizontal, 12)
+S	ios/PocketSisyphus/Views/AppRoot.swift	.padding(.horizontal, 24)
+S	ios/PocketSisyphus/Views/AppRoot.swift	.padding(.horizontal, 24)
+S	ios/PocketSisyphus/Views/AppRoot.swift	.padding(.horizontal, 24)
+S	ios/PocketSisyphus/Views/AppRoot.swift	.padding(.horizontal, 24)
+S	ios/PocketSisyphus/Views/AppRoot.swift	.padding(.horizontal, 24)
+S	ios/PocketSisyphus/Views/AppRoot.swift	.padding(.horizontal, 32)
+S	ios/PocketSisyphus/Views/AppRoot.swift	.padding(.top, 2)
+S	ios/PocketSisyphus/Views/AppRoot.swift	.padding(.top, 2)
+S	ios/PocketSisyphus/Views/AppRoot.swift	.padding(.top, 4)
+S	ios/PocketSisyphus/Views/AppRoot.swift	.padding(.top, 4)
+S	ios/PocketSisyphus/Views/AppRoot.swift	.padding(.top, 8)
+S	ios/PocketSisyphus/Views/AppRoot.swift	.padding(.vertical, 10)
+S	ios/PocketSisyphus/Views/AppRoot.swift	.padding(.vertical, 12)
+S	ios/PocketSisyphus/Views/AppRoot.swift	.padding(.vertical, 12)
+S	ios/PocketSisyphus/Views/AppRoot.swift	.padding(.vertical, 6)
+S	ios/PocketSisyphus/Views/AppRoot.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/AppRoot.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/AppRoot.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/AppRoot.swift	VStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/AppRoot.swift	VStack(spacing: 12) {
+S	ios/PocketSisyphus/Views/AppRoot.swift	VStack(spacing: 20) {
+S	ios/PocketSisyphus/Views/AppRoot.swift	VStack(spacing: 24) {
+S	ios/PocketSisyphus/Views/AppRoot.swift	VStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/AppRoot.swift	VStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/AppRoot.swift	VStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/AppRoot.swift	VStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/ArtifactsView.swift	HStack(spacing: 4) {
+S	ios/PocketSisyphus/Views/AttachmentAnnotationEditor.swift	.padding(.horizontal, 12)
+S	ios/PocketSisyphus/Views/AttachmentAnnotationEditor.swift	.padding(.horizontal, 20)
+S	ios/PocketSisyphus/Views/AttachmentAnnotationEditor.swift	.padding(.vertical, 12)
+S	ios/PocketSisyphus/Views/AttachmentAnnotationEditor.swift	.padding(.vertical, 8)
+S	ios/PocketSisyphus/Views/AttachmentAnnotationEditor.swift	HStack(spacing: 14) {
+S	ios/PocketSisyphus/Views/AttachmentSheet.swift	.padding(6)
+S	ios/PocketSisyphus/Views/BacklogBriefRow.swift	.padding(.horizontal, 7)
+S	ios/PocketSisyphus/Views/BacklogBriefRow.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/BacklogBriefRow.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/BacklogBriefRow.swift	HStack(alignment: .top, spacing: 8) {
+S	ios/PocketSisyphus/Views/BacklogBriefRow.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/BacklogBriefRow.swift	VStack(alignment: .leading, spacing: 4) {
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	.padding(.vertical, 4)
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	.padding(.vertical, 4)
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	.padding(.vertical, 4)
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	.padding(8)
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	.padding(8)
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	HStack(alignment: .firstTextBaseline, spacing: 4) {
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	HStack(alignment: .top, spacing: 8) {
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	HStack(alignment: .top, spacing: 8) {
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	HStack(alignment: .top, spacing: 8) {
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	HStack(spacing: 4) {
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	HStack(spacing: 4) {
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	HStack(spacing: 4) {
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	VStack(alignment: .leading, spacing: 4) {
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	VStack(alignment: .leading, spacing: 4) {
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	VStack(alignment: .leading, spacing: 4) {
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	VStack(alignment: .leading, spacing: 8) {
+S	ios/PocketSisyphus/Views/BacklogResearch.swift	.padding(.horizontal, 7).padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/BacklogResearch.swift	.padding(.horizontal, 7).padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/BacklogResearch.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/BacklogResearch.swift	HStack(alignment: .top, spacing: 8) {
+S	ios/PocketSisyphus/Views/BacklogResearch.swift	HStack(spacing: 5) {
+S	ios/PocketSisyphus/Views/BacklogResearch.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/BacklogResearch.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/BacklogResearch.swift	VStack(alignment: .leading, spacing: 12) {
+S	ios/PocketSisyphus/Views/BacklogResearch.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/BacklogResearch.swift	VStack(alignment: .leading, spacing: 4) {
+S	ios/PocketSisyphus/Views/BacklogStats.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/BacklogStats.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/BacklogStats.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/BacklogStats.swift	HStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/BacklogStats.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/BacklogStats.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/BacklogStats.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/BacklogStats.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/BacklogStats.swift	VStack(alignment: .leading, spacing: 4) {
+S	ios/PocketSisyphus/Views/BacklogView.swift	.padding(.horizontal, 24)
+S	ios/PocketSisyphus/Views/BacklogView.swift	.padding(.horizontal, 24)
+S	ios/PocketSisyphus/Views/BacklogView.swift	.padding(.horizontal, 24)
+S	ios/PocketSisyphus/Views/BacklogView.swift	.padding(.top, 4)
+S	ios/PocketSisyphus/Views/BacklogView.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/BacklogView.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/BacklogView.swift	ProgressView().padding(.trailing, 4)
+S	ios/PocketSisyphus/Views/BootView.swift	.padding(.bottom, 20)
+S	ios/PocketSisyphus/Views/BootView.swift	.padding(.bottom, 4)
+S	ios/PocketSisyphus/Views/BootView.swift	.padding(.bottom, 8)
+S	ios/PocketSisyphus/Views/BootView.swift	.padding(.bottom, 8)
+S	ios/PocketSisyphus/Views/BootView.swift	.padding(.horizontal, 32)
+S	ios/PocketSisyphus/Views/BootView.swift	.padding(.horizontal, 32)
+S	ios/PocketSisyphus/Views/BootView.swift	.padding(.horizontal, 32)
+S	ios/PocketSisyphus/Views/BootView.swift	.padding(.top, 4)
+S	ios/PocketSisyphus/Views/BootView.swift	.padding(.top, 4)
+S	ios/PocketSisyphus/Views/BootView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/BootView.swift	VStack(spacing: 24) {
+S	ios/PocketSisyphus/Views/BranchSheet.swift	.padding(.horizontal, 8)
+S	ios/PocketSisyphus/Views/BranchSheet.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/BranchSheet.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/BranchSheet.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/BranchSheet.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/BranchSheet.swift	.padding(.vertical, 3)
+S	ios/PocketSisyphus/Views/BranchSheet.swift	.padding(24)
+S	ios/PocketSisyphus/Views/BranchSheet.swift	HStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/BranchSheet.swift	HStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/BranchSheet.swift	HStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/BranchSheet.swift	HStack(spacing: 14) {
+S	ios/PocketSisyphus/Views/BranchSheet.swift	HStack(spacing: 4) {
+S	ios/PocketSisyphus/Views/BranchSheet.swift	HStack(spacing: 4) {
+S	ios/PocketSisyphus/Views/BranchSheet.swift	Spacer(minLength: 8)
+S	ios/PocketSisyphus/Views/BranchSheet.swift	Spacer(minLength: 8)
+S	ios/PocketSisyphus/Views/BranchSheet.swift	Spacer(minLength: 8)
+S	ios/PocketSisyphus/Views/BranchSheet.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/BranchSheet.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/BranchSheet.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/BriefDetailView.swift	.padding(.bottom, 8)
+S	ios/PocketSisyphus/Views/BriefDetailView.swift	.padding(.vertical, 10)
+S	ios/PocketSisyphus/Views/BriefDetailView.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/BriefDetailView.swift	.padding(14)
+S	ios/PocketSisyphus/Views/BriefDetailView.swift	HStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/BriefDetailView.swift	HStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/BriefDetailView.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/BriefDetailView.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/BriefDetailView.swift	Spacer(minLength: 8)
+S	ios/PocketSisyphus/Views/BriefDetailView.swift	VStack(alignment: .leading, spacing: 3) {
+S	ios/PocketSisyphus/Views/BriefDetailView.swift	VStack(alignment: .leading, spacing: 6) {
+S	ios/PocketSisyphus/Views/BriefDetailView.swift	VStack(alignment: .leading, spacing: 8) {
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.horizontal, 12)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.horizontal, 12)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.horizontal, 12)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.horizontal, 12)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.horizontal, 12)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.horizontal, 12)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.horizontal, 12)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.horizontal, 12)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.horizontal, 12)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.horizontal, 18)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.horizontal, 8)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.top, 12)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.vertical, 12)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.vertical, 4)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.vertical, 5)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.vertical, 5)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.vertical, 5)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.vertical, 5)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.vertical, 5)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.vertical, 5)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.vertical, 5)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.vertical, 8)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(.vertical, 8)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(14)
+S	ios/PocketSisyphus/Views/ChatView.swift	.padding(8)
+S	ios/PocketSisyphus/Views/ChatView.swift	HStack(alignment: .top, spacing: 8) {
+S	ios/PocketSisyphus/Views/ChatView.swift	HStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/ChatView.swift	HStack(spacing: 12) {
+S	ios/PocketSisyphus/Views/ChatView.swift	HStack(spacing: 4) {
+S	ios/PocketSisyphus/Views/ChatView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/ChatView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/ChatView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/ChatView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/ChatView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/ChatView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/ChatView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/ChatView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/ChatView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/ChatView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/ChatView.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/ChatView.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/ChatView.swift	Spacer(minLength: 4)
+S	ios/PocketSisyphus/Views/ChatView.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/ChatView.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/ChatView.swift	VStack(alignment: .leading, spacing: 4) {
+S	ios/PocketSisyphus/Views/ChatView.swift	VStack(alignment: .trailing, spacing: 4) {
+S	ios/PocketSisyphus/Views/CommitsView.swift	.padding(.bottom, 24)
+S	ios/PocketSisyphus/Views/CommitsView.swift	.padding(.horizontal, 16)
+S	ios/PocketSisyphus/Views/CommitsView.swift	.padding(.horizontal, 16)
+S	ios/PocketSisyphus/Views/CommitsView.swift	.padding(.horizontal, 24)
+S	ios/PocketSisyphus/Views/CommitsView.swift	.padding(.vertical, 12)
+S	ios/PocketSisyphus/Views/CommitsView.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/CommitsView.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/CommitsView.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/CommitsView.swift	.padding(.vertical, 4)
+S	ios/PocketSisyphus/Views/CommitsView.swift	.padding(24)
+S	ios/PocketSisyphus/Views/CommitsView.swift	.padding(24)
+S	ios/PocketSisyphus/Views/CommitsView.swift	HStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/CommitsView.swift	HStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/CommitsView.swift	HStack(spacing: 14) {
+S	ios/PocketSisyphus/Views/CommitsView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/CommitsView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/CommitsView.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/CommitsView.swift	Spacer(minLength: 8)
+S	ios/PocketSisyphus/Views/CommitsView.swift	VStack(alignment: .leading, spacing: 3) {
+S	ios/PocketSisyphus/Views/CommitsView.swift	VStack(alignment: .leading, spacing: 3) {
+S	ios/PocketSisyphus/Views/CommitsView.swift	VStack(alignment: .leading, spacing: 3) {
+S	ios/PocketSisyphus/Views/CommitsView.swift	VStack(alignment: .leading, spacing: 8) {
+S	ios/PocketSisyphus/Views/CommitsView.swift	VStack(spacing: 14) {
+S	ios/PocketSisyphus/Views/ConnectionModeView.swift	.padding(.horizontal, 24)
+S	ios/PocketSisyphus/Views/ConnectionModeView.swift	.padding(.horizontal, 32)
+S	ios/PocketSisyphus/Views/CronEditorSheet.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/CronEditorSheet.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/CronEditorSheet.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/CronListView.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/CronListView.swift	HStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/CronListView.swift	VStack(alignment: .leading, spacing: 6) {
+S	ios/PocketSisyphus/Views/DevicesView.swift	.padding(.horizontal, 6).padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/DevicesView.swift	.padding(.horizontal, 6).padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/DevicesView.swift	.padding(.horizontal, 6).padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/DevicesView.swift	.padding(.horizontal, 6).padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/DevicesView.swift	.padding(.vertical, 4)
+S	ios/PocketSisyphus/Views/DevicesView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/DevicesView.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/DevicesView.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/DevicesView.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/DevicesView.swift	VStack(alignment: .leading, spacing: 6) {
+S	ios/PocketSisyphus/Views/DiffComponents.swift	.padding(.bottom, 16)
+S	ios/PocketSisyphus/Views/DiffComponents.swift	.padding(.horizontal, 12)
+S	ios/PocketSisyphus/Views/DiffComponents.swift	.padding(.horizontal, 16)
+S	ios/PocketSisyphus/Views/DiffComponents.swift	.padding(.horizontal, 6)
+S	ios/PocketSisyphus/Views/DiffComponents.swift	.padding(.horizontal, 8)
+S	ios/PocketSisyphus/Views/DiffComponents.swift	.padding(.trailing, 16)
+S	ios/PocketSisyphus/Views/DiffComponents.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/DiffComponents.swift	.padding(.vertical, 6)
+S	ios/PocketSisyphus/Views/DiffComponents.swift	.padding(.vertical, 6)
+S	ios/PocketSisyphus/Views/DiffComponents.swift	.padding(.vertical, 9)
+S	ios/PocketSisyphus/Views/DiffComponents.swift	HStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/DiffComponents.swift	HStack(spacing: 18) {
+S	ios/PocketSisyphus/Views/DiffComponents.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/DiffComponents.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/DiffComponents.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/DiffSheet.swift	.padding(.horizontal, 12)
+S	ios/PocketSisyphus/Views/DiffSheet.swift	.padding(.vertical, 12)
+S	ios/PocketSisyphus/Views/DiffSheet.swift	.padding(24)
+S	ios/PocketSisyphus/Views/DiffSheet.swift	.padding(24)
+S	ios/PocketSisyphus/Views/DiffSheet.swift	.padding(24)
+S	ios/PocketSisyphus/Views/DiffSheet.swift	.padding(24)
+S	ios/PocketSisyphus/Views/DiffSheet.swift	.padding(8)
+S	ios/PocketSisyphus/Views/DiffSheet.swift	.padding(8)
+S	ios/PocketSisyphus/Views/DiffSheet.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/DiffSheet.swift	VStack(alignment: .leading, spacing: 12) {
+S	ios/PocketSisyphus/Views/DiffSheet.swift	VStack(alignment: .leading, spacing: 6) {
+S	ios/PocketSisyphus/Views/DirectoryPickerSheet.swift	.padding(.vertical, 6)
+S	ios/PocketSisyphus/Views/DirectoryPickerSheet.swift	VStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/FileBrowserSheet.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/FileBrowserSheet.swift	HStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/FileBrowserSheet.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/FileViewer.swift	.padding(.horizontal, 12)
+S	ios/PocketSisyphus/Views/FileViewer.swift	.padding(.horizontal, 12)
+S	ios/PocketSisyphus/Views/FileViewer.swift	.padding(.horizontal, 14)
+S	ios/PocketSisyphus/Views/FileViewer.swift	.padding(.horizontal, 8)
+S	ios/PocketSisyphus/Views/FileViewer.swift	.padding(.top, 8)
+S	ios/PocketSisyphus/Views/FileViewer.swift	.padding(.trailing, 12)
+S	ios/PocketSisyphus/Views/FileViewer.swift	.padding(.trailing, 8)
+S	ios/PocketSisyphus/Views/FileViewer.swift	.padding(.vertical, 6)
+S	ios/PocketSisyphus/Views/FileViewer.swift	.padding(.vertical, 6)
+S	ios/PocketSisyphus/Views/FileViewer.swift	.padding(.vertical, 8)
+S	ios/PocketSisyphus/Views/FileViewer.swift	.padding(.vertical, 8)
+S	ios/PocketSisyphus/Views/FileViewer.swift	.padding(9)
+S	ios/PocketSisyphus/Views/FileViewer.swift	HStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/FileViewer.swift	HStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/FileViewer.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/GuideView.swift	.padding(.bottom, 4)
+S	ios/PocketSisyphus/Views/GuideView.swift	.padding(.horizontal, 16)
+S	ios/PocketSisyphus/Views/GuideView.swift	.padding(.leading, 4)
+S	ios/PocketSisyphus/Views/GuideView.swift	.padding(.vertical, 16)
+S	ios/PocketSisyphus/Views/GuideView.swift	.padding(.vertical, 4)
+S	ios/PocketSisyphus/Views/GuideView.swift	.padding(10)
+S	ios/PocketSisyphus/Views/GuideView.swift	.padding(12)
+S	ios/PocketSisyphus/Views/GuideView.swift	HStack(alignment: .center, spacing: 12) {
+S	ios/PocketSisyphus/Views/GuideView.swift	HStack(alignment: .top, spacing: 10) {
+S	ios/PocketSisyphus/Views/GuideView.swift	HStack(alignment: .top, spacing: 10) {
+S	ios/PocketSisyphus/Views/GuideView.swift	HStack(alignment: .top, spacing: 8) {
+S	ios/PocketSisyphus/Views/GuideView.swift	Spacer(minLength: 12)
+S	ios/PocketSisyphus/Views/GuideView.swift	VStack(alignment: .leading, spacing: 16) {
+S	ios/PocketSisyphus/Views/GuideView.swift	VStack(alignment: .leading, spacing: 3) {
+S	ios/PocketSisyphus/Views/GuideView.swift	VStack(alignment: .leading, spacing: 6) {
+S	ios/PocketSisyphus/Views/IncompatibleView.swift	.padding(.horizontal, 12)
+S	ios/PocketSisyphus/Views/IncompatibleView.swift	.padding(.horizontal, 28)
+S	ios/PocketSisyphus/Views/IncompatibleView.swift	.padding(.top, 12)
+S	ios/PocketSisyphus/Views/IncompatibleView.swift	.padding(.top, 8)
+S	ios/PocketSisyphus/Views/IncompatibleView.swift	.padding(.vertical, 12)
+S	ios/PocketSisyphus/Views/IncompatibleView.swift	.padding(.vertical, 8)
+S	ios/PocketSisyphus/Views/IncompatibleView.swift	.padding(6)
+S	ios/PocketSisyphus/Views/IncompatibleView.swift	HStack(alignment: .top, spacing: 10) {
+S	ios/PocketSisyphus/Views/IncompatibleView.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/IncompatibleView.swift	VStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/IncompatibleView.swift	VStack(spacing: 20) {
+S	ios/PocketSisyphus/Views/IncompatibleView.swift	VStack(spacing: 4) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	.padding(.horizontal, 6)
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	.padding(.vertical, 4)
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(alignment: .top, spacing: 10) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 12) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 12) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	VStack(alignment: .leading, spacing: 4) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	VStack(alignment: .leading, spacing: 4) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	VStack(alignment: .leading, spacing: 4) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	VStack(alignment: .leading, spacing: 4) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	VStack(alignment: .leading, spacing: 4) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	VStack(alignment: .leading, spacing: 4) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	VStack(alignment: .leading, spacing: 6) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	VStack(alignment: .leading, spacing: 6) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	VStack(alignment: .leading, spacing: 6) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	VStack(alignment: .leading, spacing: 6) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	VStack(alignment: .leading, spacing: 6) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	VStack(alignment: .leading, spacing: 6) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	VStack(alignment: .leading, spacing: 6) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	VStack(alignment: .leading, spacing: 8) {
+S	ios/PocketSisyphus/Views/NewSessionSheet.swift	VStack(alignment: .leading, spacing: 8) {
+S	ios/PocketSisyphus/Views/PairView.swift	.padding(.horizontal, 14).padding(.vertical, 12)
+S	ios/PocketSisyphus/Views/PairView.swift	.padding(.horizontal, 14).padding(.vertical, 12)
+S	ios/PocketSisyphus/Views/PairView.swift	.padding(.top, 2)
+S	ios/PocketSisyphus/Views/PairView.swift	.padding(.top, 2)
+S	ios/PocketSisyphus/Views/PairView.swift	.padding(.top, 2)
+S	ios/PocketSisyphus/Views/PairView.swift	.padding(8)
+S	ios/PocketSisyphus/Views/PairView.swift	HStack(alignment: .top, spacing: 12) {
+S	ios/PocketSisyphus/Views/PairView.swift	HStack(alignment: .top, spacing: 8) {
+S	ios/PocketSisyphus/Views/PairView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/PairView.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/PairView.swift	VStack(alignment: .leading, spacing: 12) {
+S	ios/PocketSisyphus/Views/PairView.swift	VStack(alignment: .leading, spacing: 4) {
+S	ios/PocketSisyphus/Views/PairView.swift	VStack(alignment: .leading, spacing: 6) {
+S	ios/PocketSisyphus/Views/PairView.swift	VStack(spacing: 16) {
+S	ios/PocketSisyphus/Views/PaywallView.swift	.padding(.horizontal, 16)
+S	ios/PocketSisyphus/Views/PaywallView.swift	.padding(.horizontal, 24)
+S	ios/PocketSisyphus/Views/PaywallView.swift	.padding(.horizontal, 24)
+S	ios/PocketSisyphus/Views/PaywallView.swift	.padding(.horizontal, 8)
+S	ios/PocketSisyphus/Views/PaywallView.swift	.padding(.horizontal, 8)
+S	ios/PocketSisyphus/Views/PaywallView.swift	.padding(.horizontal, 8)
+S	ios/PocketSisyphus/Views/PaywallView.swift	.padding(.top, 24)
+S	ios/PocketSisyphus/Views/PaywallView.swift	.padding(.top, 4)
+S	ios/PocketSisyphus/Views/PaywallView.swift	.padding(.vertical, 10)
+S	ios/PocketSisyphus/Views/PaywallView.swift	.padding(.vertical, 12)
+S	ios/PocketSisyphus/Views/PaywallView.swift	.padding(.vertical, 12)
+S	ios/PocketSisyphus/Views/PaywallView.swift	.padding(.vertical, 14)
+S	ios/PocketSisyphus/Views/PaywallView.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/PaywallView.swift	.padding(.vertical, 32)
+S	ios/PocketSisyphus/Views/PaywallView.swift	HStack(spacing: 12) {
+S	ios/PocketSisyphus/Views/PaywallView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/PaywallView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/PaywallView.swift	VStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/PaywallView.swift	VStack(spacing: 12) {
+S	ios/PocketSisyphus/Views/PaywallView.swift	VStack(spacing: 12) {
+S	ios/PocketSisyphus/Views/PaywallView.swift	VStack(spacing: 24) {
+S	ios/PocketSisyphus/Views/PaywallView.swift	VStack(spacing: 4) {
+S	ios/PocketSisyphus/Views/PaywallView.swift	VStack(spacing: 4) {
+S	ios/PocketSisyphus/Views/PaywallView.swift	VStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/PoAgentSection.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/PreviewFeedbackSheet.swift	HStack(spacing: 16) {
+S	ios/PocketSisyphus/Views/PreviewFeedbackSheet.swift	VStack(spacing: 12) {
+S	ios/PocketSisyphus/Views/PreviewView.swift	.padding(.bottom, 24)
+S	ios/PocketSisyphus/Views/PreviewView.swift	.padding(.horizontal, 14)
+S	ios/PocketSisyphus/Views/PreviewView.swift	.padding(.vertical, 10)
+S	ios/PocketSisyphus/Views/PreviewView.swift	.padding(32)
+S	ios/PocketSisyphus/Views/PreviewView.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/PreviewView.swift	VStack(spacing: 12) {
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	.padding(.horizontal, 10)
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	.padding(.horizontal, 10)
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	.padding(.horizontal, 6)
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	.padding(.vertical, 6)
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	.padding(.vertical, 6)
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	.padding(10)
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	.padding(14)
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	HStack(alignment: .top, spacing: 6) {
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	VStack(alignment: .leading, spacing: 6) {
+S	ios/PocketSisyphus/Views/RemoteScreenView.swift	VStack(alignment: .trailing, spacing: 6) {
+S	ios/PocketSisyphus/Views/RepoPathField.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/ScheduleBuilder.swift	.padding(.vertical, 8)
+S	ios/PocketSisyphus/Views/ScheduleBuilder.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/SessionListBadges.swift	HStack(spacing: 3) {
+S	ios/PocketSisyphus/Views/SessionListBadges.swift	HStack(spacing: 3) {
+S	ios/PocketSisyphus/Views/SessionListBadges.swift	HStack(spacing: 3) {
+S	ios/PocketSisyphus/Views/SessionListBadges.swift	HStack(spacing: 3) {
+S	ios/PocketSisyphus/Views/SessionListBadges.swift	HStack(spacing: 3) {
+S	ios/PocketSisyphus/Views/SessionListHeaders.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/SessionListHeaders.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/SessionListHeaders.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/SessionListRows.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/SessionListRows.swift	.padding(.vertical, 4)
+S	ios/PocketSisyphus/Views/SessionListRows.swift	HStack(alignment: .top, spacing: 10) {
+S	ios/PocketSisyphus/Views/SessionListRows.swift	HStack(alignment: .top, spacing: 10) {
+S	ios/PocketSisyphus/Views/SessionListRows.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/SessionListRows.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/SessionListRows.swift	VStack(alignment: .leading, spacing: 3) {
+S	ios/PocketSisyphus/Views/SessionListRows.swift	VStack(alignment: .leading, spacing: 6) {
+S	ios/PocketSisyphus/Views/SessionSheets.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/SessionSheets.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/SessionSheets.swift	HStack(alignment: .top, spacing: 10) {
+S	ios/PocketSisyphus/Views/SessionSheets.swift	HStack(alignment: .top, spacing: 10) {
+S	ios/PocketSisyphus/Views/SessionSheets.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/SessionSheets.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/SessionSheets.swift	VStack(alignment: .leading, spacing: 3) {
+S	ios/PocketSisyphus/Views/SessionsView.swift	.padding(.horizontal, 24)
+S	ios/PocketSisyphus/Views/SessionsView.swift	.padding(.top, 2)
+S	ios/PocketSisyphus/Views/SessionsView.swift	.padding(.vertical, 12)
+S	ios/PocketSisyphus/Views/SessionsView.swift	.padding(.vertical, 12)
+S	ios/PocketSisyphus/Views/SessionsView.swift	.padding(.vertical, 12)
+S	ios/PocketSisyphus/Views/SessionsView.swift	.padding(.vertical, 12)
+S	ios/PocketSisyphus/Views/SessionsView.swift	.padding(.vertical, 32)
+S	ios/PocketSisyphus/Views/SessionsView.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/SessionsView.swift	VStack(spacing: 14) {
+S	ios/PocketSisyphus/Views/SettingsSheet.swift	.padding(.bottom, 24)
+S	ios/PocketSisyphus/Views/SettingsSheet.swift	.padding(.horizontal, 16)
+S	ios/PocketSisyphus/Views/SettingsSheet.swift	.padding(.horizontal, 16)
+S	ios/PocketSisyphus/Views/SettingsSheet.swift	.padding(.vertical, 12)
+S	ios/PocketSisyphus/Views/SettingsSheet.swift	HStack(spacing: 5) {
+S	ios/PocketSisyphus/Views/SettingsSheet.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/SettingsSheet.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/SettingsSheet.swift	Spacer(minLength: 8)
+S	ios/PocketSisyphus/Views/ShortcutEditorSheet.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/ShortcutEditorSheet.swift	.padding(.vertical, 2)
+S	ios/PocketSisyphus/Views/ShortcutEditorSheet.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/ShortcutEditorSheet.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/ShortcutEditorSheet.swift	LazyVGrid(columns: iconGrid, spacing: 10) {
+S	ios/PocketSisyphus/Views/ShortcutEditorSheet.swift	VStack(spacing: 4) {
+S	ios/PocketSisyphus/Views/ShortcutEditorSheet.swift	private let iconGrid = [GridItem(.adaptive(minimum: 44), spacing: 10)]
+S	ios/PocketSisyphus/Views/TorBridgeView.swift	.padding(.horizontal, 24)
+S	ios/PocketSisyphus/Views/TorBridgeView.swift	.padding(.top, 2)
+S	ios/PocketSisyphus/Views/TorBridgeView.swift	.padding(12)
+S	ios/PocketSisyphus/Views/TorBridgeView.swift	HStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/TorBridgeView.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/TorBridgeView.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/TorBridgeView.swift	VStack(alignment: .leading, spacing: 4) {
+S	ios/PocketSisyphus/Views/TorBridgeView.swift	VStack(alignment: .leading, spacing: 8) {
+S	ios/PocketSisyphus/Views/VoiceDictation.swift	.padding(.horizontal, 16)
+S	ios/PocketSisyphus/Views/VoiceDictation.swift	.padding(.horizontal, 16)
+S	ios/PocketSisyphus/Views/VoiceDictation.swift	.padding(.horizontal, 18)
+S	ios/PocketSisyphus/Views/VoiceDictation.swift	.padding(.top, 12)
+S	ios/PocketSisyphus/Views/VoiceDictation.swift	.padding(.top, 12)
+S	ios/PocketSisyphus/Views/VoiceDictation.swift	.padding(.top, 12)
+S	ios/PocketSisyphus/Views/VoiceDictation.swift	.padding(.vertical, 10)
+S	ios/PocketSisyphus/Views/VoiceDictation.swift	.padding(.vertical, 10)
+S	ios/PocketSisyphus/Views/VoiceDictation.swift	.padding(.vertical, 12)
+S	ios/PocketSisyphus/Views/VoiceDictation.swift	HStack(alignment: lineLimit == nil ? .center : .bottom, spacing: 8) {
+S	ios/PocketSisyphus/Views/VoiceDictation.swift	HStack(spacing: 12) {
+S	ios/PocketSisyphus/Views/VoiceDictation.swift	HStack(spacing: 6) {
+S	ios/PocketSisyphus/Views/VoiceDictation.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/VoiceDictation.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/Workflow/WorkflowCanvasView.swift	HStack(spacing: 2) {
+S	ios/PocketSisyphus/Views/Workflow/WorkflowCanvasView.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/Workflow/WorkflowCanvasView.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/Workflow/WorkflowCreatorSheet.swift	HStack(spacing: 8) {
+S	ios/PocketSisyphus/Views/Workflow/WorkflowEditorView.swift	.padding(.horizontal, 14)
+S	ios/PocketSisyphus/Views/Workflow/WorkflowEditorView.swift	.padding(.vertical, 11)
+S	ios/PocketSisyphus/Views/Workflow/WorkflowEditorView.swift	HStack(spacing: 10) {
+S	ios/PocketSisyphus/Views/Workflow/WorkflowEditorView.swift	VStack(alignment: .leading, spacing: 2) {
+S	ios/PocketSisyphus/Views/Workflow/WorkflowRunHistorySheet.swift	.padding(.vertical, 3)
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	.padding(.top, 2)
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	.padding(.top, 4)
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	.padding(10)
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	.padding(14)
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	.padding(20)
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	HStack(alignment: .top, spacing: 12) {
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	HStack(alignment: .top, spacing: 8) {
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	HStack(alignment: .top, spacing: 8) {
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	HStack(spacing: 10) {
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	VStack(alignment: .leading, spacing: 10) {
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	VStack(alignment: .leading, spacing: 12) {
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	VStack(alignment: .leading, spacing: 18) {
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/AscSettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	.padding(.top, 2)
+S	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	.padding(.top, 4)
+S	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	.padding(10)
+S	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	.padding(14)
+S	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	.padding(20)
+S	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	HStack(alignment: .top, spacing: 12) {
+S	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	HStack(alignment: .top, spacing: 8) {
+S	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	HStack(alignment: .top, spacing: 8) {
+S	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	HStack(spacing: 10) {
+S	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	VStack(alignment: .leading, spacing: 10) {
+S	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	VStack(alignment: .leading, spacing: 12) {
+S	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	VStack(alignment: .leading, spacing: 18) {
+S	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/DiscordSettingsWindow.swift	VStack(alignment: .leading, spacing: 6) {
+S	mac/PocketSisyphusMac/Views/GuideWindow.swift	.padding(.bottom, 4)
+S	mac/PocketSisyphusMac/Views/GuideWindow.swift	.padding(.leading, 4)
+S	mac/PocketSisyphusMac/Views/GuideWindow.swift	.padding(.vertical, 2)
+S	mac/PocketSisyphusMac/Views/GuideWindow.swift	.padding(10)
+S	mac/PocketSisyphusMac/Views/GuideWindow.swift	.padding(12)
+S	mac/PocketSisyphusMac/Views/GuideWindow.swift	.padding(20)
+S	mac/PocketSisyphusMac/Views/GuideWindow.swift	HStack(alignment: .top, spacing: 10) {
+S	mac/PocketSisyphusMac/Views/GuideWindow.swift	HStack(alignment: .top, spacing: 12) {
+S	mac/PocketSisyphusMac/Views/GuideWindow.swift	HStack(alignment: .top, spacing: 8) {
+S	mac/PocketSisyphusMac/Views/GuideWindow.swift	Spacer(minLength: 16)
+S	mac/PocketSisyphusMac/Views/GuideWindow.swift	VStack(alignment: .leading, spacing: 16) {
+S	mac/PocketSisyphusMac/Views/GuideWindow.swift	VStack(alignment: .leading, spacing: 2) {
+S	mac/PocketSisyphusMac/Views/GuideWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/GuideWindow.swift	VStack(alignment: .leading, spacing: 6) {
+S	mac/PocketSisyphusMac/Views/GuideWindow.swift	VStack(spacing: 12) {
+S	mac/PocketSisyphusMac/Views/MenuContent.swift	.padding(12)
+S	mac/PocketSisyphusMac/Views/MenuContent.swift	HStack(alignment: .firstTextBaseline, spacing: 6) {
+S	mac/PocketSisyphusMac/Views/MenuContent.swift	HStack(spacing: 6) {
+S	mac/PocketSisyphusMac/Views/MenuContent.swift	VStack(alignment: .leading, spacing: 10) {
+S	mac/PocketSisyphusMac/Views/MenuContent.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/MenuContent.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/MenuContent.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/MenuContent.swift	VStack(alignment: .leading, spacing: 6) {
+S	mac/PocketSisyphusMac/Views/MenuContent.swift	VStack(alignment: .leading, spacing: 6) {
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	.padding(.top, 4)
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	.padding(10)
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	.padding(14)
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	.padding(14)
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	.padding(20)
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	HStack(alignment: .top, spacing: 12) {
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	HStack(alignment: .top, spacing: 8) {
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	HStack(alignment: .top, spacing: 8) {
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	HStack(spacing: 10) {
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	VStack(alignment: .leading, spacing: 16) {
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	VStack(alignment: .leading, spacing: 18) {
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	VStack(alignment: .leading, spacing: 8) {
+S	mac/PocketSisyphusMac/Views/PortSettingsWindow.swift	VStack(alignment: .leading, spacing: 8) {
+S	mac/PocketSisyphusMac/Views/QRWindow.swift	.padding(10)
+S	mac/PocketSisyphusMac/Views/QRWindow.swift	.padding(20)
+S	mac/PocketSisyphusMac/Views/QRWindow.swift	.padding(8)
+S	mac/PocketSisyphusMac/Views/QRWindow.swift	Divider().padding(.vertical, 2)
+S	mac/PocketSisyphusMac/Views/QRWindow.swift	HStack(alignment: .top, spacing: 8) {
+S	mac/PocketSisyphusMac/Views/QRWindow.swift	VStack(spacing: 16) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(.horizontal, 12)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(.horizontal, 6)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(.horizontal, 6).padding(.vertical, 2)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(.horizontal, 6).padding(.vertical, 2)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(.top, 2)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(.top, 6)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(.top, 6)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(.vertical, 2)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(.vertical, 9)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(10)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(12)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(12)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(14)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(14)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(14)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(14)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(14)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(14)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(14)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(14)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(14)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(14)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(14)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(20)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(20)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(20)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(20)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(20)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(20)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(6)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(8)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(8)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	.padding(8)
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(alignment: .top, spacing: 12) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(alignment: .top, spacing: 12) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(alignment: .top, spacing: 12) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(alignment: .top, spacing: 12) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(alignment: .top, spacing: 12) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(alignment: .top, spacing: 12) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(alignment: .top, spacing: 12) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(alignment: .top, spacing: 6) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(alignment: .top, spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 10) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 10) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 12) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 6) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 6) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 6) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	HStack(spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 10) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 10) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 10) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 10) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 12) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 14) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 16) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 18) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 18) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 18) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 18) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 2) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 4) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 6) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 6) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 6) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 6) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 6) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 6) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 6) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	VStack(alignment: .leading, spacing: 8) {
+S	mac/PocketSisyphusMac/Views/SettingsWindow.swift	return HStack(spacing: 8) {
