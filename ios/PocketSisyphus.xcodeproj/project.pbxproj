@@ -187,7 +187,6 @@
 		DA33EA9D8A4E03E7EE1FC26E /* TreeSitterGoRunestone in Frameworks */ = {isa = PBXBuildFile; productRef = FB57D1CECD09DF3942B14A8A /* TreeSitterGoRunestone */; };
 		DB0F796AB3337DBFDC4460CA /* FileReferenceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59DFC049A73E66C97F480D1A /* FileReferenceSheet.swift */; };
 		DDFAC7F0739E0C9FD510ADE6 /* ArtifactsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E289E66931714E58AD246D96 /* ArtifactsView.swift */; };
-		DF1032912539B80FE4C84125 /* Pods_PocketSisyphus.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D9D8680B7906745A906AF3 /* Pods_PocketSisyphus.framework */; };
 		DF198EC7DD7523167C2C726B /* BacklogTriageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97579476E4FA0A3EBDEE0F11 /* BacklogTriageView.swift */; };
 		E26AFF584083032A9F129429 /* VerifyDiffHighlightUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EBB8DAF6A77A98D5825B90F /* VerifyDiffHighlightUITest.swift */; };
 		E339FD3441199F7B75D12E79 /* PocketSisyphusE2ETests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 703B7A967D679236F6CBAEAA /* PocketSisyphusE2ETests.swift */; };
@@ -199,6 +198,7 @@
 		E9D2C7BE0BD83122583199DD /* ReviewPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 183E0414E3A7FB4985E8AAAF /* ReviewPrompt.swift */; };
 		EA0857BFDC20C77D4D5C719D /* Citadel in Frameworks */ = {isa = PBXBuildFile; productRef = 8B4B92B4F69685448704A7F9 /* Citadel */; };
 		EB97818FDC4C7039FA863579 /* EndpointCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC2E1C9F0F5D09796302B234 /* EndpointCache.swift */; };
+		EF3908FCC107EE4AA5CD2A9E /* Pods_PocketSisyphus.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3C98C1BA136410BC79CAF141 /* Pods_PocketSisyphus.framework */; };
 		F0D5B2A5869E40F29102D16B /* PaywallCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAEB45E37A660A1A38EF05EB /* PaywallCopy.swift */; };
 		F14CE24DC63AFB401D91603D /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EAC582EC5B3759EEFF3DAD2 /* QRScannerView.swift */; };
 		F331B29D9E712745078DA961 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BA655C84BB1BF2A99BF886C /* DesignTokens.swift */; };
@@ -269,6 +269,7 @@
 		2643C0466579111792CF2A59 /* AttachmentAnnotationEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentAnnotationEditor.swift; sourceTree = "<group>"; };
 		2730D12ABB166557B81FC686 /* BranchSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BranchSheet.swift; sourceTree = "<group>"; };
 		27D4ED92531CD9C622F91E9F /* AgentWaitNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentWaitNotifier.swift; sourceTree = "<group>"; };
+		27EC6EF42167F4F65B48A47D /* Pods-PocketSisyphus.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PocketSisyphus.debug.xcconfig"; path = "Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus.debug.xcconfig"; sourceTree = "<group>"; };
 		2949CEE0C11C1C776DA3F77E /* SSHHostKeyTOFU.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHHostKeyTOFU.swift; sourceTree = "<group>"; };
 		29AF33AFB6CBB1C000C296F4 /* DiffSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffSheet.swift; sourceTree = "<group>"; };
 		2D7E25A4AA174DBC558FC112 /* BacklogCollect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BacklogCollect.swift; sourceTree = "<group>"; };
@@ -280,11 +281,11 @@
 		342B0CDDD171962AFE1F8818 /* AttestSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttestSession.swift; sourceTree = "<group>"; };
 		35700C5F373E239122BD5C63 /* ShortcutEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutEditorSheet.swift; sourceTree = "<group>"; };
 		35EBC8A70430D63928EF7042 /* PoAgentSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoAgentSection.swift; sourceTree = "<group>"; };
-		37D9D8680B7906745A906AF3 /* Pods_PocketSisyphus.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PocketSisyphus.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		38984D4534C73441732A98E0 /* ApprovalReviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalReviewSheet.swift; sourceTree = "<group>"; };
 		3A83B5423C5FF506F4C117C5 /* ZoomableScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomableScreenView.swift; sourceTree = "<group>"; };
 		3B249A2219FE8DB512F311FD /* PocketSisyphusApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketSisyphusApp.swift; sourceTree = "<group>"; };
 		3C8BF6E4D52BCFCEBD068476 /* DirectoryPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryPickerSheet.swift; sourceTree = "<group>"; };
+		3C98C1BA136410BC79CAF141 /* Pods_PocketSisyphus.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PocketSisyphus.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3DF0A97072C639702EC4E3AD /* WakeBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeBox.swift; sourceTree = "<group>"; };
 		426C2552FA18AF408484816F /* KnownHostStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnownHostStore.swift; sourceTree = "<group>"; };
 		42FAF3B389F84B4A9FF3F323 /* ConnectionDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionDiagnostics.swift; sourceTree = "<group>"; };
@@ -351,12 +352,12 @@
 		9BA655C84BB1BF2A99BF886C /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		9EA63E77E6C51EE5FABF70A8 /* OrientationLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrientationLock.swift; sourceTree = "<group>"; };
 		A117CF2B3BFA0142B284EB1C /* PaywallCopyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallCopyTests.swift; sourceTree = "<group>"; };
+		A58E5B39D0DB804E494AB0F8 /* Pods-PocketSisyphus.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PocketSisyphus.release.xcconfig"; path = "Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus.release.xcconfig"; sourceTree = "<group>"; };
 		A9FAF2999A4DF28D646BF295 /* AttachmentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentSheet.swift; sourceTree = "<group>"; };
 		AAA2EC929C93FE450119450A /* SecurityStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityStatusView.swift; sourceTree = "<group>"; };
 		AADD66895B8A7753883ECDCA /* GuideContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuideContent.swift; sourceTree = "<group>"; };
 		AB0DF8F92EA4D36A25A52BB2 /* DeepLinkRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkRouter.swift; sourceTree = "<group>"; };
 		AB8AE56F3823EE153667CCF2 /* WorkflowCreatorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowCreatorSheet.swift; sourceTree = "<group>"; };
-		ACB4C413AE3453EB93467A17 /* Pods-PocketSisyphus.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PocketSisyphus.release.xcconfig"; path = "Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus.release.xcconfig"; sourceTree = "<group>"; };
 		ADFFA75D4CFC2FD05496D200 /* VerifySecurityPanelUITest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerifySecurityPanelUITest.swift; sourceTree = "<group>"; };
 		AEE9BB4D2D914868DAC91540 /* SettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSheet.swift; sourceTree = "<group>"; };
 		AFE9042FD2F597E174490FA6 /* FleetLiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetLiveActivityController.swift; sourceTree = "<group>"; };
@@ -410,7 +411,6 @@
 		EF368B0545E733EDD1AD2A64 /* BacklogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BacklogView.swift; sourceTree = "<group>"; };
 		F61CAB4ED243B6E9736DC1F5 /* InFlight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InFlight.swift; sourceTree = "<group>"; };
 		F813A5E03CD4880612C42864 /* PocketSisyphus.storekit */ = {isa = PBXFileReference; path = PocketSisyphus.storekit; sourceTree = "<group>"; };
-		FDD1162393EA56BC1971D615 /* Pods-PocketSisyphus.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PocketSisyphus.debug.xcconfig"; path = "Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -442,7 +442,7 @@
 				164A36D201B0D8DB5D45CADF /* TreeSitterJavaRunestone in Frameworks */,
 				89724EBCF4A3D9B8B178EB36 /* TreeSitterPHPRunestone in Frameworks */,
 				C5D42C99027F202178CF6D40 /* TreeSitterSQLRunestone in Frameworks */,
-				DF1032912539B80FE4C84125 /* Pods_PocketSisyphus.framework in Frameworks */,
+				EF3908FCC107EE4AA5CD2A9E /* Pods_PocketSisyphus.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -482,16 +482,6 @@
 			path = PocketSisyphusUITests;
 			sourceTree = "<group>";
 		};
-		2C0327EF8C5A9D9AD7E471B3 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				FDD1162393EA56BC1971D615 /* Pods-PocketSisyphus.debug.xcconfig */,
-				ACB4C413AE3453EB93467A17 /* Pods-PocketSisyphus.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
-			sourceTree = "<group>";
-		};
 		336E7961BAC3F6C962229D70 /* PocketSisyphus */ = {
 			isa = PBXGroup;
 			children = (
@@ -509,14 +499,6 @@
 				70EA4318798D75F992877FCE /* Views */,
 			);
 			path = PocketSisyphus;
-			sourceTree = "<group>";
-		};
-		3C101D43D5D93C8C05DEAE10 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				37D9D8680B7906745A906AF3 /* Pods_PocketSisyphus.framework */,
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		40D95B579CDB94CBB4879901 /* Workflow */ = {
@@ -594,6 +576,16 @@
 				1C9B248A5D3D16E9514E9830 /* WSReconnectPolicy.swift */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		5D0830647C65C84185896947 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				27EC6EF42167F4F65B48A47D /* Pods-PocketSisyphus.debug.xcconfig */,
+				A58E5B39D0DB804E494AB0F8 /* Pods-PocketSisyphus.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 		70EA4318798D75F992877FCE /* Views */ = {
@@ -685,8 +677,8 @@
 				4A2A9D12DA1CCB60F293FE40 /* PocketSisyphusWidget */,
 				7F59CEC3B2477198C559A034 /* Shared */,
 				C3783434D7A7A23B1FC07A86 /* Products */,
-				2C0327EF8C5A9D9AD7E471B3 /* Pods */,
-				3C101D43D5D93C8C05DEAE10 /* Frameworks */,
+				5D0830647C65C84185896947 /* Pods */,
+				F10E1D414F857AF2B094B70C /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -728,6 +720,14 @@
 			path = DesignSystem;
 			sourceTree = "<group>";
 		};
+		F10E1D414F857AF2B094B70C /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				3C98C1BA136410BC79CAF141 /* Pods_PocketSisyphus.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -767,12 +767,12 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 7B88EEBFA28589BE142DF566 /* Build configuration list for PBXNativeTarget "PocketSisyphus" */;
 			buildPhases = (
-				309A49F75591CC99AB1B1C41 /* [CP] Check Pods Manifest.lock */,
+				173B3FA4F175BE48C26CFC34 /* [CP] Check Pods Manifest.lock */,
 				A3B6BFA3AD5BDD7DF6F807DA /* Sources */,
 				CC95CCEEDF26BD0FDA9C912E /* Resources */,
 				E8929BAF82F6F517D44BB206 /* Frameworks */,
 				7B19BCE82E517D1DCF663532 /* Embed Foundation Extensions */,
-				35497D4537556FC8A5D45AC9 /* [CP] Embed Pods Frameworks */,
+				6E00D7F4B86AC8FB47EB9F25 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -915,7 +915,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		309A49F75591CC99AB1B1C41 /* [CP] Check Pods Manifest.lock */ = {
+		173B3FA4F175BE48C26CFC34 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -937,7 +937,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		35497D4537556FC8A5D45AC9 /* [CP] Embed Pods Frameworks */ = {
+		6E00D7F4B86AC8FB47EB9F25 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -1174,8 +1174,8 @@
 		073A4D24A9D88BE844DF4BEE /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_STYLE = Manual;
 				DEVELOPMENT_TEAM = AZ9NKP8D9G;
 				INFOPLIST_FILE = PocketSisyphusWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -1185,6 +1185,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = pe.wayne.pocketsisyphus.widget;
+				PROVISIONING_PROFILE_SPECIFIER = "PocketSisyphus Widget AppStore";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -1337,7 +1338,7 @@
 		};
 		DB85191AA7338F5DA532E518 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = ACB4C413AE3453EB93467A17 /* Pods-PocketSisyphus.release.xcconfig */;
+			baseConfigurationReference = A58E5B39D0DB804E494AB0F8 /* Pods-PocketSisyphus.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -1360,7 +1361,7 @@
 		};
 		DBFE0D0D47E5CD98821E9662 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = FDD1162393EA56BC1971D615 /* Pods-PocketSisyphus.debug.xcconfig */;
+			baseConfigurationReference = 27EC6EF42167F4F65B48A47D /* Pods-PocketSisyphus.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
