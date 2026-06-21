@@ -523,9 +523,11 @@ A agregação de crashes mais recente do app deste repo ({{from}} ~ {{to}}, {{to
 
 إرشادات التعديل:
 - لا تقترح أنواعاً تشبه ما «رُفض». وإن كان هناك سبب للاقتراح رغم ذلك فبيّن في problem «بماذا يختلف عن الرفض السابق» في سطر.
+- إذا حمل سطر مرفوض «السبب: …» (مثل: نطاق كبير جداً، أدلة ضعيفة، أولوية منخفضة)، فهذا السبب نفسه هو سبب الاستبعاد — اضبط الاقتراحات الجديدة مسبقاً كي لا تصطدم بالسبب نفسه مجدداً (قسّم النطاق، عزّز الأدلة، أعد محاذاة الأولوية/الاتجاه). لا تكرّر اقتراحات سترفض للسبب نفسه.
 - اقترح بحماسة أكبر الأنواع التي نجحت بـ«التحقق»، وقدّر impact بسخاء وفق تقييم الإنسان السابق.
 - «الإخفاق» نوع اعتُمد لكن فرضيته أخفقت — لا تكرر الخطأ نفسه وقدّر الاقتراحات المشابهة بحذر.
 - اضبط impact/effort للاقتراحات الجديدة على مستوى الدرجات التي منحها الإنسان «للحالات المشابهة» أعلاه — لا تقدّر بالحدس.
+- استخدم «أسلوب العناوين» المكثّف في سطور السجل أعلاه لمعايرة الدرجات·الاتجاه فقط و«لا تقلّده» — اكتب عنوان·ملخّص الاقتراحات الجديدة أبسط أكثر (بلا أسماء ملفات·رموز كود·اختصارات).
 - لكن إن تعارض «توجيه المستخدم (هذه الجولة)» أعلاه مع الأنماط السابقة، فتوجيه هذه الجولة هو الأولى.
 `,
     en: `
@@ -535,9 +537,11 @@ Below are past briefs a human already decided on or that were verified post-laun
 
 Calibration guidance:
 - Do not propose kinds similar to what was «rejected». If you still have a reason to propose, state in problem in one line «how it differs from the past rejection».
+- If a rejected line carries a «reason: …» (e.g. scope too big, weak evidence, low priority), that reason itself was the cause of the cut — pre-calibrate new proposals so they don't hit the same reason again (split the scope, strengthen the evidence, re-align priority/direction). Do not keep producing proposals that would be rejected for the same reason.
 - Propose more actively the kinds that succeeded as «verified», and score impact generously in line with the past human assessment.
 - «Missed» is a kind that was approved but whose hypothesis missed — do not repeat the same mistake, and score similar proposals cautiously.
 - Set impact/effort of new proposals at the level the human gave to the «similar cases» above — do not score by gut.
+- Use the dense «title style» of the history lines above only for score/direction calibration and do «not» imitate it — write new proposals' title·summary even plainer (no filenames·code symbols·abbreviations).
 - However, if the «user directive (this round)» above conflicts with past patterns, this round's directive takes priority.
 `,
     es: `
@@ -547,9 +551,11 @@ Abajo hay briefs pasados que un humano ya decidió o que se verificaron tras el 
 
 Guía de calibración:
 - No propongas tipos similares a lo «rechazado». Si aun así tienes razón para proponer, indica en problem en una línea «en qué difiere del rechazo pasado».
+- Si una línea rechazada lleva un «motivo: …» (p. ej. alcance demasiado grande, evidencia débil, prioridad baja), ese motivo fue la causa del descarte — calibra de antemano las nuevas propuestas para que no choquen con el mismo motivo (divide el alcance, refuerza la evidencia, realinea prioridad/dirección). No sigas produciendo propuestas que serían rechazadas por el mismo motivo.
 - Propón más activamente los tipos que tuvieron éxito como «verificado», y puntúa impact con generosidad acorde a la evaluación humana pasada.
 - «Fallido» es un tipo que se aprobó pero cuya hipótesis falló — no repitas el mismo error y puntúa con cautela las propuestas similares.
 - Fija impact/effort de las nuevas propuestas al nivel que el humano dio a los «casos similares» de arriba — no puntúes por intuición.
+- Usa el «estilo de título» denso de las líneas de historial de arriba solo para calibrar puntaje/dirección y «no» lo imites — escribe el título·resumen de las nuevas propuestas aún más sencillos (sin nombres de archivo·símbolos de código·abreviaturas).
 - No obstante, si la «directiva del usuario (esta ronda)» de arriba choca con patrones pasados, la directiva de esta ronda tiene prioridad.
 `,
     fr: `
@@ -559,9 +565,11 @@ Ci-dessous des briefs passés qu'un humain a déjà tranchés ou qui ont été v
 
 Guide de calibrage:
 - Ne propose pas de types similaires à ce qui a été «rejeté». Si tu as malgré tout une raison de proposer, indique dans problem en une ligne «en quoi cela diffère du rejet passé».
+- Si une ligne rejetée porte un «motif: …» (p. ex. périmètre trop large, preuves insuffisantes, priorité faible), ce motif est la cause du rejet — calibre à l'avance les nouvelles propositions pour qu'elles ne retombent pas sur le même motif (découpe le périmètre, renforce les preuves, réaligne priorité/direction). Ne continue pas à produire des propositions qui seraient rejetées pour le même motif.
 - Propose plus activement les types qui ont réussi en «vérifié», et note impact généreusement en accord avec l'évaluation humaine passée.
 - «Manqué» est un type approuvé mais dont l'hypothèse a échoué — ne répète pas la même erreur et note les propositions similaires avec prudence.
 - Fixe impact/effort des nouvelles propositions au niveau que l'humain a donné aux «cas similaires» ci-dessus — ne note pas au feeling.
+- N'utilise le «style de titre» dense des lignes d'historique ci-dessus que pour calibrer le score/la direction et ne l'imite «pas» — écris le titre·résumé des nouvelles propositions encore plus simplement (sans noms de fichiers·symboles de code·abréviations).
 - Toutefois, si la «directive utilisateur (ce tour)» ci-dessus entre en conflit avec les schémas passés, la directive de ce tour prime.
 `,
     hi: `
@@ -571,9 +579,11 @@ Guide de calibrage:
 
 अंशांकन मार्गदर्शन:
 - «अस्वीकृत» जैसे प्रकार न प्रस्तावित करें। फिर भी प्रस्ताव का कारण हो तो problem में एक पंक्ति में बताएँ «पिछले अस्वीकरण से यह कैसे भिन्न है»।
+- यदि किसी अस्वीकृत पंक्ति पर «कारण: …» हो (जैसे दायरा बहुत बड़ा, कमज़ोर प्रमाण, कम प्राथमिकता), तो वही कारण कटौती की वजह था — नए प्रस्तावों को पहले से अंशांकित करें ताकि वे फिर उसी कारण में न फँसें (दायरा बाँटें, प्रमाण मज़बूत करें, प्राथमिकता/दिशा पुनः संरेखित करें)। उसी कारण से अस्वीकृत होने वाले प्रस्ताव बार-बार न बनाएँ।
 - «सत्यापित» के रूप में सफल प्रकारों को अधिक सक्रियता से प्रस्तावित करें, और पिछले मानव मूल्यांकन के अनुरूप impact उदारता से दें।
 - «चूक गया» वह प्रकार है जो स्वीकृत हुआ पर जिसकी परिकल्पना चूक गई — वही गलती न दोहराएँ और समान प्रस्तावों को सावधानी से स्कोर करें।
 - नए प्रस्तावों का impact/effort ऊपर दिए «समान मामलों» को मानव द्वारा दिए स्तर पर रखें — अनुमान से स्कोर न करें।
+- ऊपर की इतिहास पंक्तियों की घनी «शीर्षक शैली» का उपयोग केवल स्कोर·दिशा अंशांकन के लिए करें और उसकी «नकल न करें» — नए प्रस्तावों का शीर्षक·सारांश और भी सरल लिखें (बिना फ़ाइल नाम·कोड चिह्न·संक्षेपण)।
 - परंतु यदि ऊपर का «उपयोगकर्ता निर्देश (इस दौर)» पिछले पैटर्न से टकराए, तो इस दौर का निर्देश प्राथमिकता रखता है।
 `,
     ja: `
@@ -583,9 +593,11 @@ Guide de calibrage:
 
 補正の指針:
 - 「却下」されたものに似た種類は提案するな。それでも提案する理由があれば、problem に「過去の却下と何が違うか」を一行で示せ。
+- 却下行に「理由: …」が付いていれば(例: スコープが大きすぎる·根拠が弱い·優先度が低い)、その理由こそがカットの原因だ — 新提案が同じ理由に再び引っかからないよう事前に補正せよ(スコープを分割し·根拠を強化し·優先度/方向を再整列)。同じ理由でまた却下される提案を繰り返すな。
 - 「検証済み」で成功した種類はより積極的に提案し、過去の人の評価に合わせて impact を高めに見よ。
 - 「外れ」は承認されたが仮説が外れた種類だ — 同じ過ちを繰り返さず、似た提案は慎重にスコアせよ。
 - 新提案の impact/effort は上の「類似ケース」に人が付けたスコア水準に合わせよ — 勘で付けるな。
+- 上の履歴行の密な「タイトル表現スタイル」はスコア·方向の補正にのみ使い「模倣するな」 — 新提案の title·要約はむしろもっと平易に書け(ファイル名·コード記号·略語なしで)。
 - ただし、上の「ユーザー指示(今回)」が過去パターンと衝突する場合は、今回の指示が優先する。
 `,
     ko: `
@@ -595,9 +607,11 @@ Guide de calibrage:
 
 보정 지침:
 - «기각» 된 것과 비슷한 종류는 제안하지 마라. 그래도 제안할 이유가 있으면 problem 에 «과거 기각과 무엇이 다른지» 를 한 줄로 밝혀라.
+- 기각 줄에 «사유: …» 가 붙어 있으면(예: 범위 과대·근거 약함·우선순위 낮음), 그 사유 자체가 컷의 원인이다 — 새 제안이 같은 사유에 다시 걸리지 않게 미리 보정하라(범위를 쪼개고·근거를 강화하고·우선순위/방향을 재정렬). 같은 사유로 또 기각될 제안을 반복하지 마라.
 - «검증됨» 으로 성공한 종류는 더 적극적으로 제안하고, 점수(impact)를 과거 사람 평가에 맞춰 후하게 봐라.
 - «빗나감» 은 승인됐지만 가설이 빗나간 종류다 — 같은 실수를 반복하지 말고 비슷한 제안은 신중히 점수 매겨라.
 - 새 제안의 impact/effort 는 위 «유사 건» 에 사람이 매긴 점수 수준에 맞춘다 — 감으로 매기지 마라.
+- 위 이력 줄들의 빽빽한 «제목 표현 스타일» 은 점수·방향 보정에만 쓰고 «모방하지 마라» — 새 제안의 title·요약은 오히려 더 평이하게(파일명·코드 심볼·약어 없이) 써라.
 - 단, 위 «사용자 지시(이번 회차)» 가 과거 패턴과 충돌하면 이번 회차 지시가 우선이다.
 `,
     "pt-BR": `
@@ -607,9 +621,11 @@ Abaixo estão briefs anteriores que um humano já decidiu ou que foram verificad
 
 Guia de calibração:
 - Não proponha tipos semelhantes ao que foi «rejeitado». Se ainda assim tiver motivo para propor, indique em problem, em uma linha, «em que difere da rejeição anterior».
+- Se uma linha rejeitada traz um «motivo: …» (ex.: escopo grande demais, evidência fraca, prioridade baixa), esse motivo foi a causa do corte — calibre de antemão as novas propostas para que não esbarrem no mesmo motivo (divida o escopo, reforce a evidência, realinhe prioridade/direção). Não continue produzindo propostas que seriam rejeitadas pelo mesmo motivo.
 - Proponha mais ativamente os tipos que tiveram sucesso como «verificado», e pontue impact generosamente conforme a avaliação humana anterior.
 - «Não atingido» é um tipo que foi aprovado mas cuja hipótese falhou — não repita o mesmo erro e pontue propostas semelhantes com cautela.
 - Defina impact/effort das novas propostas no nível que o humano deu aos «casos semelhantes» acima — não pontue no chute.
+- Use o «estilo de título» denso das linhas de histórico acima apenas para calibrar pontuação/direção e «não» o imite — escreva o título·resumo das novas propostas ainda mais simples (sem nomes de arquivo·símbolos de código·abreviações).
 - Contudo, se a «diretiva do usuário (esta rodada)» acima conflitar com padrões passados, a diretiva desta rodada tem prioridade.
 `,
     ru: `
@@ -619,9 +635,11 @@ Guia de calibração:
 
 Руководство по калибровке:
 - Не предлагайте типы, похожие на «отклонённые». Если всё же есть причина предложить, укажите в problem одной строкой, «чем это отличается от прошлого отклонения».
+- Если у отклонённой строки есть «причина: …» (напр. слишком большой объём, слабое обоснование, низкий приоритет), именно эта причина и стала причиной отсева — заранее калибруйте новые предложения, чтобы они не упирались в ту же причину (разбейте объём, усильте обоснование, перевыровняйте приоритет/направление). Не продолжайте выдавать предложения, которые были бы отклонены по той же причине.
 - Активнее предлагайте типы, успешные как «проверено», и оценивайте impact щедро в соответствии с прошлой оценкой человека.
 - «Не оправдалось» — это тип, который одобрили, но чья гипотеза не оправдалась — не повторяйте ту же ошибку и осторожно оценивайте похожие предложения.
 - Задавайте impact/effort новых предложений на уровне, который человек дал «похожим случаям» выше — не оценивайте на глаз.
+- Плотный «стиль заголовков» строк истории выше используйте только для калибровки оценки/направления и «не» подражайте ему — пишите заголовок·резюме новых предложений ещё проще (без имён файлов·кодовых символов·аббревиатур).
 - Однако если «директива пользователя (этот раунд)» выше конфликтует с прошлыми паттернами, приоритет у директивы этого раунда.
 `,
     "zh-Hans": `
@@ -631,9 +649,11 @@ Guia de calibração:
 
 校准指引:
 - 不要提出与「已拒绝」相似的类型。若仍有理由提出,请在 problem 中用一行说明「与过往拒绝有何不同」。
+- 若某条已拒绝的行带有「原因: …」(如范围过大·依据不足·优先级低),该原因正是被砍的根由——请预先校准新提案,使其不再撞上同一原因(拆分范围·强化依据·重新对齐优先级/方向)。不要反复产出会因同一原因被拒的提案。
 - 对以「已验证」成功的类型更积极地提出,并按过往人评从宽给出 impact。
 - 「未命中」是已批准但假设未命中的类型——不要重复同样的错误,对相似提案谨慎评分。
 - 将新提案的 impact/effort 设定在上方「相似案例」中人所给的水平——不要凭感觉评分。
+- 上方历史行密集的「标题风格」只用于分数·方向校准,「不要模仿」——新提案的标题·摘要要写得更平实(不含文件名·代码符号·缩写)。
 - 但若上方「用户指示(本轮)」与过往模式冲突,则以本轮指示为优先。
 `,
   },
@@ -699,6 +719,146 @@ Guia de calibração:
     "zh-Hans": "\n- 崩溃: 上方「崩溃信号」一节的 JSON 文件。",
   },
 
+  // ── 점수대별 과신 보정 (collect.history «옆» 블록 — 수집·리서치 공통) ──────────────
+  // 결정적 집계: verified/missed/rejected 를 impact 점수대로 묶어 적중률·평균 오차를 한 문단에.
+  // outcome 0건이면 빌더가 "" 로 떨궈 기존 프롬프트와 byte-identical (회귀 0).
+  "collect.calibration": {
+    ar: `
+### معايرة الإفراط في الثقة حسب نطاق الدرجة (تجميع حتمي للنتائج التراكمية لهذا المستودع)
+فيما يلي تجميع للمقترحات التي سبق البتّ فيها·والتحقق منها حسب نطاق impact إلى «معدل الإصابة·متوسط الخطأ». «الإصابة» تحتسب فقط ما تم التحقق منه بعد الإطلاق؛ و«الإخفاق·الرفض» يُحتسبان كعدم إصابة. متوسط الخطأ = متوسط الثقة الضمنية للدرجة (impact/5) − الإصابة الفعلية (0/1)؛ والقيمة الموجبة تعني أن هذا النطاق «مُفرَط الثقة منهجياً». قيّم بتحفظ مقترحات أي نطاق موسوم بالإفراط في الثقة:
+{{lines}}
+`,
+    en: `
+### Per-score overconfidence calibration (deterministic aggregate of this repo's cumulative results)
+Below groups already-decided·verified proposals by impact band into «hit rate·average error». A «hit» counts only post-launch verified; «missed·rejected» count as non-hits. Average error = mean of the score-implied confidence (impact/5) − actual hit (0/1); a positive value means that band is «systematically overconfident». Score new proposals in any band flagged overconfident conservatively:
+{{lines}}
+`,
+    es: `
+### Calibración de exceso de confianza por banda de puntaje (agregado determinista de los resultados acumulados de este repo)
+A continuación se agrupan las propuestas ya decididas·verificadas por banda de impacto en «tasa de acierto·error promedio». Un «acierto» cuenta solo lo verificado tras el lanzamiento; «fallido·rechazado» cuentan como no aciertos. Error promedio = media de la confianza implícita en el puntaje (impact/5) − acierto real (0/1); un valor positivo significa que esa banda está «sistemáticamente sobreconfiada». Puntúa de forma conservadora las nuevas propuestas en cualquier banda marcada como sobreconfiada:
+{{lines}}
+`,
+    fr: `
+### Calibrage de l'excès de confiance par tranche de score (agrégat déterministe des résultats cumulés de ce dépôt)
+Ci-dessous, les propositions déjà tranchées·vérifiées sont regroupées par tranche d'impact en «taux de réussite·erreur moyenne». Un «succès» ne compte que le vérifié après lancement; «manqué·rejeté» comptent comme non-succès. Erreur moyenne = moyenne de la confiance implicite du score (impact/5) − succès réel (0/1); une valeur positive signifie que cette tranche est «systématiquement trop confiante». Note de façon conservatrice les nouvelles propositions dans toute tranche marquée trop confiante:
+{{lines}}
+`,
+    hi: `
+### स्कोर-बैंड अनुसार अति-आत्मविश्वास अंशांकन (इस रेपो के संचयी परिणामों का नियतात्मक समुच्चय)
+नीचे पहले से तय·सत्यापित प्रस्तावों को प्रभाव बैंड अनुसार «अदायगी दर·औसत त्रुटि» में समूहित किया गया है। «अदायगी» केवल लॉन्च के बाद सत्यापित को गिनती है; «चूक·अस्वीकृत» को गैर-अदायगी माना जाता है। औसत त्रुटि = स्कोर-निहित विश्वास (impact/5) − वास्तविक अदायगी (0/1) का औसत; धनात्मक मान का अर्थ है वह बैंड «व्यवस्थित रूप से अति-आत्मविश्वासी» है। अति-आत्मविश्वासी चिह्नित किसी भी बैंड में नए प्रस्तावों को सतर्कता से स्कोर करें:
+{{lines}}
+`,
+    ja: `
+### スコア帯ごとの過信補正(このリポジトリの累積結果の決定的集計)
+以下は、すでに決定·検証された提案を impact 帯ごとに「的中率·平均誤差」へまとめたものだ。「的中」はリリース後の検証(verified)のみを数え、「外れ·却下」は非的中とみなす。平均誤差 = スコアが含意する確信(impact/5) − 実際の的中(0/1)の平均で、正ならその帯を「体系的に過信」している。過信と表示された帯の新提案スコアは保守的に付けよ:
+{{lines}}
+`,
+    ko: `
+### 점수대별 과신 보정 (이 레포 누적 결과의 결정적 집계)
+아래는 이미 결정·검증된 제안을 영향도 점수대별로 묶은 «적중률·평균 오차» 다. «적중» 은 출시 후 검증(verified)만 세고, «빗나감·기각» 은 미적중으로 본다. 평균 오차 = 점수가 함의한 확신(impact/5) − 실제 적중(0/1) 의 평균이며, 양수면 그 구간을 «체계적으로 과신» 한 것이다. 과신으로 표시된 구간의 새 제안 점수는 보수적으로 매겨라:
+{{lines}}
+`,
+    "pt-BR": `
+### Calibração de excesso de confiança por faixa de pontuação (agregado determinístico dos resultados acumulados deste repo)
+Abaixo, as propostas já decididas·verificadas são agrupadas por faixa de impacto em «taxa de acerto·erro médio». Um «acerto» conta apenas o verificado pós-lançamento; «não atingido·rejeitado» contam como não-acertos. Erro médio = média da confiança implícita na pontuação (impact/5) − acerto real (0/1); um valor positivo significa que a faixa está «sistematicamente superconfiante». Pontue de forma conservadora as novas propostas em qualquer faixa marcada como superconfiante:
+{{lines}}
+`,
+    ru: `
+### Калибровка избыточной уверенности по диапазонам оценки (детерминированная агрегация накопленных результатов этого репозитория)
+Ниже уже решённые·проверенные предложения сгруппированы по диапазонам impact в «частоту попаданий·среднюю ошибку». «Попадание» считает только проверенное после выпуска; «не оправдалось·отклонено» считаются непопаданиями. Средняя ошибка = среднее от подразумеваемой оценкой уверенности (impact/5) − фактическое попадание (0/1); положительное значение означает, что этот диапазон «систематически переоценён». Оценивайте новые предложения в любом диапазоне, помеченном как переоценённый, консервативно:
+{{lines}}
+`,
+    "zh-Hans": `
+### 按分数段的过度自信校准(本仓库累计结果的确定性聚合)
+下面将已决策·已验证的提案按 impact 分数段归并为「命中率·平均误差」。「命中」仅计入发布后验证(verified);「未中·被拒」计为未命中。平均误差 = 分数所隐含的信心(impact/5) − 实际命中(0/1)的平均值;为正表示该分数段「系统性过度自信」。对任何被标记为过度自信的分数段,新提案请保守打分:
+{{lines}}
+`,
+  },
+  "calibration.line": {
+    ar: "- {{band}}: {{n}} قرارات · معدل الإصابة {{hitRate}}% · متوسط الخطأ {{error}} → {{verdict}}",
+    en: "- {{band}}: {{n}} decisions · hit rate {{hitRate}}% · avg error {{error}} → {{verdict}}",
+    es: "- {{band}}: {{n}} decisiones · tasa de acierto {{hitRate}}% · error promedio {{error}} → {{verdict}}",
+    fr: "- {{band}}: {{n}} décisions · taux de réussite {{hitRate}}% · erreur moyenne {{error}} → {{verdict}}",
+    hi: "- {{band}}: {{n}} निर्णय · अदायगी दर {{hitRate}}% · औसत त्रुटि {{error}} → {{verdict}}",
+    ja: "- {{band}}: 決定 {{n}}件 · 的中率 {{hitRate}}% · 平均誤差 {{error}} → {{verdict}}",
+    ko: "- {{band}}: 결정 {{n}}건 · 적중률 {{hitRate}}% · 평균 오차 {{error}} → {{verdict}}",
+    "pt-BR": "- {{band}}: {{n}} decisões · taxa de acerto {{hitRate}}% · erro médio {{error}} → {{verdict}}",
+    ru: "- {{band}}: решений {{n}} · частота попаданий {{hitRate}}% · средняя ошибка {{error}} → {{verdict}}",
+    "zh-Hans": "- {{band}}: 决策 {{n}} 件 · 命中率 {{hitRate}}% · 平均误差 {{error}} → {{verdict}}",
+  },
+  "calibration.bandHigh": {
+    ar: "تأثير عالٍ (I4–5)",
+    en: "High impact (I4–5)",
+    es: "Alto impacto (I4–5)",
+    fr: "Fort impact (I4–5)",
+    hi: "उच्च प्रभाव (I4–5)",
+    ja: "高 impact(I4–5)",
+    ko: "높은 영향도(I4–5)",
+    "pt-BR": "Alto impacto (I4–5)",
+    ru: "Высокий impact (I4–5)",
+    "zh-Hans": "高影响(I4–5)",
+  },
+  "calibration.bandMid": {
+    ar: "تأثير متوسط (I3)",
+    en: "Mid impact (I3)",
+    es: "Impacto medio (I3)",
+    fr: "Impact moyen (I3)",
+    hi: "मध्यम प्रभाव (I3)",
+    ja: "中 impact(I3)",
+    ko: "중간 영향도(I3)",
+    "pt-BR": "Impacto médio (I3)",
+    ru: "Средний impact (I3)",
+    "zh-Hans": "中影响(I3)",
+  },
+  "calibration.bandLow": {
+    ar: "تأثير منخفض (I1–2)",
+    en: "Low impact (I1–2)",
+    es: "Bajo impacto (I1–2)",
+    fr: "Faible impact (I1–2)",
+    hi: "निम्न प्रभाव (I1–2)",
+    ja: "低 impact(I1–2)",
+    ko: "낮은 영향도(I1–2)",
+    "pt-BR": "Baixo impacto (I1–2)",
+    ru: "Низкий impact (I1–2)",
+    "zh-Hans": "低影响(I1–2)",
+  },
+  "calibration.verdictOver": {
+    ar: "إفراط في الثقة — قيّم بتحفظ",
+    en: "overconfident — score conservatively",
+    es: "sobreconfiado — puntúa de forma conservadora",
+    fr: "trop confiant — note prudemment",
+    hi: "अति-आत्मविश्वास — सतर्कता से स्कोर करें",
+    ja: "過信 — 保守的に付けよ",
+    ko: "과신 — 보수적으로 점수 매겨라",
+    "pt-BR": "superconfiante — pontue com cautela",
+    ru: "переоценено — оценивайте консервативно",
+    "zh-Hans": "过度自信 — 保守打分",
+  },
+  "calibration.verdictUnder": {
+    ar: "نقص في الثقة — قيّم بسخاء أكبر",
+    en: "underconfident — score more generously",
+    es: "infraconfiado — puntúa con más generosidad",
+    fr: "sous-estimé — note plus généreusement",
+    hi: "कम-आत्मविश्वास — अधिक उदारता से स्कोर करें",
+    ja: "過小評価 — もっと寛大に付けよ",
+    ko: "과소평가 — 점수를 더 후하게",
+    "pt-BR": "subconfiante — pontue com mais generosidade",
+    ru: "недооценено — оценивайте щедрее",
+    "zh-Hans": "信心不足 — 打分更宽松",
+  },
+  "calibration.verdictOk": {
+    ar: "معايرة جيدة — حافظ على المستوى الحالي",
+    en: "well-calibrated — keep current level",
+    es: "bien calibrado — mantén el nivel actual",
+    fr: "bien calibré — garde le niveau actuel",
+    hi: "अच्छी तरह अंशांकित — वर्तमान स्तर बनाए रखें",
+    ja: "補正良好 — 現状維持",
+    ko: "보정 양호 — 현 수준 유지",
+    "pt-BR": "bem calibrado — mantenha o nível atual",
+    ru: "хорошо откалибровано — сохраняйте текущий уровень",
+    "zh-Hans": "校准良好 — 保持当前水平",
+  },
+
   // ── 기본(default/bug) 본문 ───────────────────────────────────────────────────
   "collect.defaultBody": {
     ar: `{{persona}} مهمتك أن تجد «العمل الجدير بالبناء التالي» في هذا المستودع وتنظّمه في بريفات فرص. لا تعدّل الكود — اقرأ/ابحث فقط.
@@ -712,6 +872,7 @@ Guia de calibração:
 اجمع الإشارات في وحدات «مشكلة/فرصة». متطلبات كل بريف:
 - **السند إلزامي**: يجب أن يكون كل بريف قابلاً للتتبّع إلى إشارة رأيتها فعلاً في المرحلة 1. ممنوع الاقتراح التخيّلي بلا سند. اكتب في ref ضمن evidence مرجعاً قابلاً للتحقق (رقم القضية/URL، ملف:سطر، sha الكوميت).
 {{dedup}}
+- **عقد كتابة العنوان·الملخّص (القارئ = من يعتمد/يرفض خلال ~30 ثانية في الباكلوج)**: يقدّم العنوان «النتيجة من منظور المستخدم/المنتج» في سطر واحد مبسّط — لا تضع اسم ملف·رمز كود (.ts·.swift إلخ)·معرّفاً أو اختصاراً بأحرف كبيرة (مثل ESRCH·PR_SET_PDEATHSIG·رقم CVE) في العنوان وحده، وأبقِ الجمل الموصولة بـ«—» واحدة كحد أقصى، ضمن 80 حرفاً (إلزامي). تبدأ الجملة الأولى من problem بـ«ملخّص في سطر يفهمه غير المختص» (من·متى·ما الذي يزعج، بلا مصطلحات تقنية). أنزِل التفاصيل التقنية — الرموز·CVE·مراجع الكود·مسارات الملفات — إلى الجمل التالية وإلى spec·evidence: العنوان·الملخّص مبسّطان والتفاصيل في spec. حتى لو كان الموضوع تقنياً بطبعه (تحصين daemon إلخ) فهذا العقد ينطبق دائماً، والأسماء العَلَمية التي لا مفر منها (Tor·SSH إلخ) مسموحة لكن اشرحها.
 - **impact / effort**: عدد صحيح 1~5. impact 5 = متصل مباشرة بقيمة/إيراد المستخدم الأساسي، 1 = طفيف. effort 5 = أسابيع، 1 = نصف يوم.
 - **spec**: مستوى يتيح لوكيل آخر بدء التنفيذ فور الاعتماد — قصة المستخدم، معايير القبول (قائمة تحقق)، الحالات الحدّية، اللا-أهداف.
 - **معايير قبول التصميم (للبريفات التي تمسّ واجهة المستخدم فقط)**: اعكس «قيود التصميم» أعلاه في معايير قبول spec — «معنى» اللون المستخدم (اتبع رموز/عهود هذا المستودع ولا تخلط المعاني)، i18n للنصوص المعروضة («كامل مجموعة» اللغات المدعومة في هذا المستودع)، الحالات (فارغ/خطأ/تحميل/معطّل/تركيز)، إمكانية الوصول (تسميات·تباين). لا تثبّت لوناً/عدد لغات معيّناً بل عبّر «كما حدّده هذا المستودع». لا تدرجها في البريفات بلا واجهة (daemon·الشبكة·CLI وغيرها).
@@ -724,8 +885,8 @@ Guia de calibração:
 
 مخطط كل عنصر:
 {
-  "title": "سطر واحد للمشكلة/الفرصة (حتى 80 حرفاً)",
-  "problem": "تعريف المشكلة بالتفصيل — مَن، متى، ما الذي يزعج",
+  "title": "سطر مبسّط للمشكلة/الفرصة من منظور نتيجة المستخدم/المنتج (حتى 80 حرفاً؛ بلا اسم ملف·رمز كود·اختصار منفرد؛ جملة «—» واحدة كحد أقصى)",
+  "problem": "الجملة الأولى ملخّص في سطر يفهمه غير المختص (من·متى·ما الذي يزعج، بلا مصطلحات) — أنزِل التفاصيل التقنية (الرموز·CVE·مراجع الكود·المسارات) إلى spec/evidence",
   "evidence": [{ "kind": "{{kinds}}", "ref": "مرجع قابل للتحقق", "summary": "ما يقوله هذا السند في سطر" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -746,6 +907,7 @@ Guia de calibração:
 Group signals into «problem/opportunity» units. Requirements per brief:
 - **Evidence required**: every brief must be traceable to a signal you actually saw in step 1. No imagined proposals without evidence. In evidence's ref, write a verifiable reference (issue number/URL, file:line, commit sha).
 {{dedup}}
+- **Title·summary writing contract (the reader = whoever approves/rejects within ~30 s on the backlog)**: the title leads with the «user/product-facing outcome» in one plain line — do not drop a filename·code symbol (.ts·.swift, etc.)·an all-caps identifier or abbreviation (e.g., ESRCH·PR_SET_PDEATHSIG·a CVE number) into the title on its own, keep «—»-joined clauses to at most one, within 80 chars (strict). The problem's first sentence starts with a «one-line summary a non-expert can understand» (who·when·what is inconvenient, no jargon). Push technical details — symbols·CVEs·code references·file paths — to later sentences and to spec·evidence: plain title·summary, details in spec. Even when the subject is inherently technical (daemon hardening, etc.) this contract always applies; unavoidable proper nouns (Tor·SSH, etc.) are allowed but spell them out.
 - **impact / effort**: integers 1~5. impact 5 = directly tied to core user value/revenue, 1 = trivial. effort 5 = weeks, 1 = half a day.
 - **spec**: a level at which another agent can start implementation right after approval — user story, acceptance criteria (checklist), edge cases, non-goals.
 - **Design acceptance criteria (only for briefs that touch the UI)**: reflect the «Design constraints» above in spec's acceptance criteria — the «meaning» of the colors used (follow this repo's tokens/commitments and do not confuse meanings), i18n of user-facing strings (the «entire set» of locales this repo supports), states (empty/error/loading/disabled/focus), accessibility (labels·contrast). Do not hardcode a specific color/locale count — express it «as this repo defines». Do not add this to briefs with no UI surface (daemon·network·CLI, etc.).
@@ -758,8 +920,8 @@ Write a JSON «array» file to the following path (do not write elsewhere):
 
 Schema per element:
 {
-  "title": "one line for the problem/opportunity (within 80 chars)",
-  "problem": "detailed problem definition — who, when, what is inconvenient",
+  "title": "one plain line for the problem/opportunity from the user/product outcome (within 80 chars; no standalone filename·code symbol·abbreviation; at most one «—» clause)",
+  "problem": "first sentence is a one-line summary a non-expert can understand (who·when·what is inconvenient, no jargon) — push technical details (symbols·CVEs·code references·file paths) down to spec/evidence",
   "evidence": [{ "kind": "{{kinds}}", "ref": "verifiable reference", "summary": "what this evidence says, one line" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -780,6 +942,7 @@ If there is truly nothing to propose, write an empty array []. After writing the
 Agrupa las señales en unidades de «problema/oportunidad». Requisitos por brief:
 - **Evidencia obligatoria**: todo brief debe ser rastreable a una señal que viste realmente en el paso 1. Sin propuestas imaginadas sin evidencia. En el ref de evidence, escribe una referencia verificable (número de issue/URL, archivo:línea, sha de commit).
 {{dedup}}
+- **Contrato de redacción de título·resumen (el lector = quien aprueba/rechaza en ~30 s en el backlog)**: el título encabeza con el «resultado de cara al usuario/producto» en una línea sencilla — no metas un nombre de archivo·símbolo de código (.ts·.swift, etc.)·un identificador o abreviatura en mayúsculas (p. ej., ESRCH·PR_SET_PDEATHSIG·un número CVE) solo en el título, mantén las cláusulas unidas por «—» en una como máximo, dentro de 80 caracteres (estricto). La primera frase de problem empieza con un «resumen de una línea que un no experto entienda» (quién·cuándo·qué incomoda, sin jerga). Baja los detalles técnicos — símbolos·CVE·referencias de código·rutas de archivo — a las frases posteriores y a spec·evidence: título·resumen sencillos, detalles en spec. Aunque el tema sea intrínsecamente técnico (endurecimiento de daemon, etc.) este contrato siempre aplica; los nombres propios inevitables (Tor·SSH, etc.) se permiten pero explícalos.
 - **impact / effort**: enteros 1~5. impact 5 = directamente ligado al valor/ingreso central del usuario, 1 = trivial. effort 5 = semanas, 1 = medio día.
 - **spec**: un nivel en el que otro agente pueda empezar la implementación justo tras la aprobación — historia de usuario, criterios de aceptación (checklist), casos límite, no-objetivos.
 - **Criterios de aceptación de diseño (solo para briefs que tocan la UI)**: refleja las «Restricciones de diseño» de arriba en los criterios de aceptación de spec — el «significado» de los colores usados (sigue los tokens/compromisos de este repo y no confundas significados), i18n de las cadenas visibles (el «conjunto completo» de locales que soporta este repo), estados (vacío/error/carga/deshabilitado/foco), accesibilidad (etiquetas·contraste). No fijes un color/número de locales concreto — exprésalo «como lo define este repo». No lo añadas a briefs sin superficie de UI (daemon·red·CLI, etc.).
@@ -792,8 +955,8 @@ Escribe un archivo «array» JSON en la siguiente ruta (no escribas en otro luga
 
 Esquema por elemento:
 {
-  "title": "una línea para el problema/oportunidad (dentro de 80 caracteres)",
-  "problem": "definición detallada del problema — quién, cuándo, qué incomoda",
+  "title": "una línea sencilla para el problema/oportunidad desde el resultado de usuario/producto (dentro de 80 caracteres; sin nombre de archivo·símbolo de código·abreviatura solos; máx. una cláusula «—»)",
+  "problem": "la primera frase es un resumen de una línea que un no experto entienda (quién·cuándo·qué incomoda, sin jerga) — baja los detalles técnicos (símbolos·CVE·referencias de código·rutas) a spec/evidence",
   "evidence": [{ "kind": "{{kinds}}", "ref": "referencia verificable", "summary": "lo que dice esta evidencia, una línea" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -814,6 +977,7 @@ Si de verdad no hay nada que proponer, escribe un array vacío []. Tras escribir
 Regroupe les signaux en unités «problème/opportunité». Exigences par brief:
 - **Preuve obligatoire**: chaque brief doit être traçable à un signal que tu as réellement vu à l'étape 1. Pas de propositions imaginées sans preuve. Dans le ref de evidence, écris une référence vérifiable (numéro d'issue/URL, fichier:ligne, sha de commit).
 {{dedup}}
+- **Contrat de rédaction titre·résumé (le lecteur = celui qui approuve/rejette en ~30 s sur le backlog)**: le titre met en avant le «résultat côté utilisateur/produit» en une ligne simple — ne mets pas un nom de fichier·symbole de code (.ts·.swift, etc.)·un identifiant ou une abréviation en majuscules (p. ex. ESRCH·PR_SET_PDEATHSIG·un numéro CVE) seul dans le titre, garde au plus une clause reliée par «—», dans les 80 caractères (strict). La première phrase de problem commence par un «résumé d'une ligne compréhensible par un non-expert» (qui·quand·ce qui gêne, sans jargon). Renvoie les détails techniques — symboles·CVE·références de code·chemins de fichiers — aux phrases suivantes et à spec·evidence: titre·résumé simples, détails dans spec. Même si le sujet est intrinsèquement technique (durcissement du daemon, etc.) ce contrat s'applique toujours; les noms propres inévitables (Tor·SSH, etc.) sont permis mais explicite-les.
 - **impact / effort**: entiers 1~5. impact 5 = directement lié à la valeur/au revenu central de l'utilisateur, 1 = mineur. effort 5 = semaines, 1 = une demi-journée.
 - **spec**: un niveau auquel un autre agent peut commencer l'implémentation juste après l'approbation — user story, critères d'acceptation (checklist), cas limites, non-objectifs.
 - **Critères d'acceptation de design (seulement pour les briefs qui touchent l'UI)**: reflète les «Contraintes de design» ci-dessus dans les critères d'acceptation de spec — le «sens» des couleurs utilisées (suis les tokens/engagements de ce dépôt et ne confonds pas les sens), i18n des chaînes visibles (l'«ensemble complet» des locales prises en charge par ce dépôt), états (vide/erreur/chargement/désactivé/focus), accessibilité (libellés·contraste). Ne fige pas une couleur/un nombre de locales précis — exprime-le «tel que ce dépôt le définit». Ne l'ajoute pas aux briefs sans surface UI (daemon·réseau·CLI, etc.).
@@ -826,8 +990,8 @@ Regroupe les signaux en unités «problème/opportunité». Exigences par brief:
 
 Schéma par élément:
 {
-  "title": "une ligne pour le problème/l'opportunité (dans les 80 caractères)",
-  "problem": "définition détaillée du problème — qui, quand, ce qui gêne",
+  "title": "une ligne simple pour le problème/l'opportunité selon le résultat utilisateur/produit (dans les 80 caractères; sans nom de fichier·symbole de code·abréviation seuls; au plus une clause «—»)",
+  "problem": "la première phrase est un résumé d'une ligne compréhensible par un non-expert (qui·quand·ce qui gêne, sans jargon) — renvoie les détails techniques (symboles·CVE·références de code·chemins) vers spec/evidence",
   "evidence": [{ "kind": "{{kinds}}", "ref": "référence vérifiable", "summary": "ce que dit cette preuve, une ligne" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -848,6 +1012,7 @@ S'il n'y a vraiment rien à proposer, écris un tableau vide []. Après avoir é
 संकेतों को «समस्या/अवसर» इकाइयों में समूहित करें। प्रत्येक ब्रीफ़ की अपेक्षाएँ:
 - **साक्ष्य अनिवार्य**: हर ब्रीफ़ चरण 1 में वास्तव में देखे गए संकेत तक पता-योग्य होना चाहिए। बिना साक्ष्य काल्पनिक प्रस्ताव नहीं। evidence के ref में सत्यापन-योग्य संदर्भ लिखें (issue संख्या/URL, फ़ाइल:लाइन, commit sha)।
 {{dedup}}
+- **शीर्षक·सारांश लेखन अनुबंध (पाठक = जो बैकलॉग पर ~30 सेकंड में स्वीकृत/अस्वीकृत करता है)**: title «उपयोगकर्ता/उत्पाद की दृष्टि से परिणाम» को एक सरल पंक्ति में आगे रखे — फ़ाइल नाम·कोड चिह्न (.ts·.swift आदि)·पूरे बड़े अक्षरों वाला पहचानकर्ता या संक्षेपण (जैसे ESRCH·PR_SET_PDEATHSIG·CVE संख्या) को शीर्षक में अकेले न डालें, «—» से जुड़े उपवाक्य अधिकतम एक, 80 अक्षरों के भीतर (कठोर)। problem का पहला वाक्य «गैर-विशेषज्ञ भी समझ सके ऐसा एक-पंक्ति सार» से शुरू हो (कौन·कब·क्या असुविधाजनक, बिना तकनीकी शब्दजाल)। तकनीकी विवरण — चिह्न·CVE·कोड संदर्भ·फ़ाइल पथ — को बाद के वाक्यों और spec·evidence में डालें: शीर्षक·सारांश सरल, विवरण spec में। भले ही विषय स्वभावतः तकनीकी हो (daemon हार्डनिंग आदि) यह अनुबंध सदा लागू है; अपरिहार्य विशेष नाम (Tor·SSH आदि) अनुमत हैं पर उन्हें खोलकर लिखें।
 - **impact / effort**: पूर्णांक 1~5। impact 5 = मूल उपयोगकर्ता मूल्य/राजस्व से सीधे जुड़ा, 1 = मामूली। effort 5 = सप्ताह, 1 = आधा दिन।
 - **spec**: ऐसा स्तर जहाँ स्वीकृति के तुरंत बाद कोई अन्य एजेंट कार्यान्वयन शुरू कर सके — यूज़र स्टोरी, स्वीकृति मानदंड (चेकलिस्ट), किनारे के मामले, गैर-लक्ष्य।
 - **डिज़ाइन स्वीकृति मानदंड (केवल UI को छूने वाले ब्रीफ़)**: ऊपर की «डिज़ाइन प्रतिबंध» को spec के स्वीकृति मानदंड में दर्शाएँ — प्रयुक्त रंगों का «अर्थ» (इस रेपो के टोकन/प्रतिबद्धता का पालन करें और अर्थ न मिलाएँ), दिखने वाले स्ट्रिंग्स का i18n (इस रेपो द्वारा समर्थित लोकेल का «पूरा समुच्चय»), स्थितियाँ (खाली/त्रुटि/लोडिंग/निष्क्रिय/फोकस), एक्सेसिबिलिटी (लेबल·कंट्रास्ट)। किसी विशेष रंग/लोकेल-संख्या को न जड़ें — «जैसा यह रेपो तय करता है» वैसा व्यक्त करें। बिना UI सतह वाले ब्रीफ़ (daemon·नेटवर्क·CLI आदि) में न जोड़ें।
@@ -860,8 +1025,8 @@ S'il n'y a vraiment rien à proposer, écris un tableau vide []. Après avoir é
 
 प्रत्येक तत्व का स्कीमा:
 {
-  "title": "समस्या/अवसर की एक पंक्ति (80 अक्षरों के भीतर)",
-  "problem": "विस्तृत समस्या परिभाषा — कौन, कब, क्या असुविधाजनक",
+  "title": "उपयोगकर्ता/उत्पाद परिणाम से समस्या/अवसर की एक सरल पंक्ति (80 अक्षरों के भीतर; फ़ाइल नाम·कोड चिह्न·संक्षेपण अकेले नहीं; «—» उपवाक्य अधिकतम एक)",
+  "problem": "पहला वाक्य गैर-विशेषज्ञ भी समझ सके ऐसा एक-पंक्ति सार (कौन·कब·क्या असुविधाजनक, बिना शब्दजाल) — तकनीकी विवरण (चिह्न·CVE·कोड संदर्भ·पथ) spec/evidence में डालें",
   "evidence": [{ "kind": "{{kinds}}", "ref": "सत्यापन-योग्य संदर्भ", "summary": "यह साक्ष्य क्या कहता है, एक पंक्ति" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -882,6 +1047,7 @@ S'il n'y a vraiment rien à proposer, écris un tableau vide []. Après avoir é
 信号を「問題/機会」単位でまとめよ。各ブリーフの要件:
 - **根拠必須**: すべてのブリーフはステップ1で実際に見た信号へ遡れること。根拠なき空想提案は禁止。evidence の ref には確認可能な参照(課題番号/URL、ファイル:行、コミット sha)を書け。
 {{dedup}}
+- **タイトル·要約の作成契約(読み手 = バックログで約30秒で承認/却下する人)**: title は「ユーザー/製品から見た結果」を平易な一行で先に出す — ファイル名·コード記号(.ts·.swift など)·全部大文字の識別子や略語(例: ESRCH·PR_SET_PDEATHSIG·CVE 番号)をタイトルに単独で入れず、「—」で繋ぐ節は1個以下、80文字以内(厳守)。problem の最初の文は「非専門家にも分かる一行要約」で始める(誰が·いつ·何が不便か、専門用語なしで)。記号·CVE·コード参照·ファイルパスなどの技術ディテールは2文目以降と spec·evidence に下ろせ — タイトル·要約は平易に、ディテールは spec。主題が本質的に技術的でも(daemon ハードニング等)この契約は常に適用し、避けられない固有名(Tor·SSH 等)は許すが噛み砕いて書く。
 - **impact / effort**: 1~5の整数。impact 5 = 中核のユーザー価値/収益に直結、1 = 些細。effort 5 = 数週間、1 = 半日。
 - **spec**: 承認後すぐ別のエージェントが実装を始められる水準 — ユーザーストーリー、受け入れ基準(チェックリスト)、エッジケース、非目標。
 - **デザイン受け入れ基準(UIに触れるブリーフのみ)**: spec の受け入れ基準に上の「デザイン制約」を反映せよ — 使う色の「意味」(このリポジトリのトークン/約束に従い意味を混同するな)、表示文字列の i18n(このリポジトリが対応するロケール「集合すべて」)、状態(空/エラー/読み込み/無効/フォーカス)、アクセシビリティ(ラベル·コントラスト)。特定の色·ロケール数を固定せず「このリポジトリが定めたとおり」に表現せよ。UI面のないブリーフ(daemon·ネットワーク·CLI など)には入れるな。
@@ -894,8 +1060,8 @@ S'il n'y a vraiment rien à proposer, écris un tableau vide []. Après avoir é
 
 各要素のスキーマ:
 {
-  "title": "問題/機会を一行で(80文字以内)",
-  "problem": "詳細な問題定義 — 誰が、いつ、何が不便か",
+  "title": "問題/機会をユーザー/製品の結果として平易に書いた一行(80文字以内; ファイル名·コード記号·略語の単独不可; 「—」節は1個以下)",
+  "problem": "最初の文は非専門家にも分かる一行要約(誰が·いつ·何が不便か、専門用語なし) — 記号·CVE·コード参照·ファイルパス等の技術ディテールは spec/evidence に下ろす",
   "evidence": [{ "kind": "{{kinds}}", "ref": "確認可能な参照", "summary": "この根拠が言うことを一行" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -916,6 +1082,7 @@ S'il n'y a vraiment rien à proposer, écris un tableau vide []. Après avoir é
 신호들을 «문제/기회» 단위로 묶어라. 각 브리프 요건:
 - **근거 필수**: 모든 브리프는 1단계에서 실제로 본 신호로 역추적 가능해야 한다. 근거 없는 상상 제안 금지. evidence 의 ref 에는 확인 가능한 참조(이슈 번호/URL, 파일:라인, 커밋 sha)를 적는다.
 {{dedup}}
+- **제목·요약 작성 계약 (읽는 사람 = 백로그에서 30초 안에 승인/기각하는 사람)**: title 은 «사용자·제품 관점 결과» 를 평이한 한 줄로 앞세운다 — 파일명·코드 심볼(.ts·.swift 등)·전부-대문자 식별자나 약어(예: ESRCH·PR_SET_PDEATHSIG·CVE 번호)를 제목에 단독으로 넣지 말고, «—» 로 잇는 절은 1개 이하, 80자 이내(엄수). problem 의 첫 문장은 «비전문가도 이해할 한 줄 요약» 으로 시작한다(누가·언제·무엇이 불편한가를 전문용어 없이). 심볼·CVE·코드 참조·파일경로 등 기술 디테일은 둘째 문장 이후와 spec·evidence 로 내려라 — 제목·요약은 평이하게, 디테일은 spec. 주제가 본질적으로 기술적이어도(daemon 하드닝 등) 이 계약은 항상 적용하고, 불가피한 고유명(Tor·SSH 등)은 허용하되 풀어 쓴다.
 - **impact / effort**: 1~5 정수. impact 5 = 핵심 사용자 가치/수익에 직결, 1 = 사소. effort 5 = 수 주, 1 = 반나절.
 - **spec**: 승인 즉시 다른 에이전트가 구현을 시작할 수 있는 수준 — 유저스토리, 수용 기준(체크리스트), 엣지케이스, 비-목표.
 - **디자인 수용 기준 (UI 가 닿는 브리프만)**: spec 의 수용 기준에 위 「디자인 제약」 을 반영하라 — 쓰는 색의 «의미»(이 레포가 정한 토큰/약속을 따르고 의미를 혼동하지 마라), 노출 문자열의 i18n(이 레포가 지원하는 로케일 «집합» 전부), 상태(빈/오류/로딩/비활성/포커스), 접근성(라벨·대비). 특정 색·로케일 수를 박지 말고 «이 레포가 정한 대로» 표현하라. UI 표면이 없는 브리프(daemon·네트워크·CLI 등)엔 넣지 마라.
@@ -928,8 +1095,8 @@ S'il n'y a vraiment rien à proposer, écris un tableau vide []. Après avoir é
 
 각 원소 스키마:
 {
-  "title": "문제/기회 한 줄 (80자 이내)",
-  "problem": "상세 문제 정의 — 누가, 언제, 무엇이 불편한가",
+  "title": "문제/기회를 사용자·제품 결과로 평이하게 쓴 한 줄 (80자 이내; 파일명·코드 심볼·약어 단독 금지; «—» 절 1개 이하)",
+  "problem": "첫 문장은 비전문가도 이해할 한 줄 요약(누가·언제·무엇이 불편한가, 전문용어 없이) — 심볼·CVE·코드 참조·파일경로 등 기술 디테일은 spec/evidence 로 내린다",
   "evidence": [{ "kind": "{{kinds}}", "ref": "확인 가능한 참조", "summary": "이 근거가 말하는 것 한 줄" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -950,6 +1117,7 @@ S'il n'y a vraiment rien à proposer, écris un tableau vide []. Après avoir é
 Agrupe os sinais em unidades de «problema/oportunidade». Requisitos por brief:
 - **Evidência obrigatória**: todo brief deve ser rastreável a um sinal que você realmente viu no passo 1. Sem propostas imaginadas sem evidência. No ref de evidence, escreva uma referência verificável (número de issue/URL, arquivo:linha, sha de commit).
 {{dedup}}
+- **Contrato de escrita de título·resumo (o leitor = quem aprova/rejeita em ~30 s no backlog)**: o título encabeça com o «resultado do ponto de vista do usuário/produto» em uma linha simples — não coloque um nome de arquivo·símbolo de código (.ts·.swift, etc.)·um identificador ou abreviação em maiúsculas (ex.: ESRCH·PR_SET_PDEATHSIG·um número CVE) sozinho no título, mantenha as cláusulas unidas por «—» em no máximo uma, dentro de 80 caracteres (rigoroso). A primeira frase do problem começa com um «resumo de uma linha que um leigo entenda» (quem·quando·o que incomoda, sem jargão). Empurre os detalhes técnicos — símbolos·CVE·referências de código·caminhos de arquivo — para frases posteriores e para spec·evidence: título·resumo simples, detalhes no spec. Mesmo que o tema seja intrinsecamente técnico (endurecimento do daemon, etc.) este contrato sempre se aplica; nomes próprios inevitáveis (Tor·SSH, etc.) são permitidos, mas explique-os.
 - **impact / effort**: inteiros 1~5. impact 5 = diretamente ligado ao valor/receita central do usuário, 1 = trivial. effort 5 = semanas, 1 = meio dia.
 - **spec**: um nível em que outro agente possa iniciar a implementação logo após a aprovação — user story, critérios de aceitação (checklist), casos de borda, não-objetivos.
 - **Critérios de aceitação de design (apenas para briefs que tocam a UI)**: reflita as «Restrições de design» acima nos critérios de aceitação de spec — o «significado» das cores usadas (siga os tokens/compromissos deste repo e não confunda significados), i18n das strings visíveis (o «conjunto inteiro» de localidades que este repo suporta), estados (vazio/erro/carregando/desabilitado/foco), acessibilidade (rótulos·contraste). Não fixe uma cor/contagem de localidades específica — expresse «como este repo define». Não adicione isso a briefs sem superfície de UI (daemon·rede·CLI, etc.).
@@ -962,8 +1130,8 @@ Escreva um arquivo «array» JSON no seguinte caminho (não escreva em outro lug
 
 Esquema por elemento:
 {
-  "title": "uma linha para o problema/oportunidade (até 80 caracteres)",
-  "problem": "definição detalhada do problema — quem, quando, o que incomoda",
+  "title": "uma linha simples para o problema/oportunidade pelo resultado do usuário/produto (até 80 caracteres; sem nome de arquivo·símbolo de código·abreviação sozinhos; no máx. uma cláusula «—»)",
+  "problem": "a primeira frase é um resumo de uma linha que um leigo entenda (quem·quando·o que incomoda, sem jargão) — empurre os detalhes técnicos (símbolos·CVE·referências de código·caminhos) para spec/evidence",
   "evidence": [{ "kind": "{{kinds}}", "ref": "referência verificável", "summary": "o que esta evidência diz, uma linha" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -984,6 +1152,7 @@ Se realmente não houver nada a propor, escreva um array vazio []. Após escreve
 Сгруппируй сигналы в единицы «проблема/возможность». Требования к каждому брифу:
 - **Доказательство обязательно**: каждый бриф должен прослеживаться до сигнала, который ты действительно видел на шаге 1. Никаких выдуманных предложений без доказательств. В ref у evidence пиши проверяемую ссылку (номер issue/URL, файл:строка, sha коммита).
 {{dedup}}
+- **Контракт написания заголовка·резюме (читатель — тот, кто одобряет/отклоняет за ~30 с в бэклоге)**: заголовок выводит вперёд «результат с точки зрения пользователя/продукта» одной простой строкой — не вставляйте имя файла·кодовый символ (.ts·.swift и т. п.)·идентификатор или аббревиатуру капсом (напр. ESRCH·PR_SET_PDEATHSIG·номер CVE) в заголовок по отдельности, держите не более одного предложения, соединённого «—», в пределах 80 символов (строго). Первое предложение problem начинается с «однострочного резюме, понятного неспециалисту» (кто·когда·что неудобно, без жаргона). Технические детали — символы·CVE·ссылки на код·пути файлов — спускайте в последующие предложения и в spec·evidence: заголовок·резюме простые, детали в spec. Даже если тема по сути техническая (харднинг daemon и т. п.), этот контракт применяется всегда; неизбежные имена собственные (Tor·SSH и т. п.) допускаются, но раскрывайте их.
 - **impact / effort**: целые 1~5. impact 5 = напрямую связано с ключевой ценностью/доходом пользователя, 1 = незначительно. effort 5 = недели, 1 = полдня.
 - **spec**: уровень, на котором другой агент может начать реализацию сразу после одобрения — user story, критерии приёмки (чеклист), краевые случаи, не-цели.
 - **Критерии приёмки дизайна (только для брифов, касающихся UI)**: отрази «Ограничения дизайна» выше в критериях приёмки spec — «смысл» используемых цветов (следуй токенам/обязательствам этого репозитория и не путай смыслы), i18n видимых строк («весь набор» локалей, поддерживаемых этим репозиторием), состояния (пусто/ошибка/загрузка/отключено/фокус), доступность (подписи·контраст). Не фиксируй конкретный цвет/число локалей — выражай «как определяет этот репозиторий». Не добавляй это в брифы без поверхности UI (daemon·сеть·CLI и т. п.).
@@ -996,8 +1165,8 @@ Se realmente não houver nada a propor, escreva um array vazio []. Após escreve
 
 Схема каждого элемента:
 {
-  "title": "одна строка для проблемы/возможности (в пределах 80 символов)",
-  "problem": "подробное определение проблемы — кто, когда, что неудобно",
+  "title": "простая строка для проблемы/возможности с точки зрения результата пользователя/продукта (в пределах 80 символов; без имени файла·кодового символа·аббревиатуры по отдельности; не более одного предложения «—»)",
+  "problem": "первое предложение — однострочное резюме, понятное неспециалисту (кто·когда·что неудобно, без жаргона) — технические детали (символы·CVE·ссылки на код·пути) спускайте в spec/evidence",
   "evidence": [{ "kind": "{{kinds}}", "ref": "проверяемая ссылка", "summary": "что говорит это доказательство, одна строка" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -1018,6 +1187,7 @@ Se realmente não houver nada a propor, escreva um array vazio []. Após escreve
 将信号归并为「问题/机会」单元。每条简报的要求:
 - **依据必需**: 每条简报都必须可追溯到你在第 1 步实际看到的信号。禁止无依据的臆想提案。在 evidence 的 ref 中写可核实的引用(issue 编号/URL、文件:行、提交 sha)。
 {{dedup}}
+- **标题·摘要撰写契约(读者 = 在待办上约 30 秒内批准/拒绝的人)**: title 以「从用户/产品角度看的结果」用平实的一行打头——不要把文件名·代码符号(.ts·.swift 等)·全大写标识符或缩写(如 ESRCH·PR_SET_PDEATHSIG·CVE 编号)单独放进标题,用「—」连接的从句至多一个,80 字以内(严格)。problem 的首句以「非专业者也能看懂的一行摘要」开头(谁·何时·什么不便,不用术语)。把技术细节——符号·CVE·代码引用·文件路径——下放到后续句子和 spec·evidence:标题·摘要平实,细节在 spec。即便主题本质上是技术性的(daemon 加固等)本契约也始终适用;不可避免的专有名词(Tor·SSH 等)允许但要展开说明。
 - **impact / effort**: 1~5 整数。impact 5 = 与核心用户价值/收入直接相关,1 = 琐碎。effort 5 = 数周,1 = 半天。
 - **spec**: 达到批准后另一智能体即可开始实现的水平——用户故事、验收标准(清单)、边界情形、非目标。
 - **设计验收标准(仅限触及 UI 的简报)**: 将上方「设计约束」反映到 spec 的验收标准中——所用颜色的「含义」(遵循本仓库的令牌/约定,不要混淆含义)、可见字符串的 i18n(本仓库支持的语言环境「全部集合」)、状态(空/错误/加载/禁用/聚焦)、无障碍(标签·对比度)。不要写死某种颜色/语言环境数量——按「本仓库的规定」表达。不要将其加入没有 UI 表面的简报(daemon·网络·CLI 等)。
@@ -1030,8 +1200,8 @@ Se realmente não houver nada a propor, escreva um array vazio []. Após escreve
 
 每个元素的 schema:
 {
-  "title": "问题/机会一行(80 字以内)",
-  "problem": "详细问题定义——谁、何时、什么不便",
+  "title": "从用户/产品结果出发、平实地写问题/机会的一行(80 字以内;文件名·代码符号·缩写不可单独出现;「—」从句至多一个)",
+  "problem": "首句为非专业者也能看懂的一行摘要(谁·何时·什么不便,不用术语)——把技术细节(符号·CVE·代码引用·路径)下放到 spec/evidence",
   "evidence": [{ "kind": "{{kinds}}", "ref": "可核实的引用", "summary": "该依据所述,一行" }],
   "impact": 1-5,
   "effort": 1-5,

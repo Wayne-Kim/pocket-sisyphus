@@ -8,6 +8,9 @@ dist/
 build/
 *.tsbuildinfo
 
+# Coverage reports (vitest v8 — text 는 콘솔, html 는 ./coverage/ 산출물)
+coverage/
+
 # Environment / secrets
 .env
 .env.*

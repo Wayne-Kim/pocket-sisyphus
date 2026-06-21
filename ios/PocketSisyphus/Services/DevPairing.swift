@@ -59,6 +59,19 @@ enum DevPairing {
     /// 경로에선 안 뜸), `SIMCTL_CHILD_PS_DEV_CONNMODE=1` 로 launch 하면 AppRoot 가 그 화면을 대신 렌더한다.
     static var connModePreview: Bool { (env["PS_DEV_CONNMODE"] ?? "").isEmpty == false }
 
+    /// DEBUG+시뮬레이터 전용 — 공용 빈/로딩/에러 상태 뷰(StateViews) 갤러리를 강제로 띄워
+    /// «눈검증» 하는 우회. 빈/로딩/에러는 데이터·연결 상태에 따라 잠깐만 떠 스크린샷으로 잡기
+    /// 어려우므로(특히 로딩은 loopback 에서 순식간), `SIMCTL_CHILD_PS_DEV_STATEVIEWS=1` 로
+    /// launch 하면 AppRoot 가 `StateViewsGallery` 를 대신 렌더해 세 상태를 한 화면에 보여 준다.
+    static var statePreview: Bool { (env["PS_DEV_STATEVIEWS"] ?? "").isEmpty == false }
+
+    /// DEBUG+시뮬레이터 전용 — ConnectionDiagnosticsView(연결 진단)를 «대표 샘플 데이터» 로 강제
+    /// 렌더해 «레이아웃 눈검증» 하는 우회. 실제 화면은 설정→연결 진단으로 들어가며 daemon 의
+    /// connection_diagnostics_v1 + 라이브 스냅샷이 필요한데, 검증 루프(/verify-ios)는 딥링크로 설정
+    /// 시트를 열 수 없고 옛 daemon 엔 capability 도 없다. `SIMCTL_CHILD_PS_DEV_CONNDIAG=1` 로 launch
+    /// 하면 AppRoot 가 seed 된 ConnectionDiagnosticsView 를 daemon 없이 렌더한다(lockViewState 와 동형).
+    static var connDiagnosticsPreview: Bool { (env["PS_DEV_CONNDIAG"] ?? "").isEmpty == false }
+
     /// launch 시점에 라우팅할 딥링크 (예: pocketsisyphus://session/<id>).
     /// `simctl openurl` 은 시스템 «열겠습니까?» 확인 다이얼로그를 띄워 무인 검증을 막으므로,
     /// 검증 루프는 딥링크도 env 로 실어 앱 «안에서» DeepLinkRouter 에 직접 넣는다.
@@ -98,6 +111,8 @@ enum DevPairing {
     static let daemonPort: UInt16? = nil
     static let lockViewState: String? = nil
     static let connModePreview: Bool = false
+    static let statePreview: Bool = false
+    static let connDiagnosticsPreview: Bool = false
     static let launchDeepLink: URL? = nil
     @MainActor
     static func seedIfNeeded(auth: AuthStore) {}

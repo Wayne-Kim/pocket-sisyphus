@@ -25,6 +25,7 @@ import {
 } from "../agent/pty-runner.js";
 import { getAgent, hasAgent } from "../agent/registry.js";
 import { createSession, resolveAndEnsureRepoDir } from "../routes/sessions.js";
+import { prepareUnattendedCwd } from "../mcp/unattended.js";
 import { broadcastAll } from "../ws/hub.js";
 import {
   parseDef,
@@ -38,6 +39,7 @@ import {
   insertNodeRun,
   updateNodeRun,
   setRunStatus,
+  setRunAttention,
   listNodeRuns,
   listRunningRuns,
   getNodeRun,
@@ -69,6 +71,9 @@ const MAX_NODES = 200;
 const MAX_DEPTH = 8;
 /** 테스트 fail 루프 반복 상한 — 무한 루프 + 토큰 폭주 차단 (back-edge 1개당). */
 const MAX_ITERATIONS = 10;
+
+/** fail 루프 반복 상한 — UI(캔버스)가 «재시도 N/한도» 를 그릴 수 있게 노출한다. */
+export const WORKFLOW_MAX_ITERATIONS = MAX_ITERATIONS;
 
 /** 동적 분기로 생성된 노드의 실행 대기 항목. */
 type DynamicItem = {
@@ -117,6 +122,12 @@ type RunState = {
   backEdgeIds: Set<string>;
   /** back-edge id → 지금까지 돈 루프 반복 수 (MAX_ITERATIONS 캡). */
   loopIter: Map<string, number>;
+  /**
+   * def node id → 다음 실행에 먹일 «직전 점검 실패 사유»(verdict summary). 루프 back-edge 로
+   * 되돌아온 작업에만 설정되고, 그 작업이 실제로 재실행될 때(executeWorkNode) 프롬프트에 붙은 뒤
+   * 소비(삭제)된다. 첫 시도엔 비어 있어 종전과 동일(무회귀).
+   */
+  retryReasonByDefId: Map<string, string>;
   /** 사용자 결정 대기 중인 노드 — nodeRunId → { action: handler }. 승인(approve/reject) +
    *  수동 개입(complete/retry). 비어 있지 않으면 run 은 끝나지 않고 사용자를 기다린다. */
   pending: Map<string, Record<string, () => void>>;
@@ -159,6 +170,15 @@ export function startWorkflowRun(
 ): { runId: string } | { error: string } {
   const def = parseDef(workflow.nodes, workflow.edges);
   if (def.nodes.length === 0) return { error: "노드가 비어 있어요." };
+
+  // 무인 trifecta(capability_caps C1/M3) — 워크플로우 run 은 자율 실행 단위다. 모든 노드의 cwd
+  // (worktree 격리분 또는 공유 repo)의 MCP 노출을 안전화한다: 격리 worktree 는 `.mcp.json` 을
+  // READ/LOCAL 만 남게 다시 쓰고, 공유 repo 는 캡 대상 MCP 가 있으면 run 자체를 거부한다.
+  const cwd = opts?.worktree?.path ?? workflow.repo_path;
+  if (cwd) {
+    const prep = prepareUnattendedCwd(cwd, { isolated: !!opts?.worktree });
+    if (!prep.ok) return { error: `${prep.code}: ${prep.capped.join(", ")}` };
+  }
 
   const snapshot = JSON.stringify({ nodes: def.nodes, edges: def.edges });
   const run = insertRun(workflow.id, snapshot, triggerKind, opts?.worktree);
@@ -226,6 +246,7 @@ export function startWorkflowRun(
     reach,
     backEdgeIds,
     loopIter: new Map(),
+    retryReasonByDefId: new Map(),
     pending: new Map(),
     approved: new Set(),
     active: 0,
@@ -282,6 +303,9 @@ export function reconcileStaleRuns(): void {
   for (const r of listRunningRuns()) {
     if (runs.has(r.id)) continue;
     setRunStatus(r.id, "failed", Date.now());
+    // 재시작으로 끊긴 무인 실행도 «미해결(실패)» 로 표면화한다 (workflow_attention_v1) — 사용자가
+    // 실행 기록을 안 열어도 워크플로우 화면 배너로 인지하게.
+    setRunAttention(r.id, "failed");
     // pending/running 노드도 정리.
     for (const nr of listNodeRuns(r.id)) {
       if (nr.status === "pending" || nr.status === "running" || nr.status === "awaiting_approval") {
@@ -404,7 +428,11 @@ function pump(state: RunState): void {
 type NodeOutcome = {
   status: "done" | "failed" | "needs_attention";
   verdict: "pass" | "fail" | null;
+  /** verdict.json 의 실패 사유 요약 — 루프 재시도 시 다음 시도 프롬프트에 먹인다 (없으면 null). */
+  verdictSummary: string | null;
   branches: BranchSpec[] | null;
+  /** verdict.json summary — fail 판정 시 «되돌아간 사유» 한 줄로 캔버스에 노출. 없으면 null. */
+  reason: string | null;
 };
 
 async function runNodeSession(
@@ -421,6 +449,8 @@ async function runNodeSession(
     repoPath: string;
     parents: ParentFolderRef[];
     title: string;
+    /** 루프 재시도면 직전 점검의 실패 사유 — 프롬프트에 «직전 시도는 …» 로 붙는다 (첫 시도엔 미설정). */
+    priorFailure?: string;
   },
 ): Promise<NodeOutcome> {
   const parts = {
@@ -455,6 +485,7 @@ async function runNodeSession(
     runToken: state.runToken,
     wantsVerdict: p.wantsVerdict,
     resultSpec: p.resultSpec,
+    priorFailure: p.priorFailure,
   });
   const settle = waitForNodeDone(sessionId, p.repoPath, thisFolderRel);
   const adapter = getAgent(p.agentId);
@@ -496,19 +527,35 @@ async function runNodeSession(
     // 에이전트가 result.md 를 안 남겼으면 세션 출력(터미널 캡처)으로 합성한다 — 그래야 다음 노드가
     // «이전 단계 결과» 폴더를 읽고 이어서 작업할 수 있다. (예전엔 needs_attention 으로 멈춰 체인이
     // 끊겼다. 특히 터미널 도구는 프로토콜대로 result.md 를 못 쓰므로 이 폴백이 필수.)
+    //
+    // result_kind (workflow_attention_v1) — 합성본은 «프롬프트 타이핑 화면» 이 결과로 둔갑한 것이라
+    // 정상 결과와 구분되는 표식을 남긴다: 에이전트가 직접 남기면 'agent', 합성했으면 'synthetic',
+    // 캡처마저 사실상 비었으면 'empty'(빈 결과 — 더 강하게 표시). 앱이 캔버스/실행 기록에서 시각 구분.
+    let resultKind: "agent" | "synthetic" | "empty";
     if (!harvest.resultMd) {
       const captured = readSessionText(sessionId);
+      resultKind = captured.length > 0 ? "synthetic" : "empty";
       const body =
         captured.length > 0
           ? `# ${p.title}\n\n<!-- 에이전트가 result.md 를 남기지 않아 터미널 출력으로 자동 생성됨 -->\n\n\`\`\`\n${captured}\n\`\`\`\n`
           : `# ${p.title}\n\n(에이전트가 result.md 를 남기지 않았고 캡처된 출력도 없습니다.)\n`;
       writeResultMd(p.repoPath, thisFolderRel, body);
+    } else {
+      resultKind = "agent";
     }
+    updateNodeRun(p.nodeRunId, { resultKind });
     // verdict.json 이 있으면 그 판정, 없으면 성공으로 간주.
     verdict = harvest.verdictPass === true ? "pass" : harvest.verdictPass === false ? "fail" : "pass";
     status = "done";
   }
-  return { status, verdict, branches: harvest.branches };
+  return {
+    status,
+    verdict,
+    verdictSummary: harvest.verdictSummary,
+    branches: harvest.branches,
+    // fail 판정일 때만 사유를 노출 (성공/하드실패엔 «되돌아간 사유» 개념이 없다).
+    reason: verdict === "fail" ? harvest.verdictSummary : null,
+  };
 }
 
 /** 정적 노드(def) 1개 실행 → completeNode(간선 활성화) + 동적 분기 spawn. */
@@ -551,6 +598,11 @@ async function executeWorkNode(state: RunState, defId: string): Promise<void> {
   // «실패» 분기(fail 간선)가 있으면 명시적 성공/실패 판정을 요청한다.
   const wantsVerdict = state.def.edges.some((e) => e.from === defId && e.condition === "fail");
 
+  // 루프 back-edge 로 되돌아온 작업이면 직전 점검의 실패 사유를 먹인다 — 소비 후 삭제(다음 통상
+   // 실행이 묵은 사유를 끌고 가지 않게). 첫 시도/비루프엔 비어 있어 종전과 동일(무회귀).
+  const priorFailure = state.retryReasonByDefId.get(defId);
+  state.retryReasonByDefId.delete(defId);
+
   const r = await runNodeSession(state, {
     nodeRunId,
     wantsVerdict,
@@ -561,6 +613,7 @@ async function executeWorkNode(state: RunState, defId: string): Promise<void> {
     repoPath,
     parents,
     title: node.title ?? defId,
+    priorFailure,
   });
   if (r.status === "needs_attention") {
     parkNeedsAttention(state, nodeRunId, {
@@ -569,7 +622,7 @@ async function executeWorkNode(state: RunState, defId: string): Promise<void> {
     });
     return;
   }
-  completeNode(state, defId, r.status, r.verdict);
+  completeNode(state, defId, r.status, r.verdict, r.reason);
   if (r.status === "done" && r.branches) {
     maybeSpawnBranches(state, nodeRunId, repoPath, r.branches);
   }
@@ -693,6 +746,8 @@ function completeNode(
   defId: string,
   status: "done" | "failed" | "needs_attention" | "skipped",
   verdict: "pass" | "fail" | null,
+  /** 점검(verdict fail) 노드의 실패 사유 요약 — 루프 재시도 프롬프트에 먹이고 캔버스(loopbackReason)에도 노출. */
+  reason: string | null = null,
 ): void {
   const nodeRunId = state.nodeRunByDefId.get(defId);
   if (nodeRunId) {
@@ -709,12 +764,17 @@ function completeNode(
       const it = state.loopIter.get(back.id) ?? 0;
       if (it < MAX_ITERATIONS) {
         state.loopIter.set(back.id, it + 1);
-        runLoop(state, defId, back.to, it + 1);
+        runLoop(state, defId, back.to, it + 1, reason);
         return;
       }
       console.warn(`[workflow] run=${state.runId} MAX_ITERATIONS(${MAX_ITERATIONS}) — 루프 종료 ${defId}`);
-      // 루프가 끝내 통과 못 함 → run 을 failed 로 표시. fall through 로 일반 간선 해소.
+      // 루프가 끝내 통과 못 함 → run 을 failed 로 표시 + 이 테스트 노드에 «한도 도달» 표식(캔버스가
+      // danger 의미로 분명히 드러냄). fall through 로 일반 간선 해소.
       state.anyFailed = true;
+      if (nodeRunId) {
+        updateNodeRun(nodeRunId, { limitReached: true, loopbackReason: reason });
+        broadcastNode(state.runId, nodeRunId, status);
+      }
     }
   }
 
@@ -743,7 +803,13 @@ function completeNode(
  * 리셋하고 다시 enqueue 한다. 같은 node_run 을 재사용(iteration 컬럼 bump)해 캔버스가 최신
  * 반복 상태를 보여 준다. reset 후 intra-loop indegree 로 remaining 을 다시 잡아 B 부터 재실행.
  */
-function runLoop(state: RunState, testDefId: string, backTarget: string, iter: number): void {
+function runLoop(
+  state: RunState,
+  testDefId: string,
+  backTarget: string,
+  iter: number,
+  failureSummary: string | null = null,
+): void {
   const inBody = (x: string): boolean => {
     const reachFromB = backTarget === x || state.reach.get(backTarget)?.has(x) === true;
     const reachToT = x === testDefId || state.reach.get(x)?.has(testDefId) === true;
@@ -753,10 +819,30 @@ function runLoop(state: RunState, testDefId: string, backTarget: string, iter: n
   const bodySet = new Set(body);
   console.log(`[workflow] run=${state.runId} loop iter=${iter} body=[${body.join(",")}]`);
 
+  // 점검 실패 사유를 «되돌아온 작업»(루프 몸통의 작업 노드들 — 점검 노드 자신은 제외)에 먹인다.
+  // 그래야 다음 시도가 «직전 시도는 이래서 떨어졌다» 를 알고 자기교정한다. 사유가 없으면 미설정.
+  const reason = failureSummary?.trim() || null;
+  if (reason) {
+    for (const xid of body) {
+      if (xid === testDefId) continue;
+      if (state.nodeById.get(xid)?.type !== "task") continue;
+      state.retryReasonByDefId.set(xid, reason);
+    }
+  }
+
   for (const xid of body) {
     const nrId = state.nodeRunByDefId.get(xid);
     if (nrId) {
-      updateNodeRun(nrId, { status: "pending", verdict: null, iteration: iter, endedAt: null });
+      // 재시도 중인 노드에 «몇 번째 시도(iteration)» + «이번에 되돌아간 사유(loopbackReason)» 를 실어
+      // 캔버스가 루프 상태를 드러낸다. 한도 미도달이므로 limitReached 는 false 로 리셋.
+      updateNodeRun(nrId, {
+        status: "pending",
+        verdict: null,
+        iteration: iter,
+        loopbackReason: reason,
+        limitReached: false,
+        endedAt: null,
+      });
       broadcastNode(state.runId, nrId, "pending");
     }
     state.enqueued.delete(xid);
@@ -923,6 +1009,19 @@ function maybeFinish(state: RunState): void {
   }
   const status = state.cancelled ? "cancelled" : state.anyFailed ? "failed" : "done";
   setRunStatus(state.runId, status, Date.now());
+  // «미해결» 신호 산출 (workflow_attention_v1) — 정상 «완료» 로 보이지만 실제론 «진짜 결과 없이»
+  // 끝난 막다른 길을 표면화한다. 우선순위: 하드 실패(failed) > 빈 결과(empty) > 합성본 소비(synthetic).
+  // 취소(cancelled)는 사용자가 스스로 멈춘 의도된 종료라 신호 없음. 정상 done 이고 합성본/빈 결과
+  // 노드가 하나도 없으면 attention 없음(거짓 경보 방지). end 노드뿐 아니라 어느 task 노드든 합성본을
+  // 소비했으면(=다운스트림이 의미 없는 결과를 받았으면) «확인 필요» 로 잡는다.
+  if (status !== "cancelled") {
+    const nodeKinds = listNodeRuns(state.runId).map((nr) => nr.result_kind);
+    const hasEmpty = nodeKinds.includes("empty");
+    const hasSynthetic = nodeKinds.includes("synthetic");
+    const attention: "failed" | "empty" | "synthetic" | null =
+      status === "failed" ? "failed" : hasEmpty ? "empty" : hasSynthetic ? "synthetic" : null;
+    if (attention) setRunAttention(state.runId, attention);
+  }
   broadcastRun(state.runId, status);
   // run 마감 알림 1회. finished 가드(상단)가 maybeFinish 재진입을 막아 run 당 정확히 1발.
   //   - failed → 실패(빨강) 알림.

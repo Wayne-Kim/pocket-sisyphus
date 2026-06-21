@@ -1,0 +1,12 @@
+# doc-pair-lint-baseline.tsv — doc-pair-lint.sh 가 «의도적 영어 단독/벤더링» 으로 보고 띄우지 않는 허용목록.
+#
+# 형식: 한 줄당 «레포 루트 상대 경로» 하나. «#» 주석·빈 줄 허용. 등재된 파일은 A/B/C 어떤 후보도 안 뜬다.
+#   - 오직 «의도적 영어 단독/벤더링» 전용이다 — 진짜 미번역 «드리프트»(영어만/한국어만 빠진 문서)는
+#     여기 숨기지 말고 «쌍을 맞춰» 고친다(예: ios/README.md·web/README.md 는 등재 «금지» — 고쳐야 할 드리프트).
+#   - gitignored 운영 스킬(deploy/deploy-web/submitting)은 git 추적 대상이 아니라 애초에 스캔되지 않으므로
+#     여기 적을 필요가 없다(인자 없는 기본 실행은 git ls-files 만 본다).
+#
+# ── 벤더링된 Next.js 에이전트 규칙(의도적 영어 단독) ──
+web/AGENTS.md
+# ── web/CLAUDE.md 는 `@AGENTS.md` 한 줄 include — 사실상 본문이 없어 쌍/헤더 대상이 아니다 ──
+web/CLAUDE.md

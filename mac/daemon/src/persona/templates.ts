@@ -23,7 +23,7 @@ import { poLoc } from "./prompt.js";
 import { t } from "./i18n/t.js";
 
 /** 템플릿 식별자 — 클라이언트가 이름/설명 지역화 키로 쓰는 안정적 id. */
-export type WorkflowTemplateId = "role_pipeline";
+export type WorkflowTemplateId = "role_pipeline" | "self_correcting_loop";
 
 /** 템플릿 한 개 — 클라이언트가 캔버스에 시드할 노드/간선 프리셋. */
 export type WorkflowTemplate = {
@@ -93,7 +93,34 @@ function buildRolePipeline(loc: PoLocale): WorkflowTemplate {
   };
 }
 
+/**
+ * 자기교정 루프 프리셋: start → 생성 → 점검 → end + «점검 실패 시 생성으로 되돌아가는» fail 간선.
+ * 점검 노드에 fail 간선(point.→make)이 달려 있어 엔진이 명시적 성공/실패 판정을 요청하고
+ * (engine.ts wantsVerdict), «실패» 면 생성으로 back-edge 루프(reset+rerun, MAX_ITERATIONS 캡),
+ * «성공» 이면 end 로 전진한다. 처음 쓰는 사용자가 «자기교정 루프» 골격을 한 번에 시드하도록 한다.
+ */
+function buildSelfCorrectingLoop(loc: PoLocale): WorkflowTemplate {
+  const handoff = t("tpl.handoff", loc);
+  return {
+    id: "self_correcting_loop",
+    nodes: [
+      { id: "start", type: "start", title: "시작", x: COL_X, y: rowY(0) },
+      roleNode("make", "생성", 1, t("tpl.make", loc, { handoff })),
+      roleNode("check", "점검", 2, t("tpl.check", loc, { handoff })),
+      { id: "end", type: "end", title: "종료", x: COL_X, y: rowY(3) },
+    ],
+    edges: [
+      { id: "e_start_make", from: "start", to: "make" },
+      { id: "e_make_check", from: "make", to: "check" },
+      { id: "e_check_end", from: "check", to: "end" },
+      // 점검 실패 → 생성으로 되돌아가는 루프(back-edge). condition="fail" 만 순환 허용(types.ts).
+      { id: "e_check_make", from: "check", to: "make", condition: "fail" },
+    ],
+  };
+}
+
 /** 라우트용 — 알려진 템플릿 목록(노드/간선 프리셋). locale 누락/ko/미지원이면 ko (회귀 0). */
 export function listWorkflowTemplates(locale?: string): WorkflowTemplate[] {
-  return [buildRolePipeline(poLoc(locale))];
+  const loc = poLoc(locale);
+  return [buildRolePipeline(loc), buildSelfCorrectingLoop(loc)];
 }

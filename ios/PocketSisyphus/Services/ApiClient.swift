@@ -1608,6 +1608,27 @@ final class ApiClient {
         try await send("GET", "/api/version", label: label)
     }
 
+    // MARK: - Diagnostics (문제 신고/진단)
+
+    /// `GET /api/diagnostics` — 로컬 진단 번들(서브시스템 스냅샷 + 최근 crash 마커 + 마스킹된
+    /// unified.log tail). iOS 「문제 신고/진단」 화면이 «사용자가 직접» 묶어 공유/내보내기 한다.
+    /// 자동 전송 없음(LAN 전용·무텔레메트리 원칙). 비밀(webhook URL·토큰·키)은 daemon 이 마스킹.
+    ///
+    /// daemon 측 `mac/daemon/src/diagnostics.ts` 의 `buildDiagnosticsBundle()` 와 짝.
+    /// 옛 daemon (diagnostics_v1 미지원) 은 404 — 호출처가 capability 게이팅으로 막는다.
+    func getDiagnostics(label: String? = String(localized: "진단 번들 생성")) async throws -> DiagnosticsBundle {
+        try await send("GET", "/api/diagnostics", label: label)
+    }
+
+    // MARK: - 연결 진단 (connection_diagnostics_v1)
+
+    /// `GET /api/connection-diagnostics` — 서브시스템 읽기전용 연결 진단 스냅샷 (Tor/sshd/디스크/
+    /// 에이전트 CLI 등). connection_diagnostics_v1 미지원 daemon 은 404 — 호출처(설정 진입)가
+    /// capability 게이팅으로 막는다. (별개의 getDiagnostics() 는 «문제 신고/진단 번들».)
+    func getConnectionDiagnostics(label: String? = String(localized: "연결 진단")) async throws -> DiagnosticsResponse {
+        try await send("GET", "/api/connection-diagnostics", label: label)
+    }
+
     // MARK: - Workflows (multi-agent)
 
     /// `GET /api/workflows` — 워크플로우 정의 목록. workflow_v1 미지원 daemon 은 404 —
@@ -1706,6 +1727,19 @@ final class ApiClient {
     func cancelWorkflowRun(runId: String, label: String? = String(localized: "워크플로우 취소")) async throws {
         struct Ok: Decodable { let ok: Bool? }
         let _: Ok = try await send("POST", "/api/workflows/runs/\(runId)/cancel", label: label)
+    }
+
+    /// `GET /api/workflows/attention` — 모든 워크플로우에 걸친 미해결 무인(cron/github) 실행 집계
+    /// (workflow_attention_v1). 워크플로우 탭이 폴링해 상단 배너로 표면화한다.
+    func workflowAttention(label: String? = nil) async throws -> WorkflowAttentionResponse {
+        try await send("GET", "/api/workflows/attention", label: label)
+    }
+
+    /// `POST /api/workflows/runs/:id/ack-attention` — 미해결 신호 «확인». attention_ack=1 로 박아
+    /// 배너에서 사라지게 한다 (멱등).
+    func ackWorkflowRunAttention(runId: String, label: String? = String(localized: "확인 처리")) async throws {
+        struct Ok: Decodable { let ok: Bool? }
+        let _: Ok = try await send("POST", "/api/workflows/runs/\(runId)/ack-attention", label: label)
     }
 
     /// 노드 결정 — action ∈ approve|reject(승인 게이트) / complete|retry(수동 개입).

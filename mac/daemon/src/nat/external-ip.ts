@@ -36,6 +36,18 @@ let cache: CacheEntry | null = null;
 let inflightFetch: Promise<string | null> | null = null;
 
 /**
+ * 마지막으로 WAN IPv4 변경을 «감지» 한 시각 (epoch ms). watcher 의 tick 이 직전 값과 다른 IP 를
+ * 관측한 순간 갱신한다. 진단 스냅샷(/api/diagnostics)의 «마지막 IP 변경 시각» — onion
+ * introduction point 가 stale 해진 원인 추적용. 한 번도 없었으면 null.
+ */
+let lastWanIpChangeAt: number | null = null;
+
+/** 마지막 WAN IPv4 변경 감지 시각 (epoch ms). 없으면 null. 진단 스냅샷용. */
+export function getLastWanIpChangeAt(): number | null {
+  return lastWanIpChangeAt;
+}
+
+/**
  * 캐시된 외부 IPv4. 캐시가 신선하면 그대로 반환, 아니면 echo 호출.
  *
  * 모든 echo 가 실패하면:
@@ -193,6 +205,8 @@ export function startWanIPv4Watcher(
     if (!ip) return;
     if (lastKnown && ip !== lastKnown) {
       console.log(`[wan-watch] WAN IPv4 변경 감지: ${lastKnown} → ${ip}`);
+      // 진단용 — 변경을 «감지» 한 시점 기록 (onChange 결과와 무관).
+      lastWanIpChangeAt = Date.now();
       try {
         onChange(lastKnown, ip);
       } catch (e) {

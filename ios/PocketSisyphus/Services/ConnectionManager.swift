@@ -375,9 +375,8 @@ final class ConnectionManager: ObservableObject {
         endpoints: [EndpointEntry]
     ) async -> ConnectResult? {
         // Tor onion candidate 는 Tor 가 ready 일 때만 의미. 직접 채널은 Tor 무관.
-        let sorted = endpoints
-            .sorted { $0.priority < $1.priority }
-            .filter { !($0.type == .torOnion && !tor.isReady) }
+        // 정렬/필터 규칙은 HappyEyeballsPolicy(순수, 단위 테스트로 고정)에 위임한다.
+        let sorted = HappyEyeballsPolicy.order(endpoints, torReady: tor.isReady)
         guard cache.cached != nil, !sorted.isEmpty else { return nil }
 
         let coord = HappyEyeballsCoordinator()

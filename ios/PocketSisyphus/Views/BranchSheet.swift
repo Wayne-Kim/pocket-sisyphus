@@ -256,7 +256,7 @@ struct BranchSheet: View {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if (branches?.local.isEmpty ?? true) && worktrees.isEmpty {
-            BranchEmptyState(
+            EmptyStateView(
                 title: "Git 저장소가 아니에요",
                 systemImage: "arrow.triangle.branch",
                 message: "이 폴더에서 브랜치 정보를 가져올 수 없어요.",
@@ -997,25 +997,4 @@ private struct Badge: View {
     }
 }
 
-/// iOS 17 ContentUnavailableView 호환 대체 — 16.4 타깃 유지 위해 직접 그림.
-private struct BranchEmptyState: View {
-    let title: LocalizedStringKey
-    let systemImage: String
-    let message: LocalizedStringKey
-
-    var body: some View {
-        VStack(spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.system(size: Theme.IconSize.l))
-                .foregroundStyle(.secondary)
-            Text(title)
-                .font(.headline)
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
+// 빈 상태는 공용 `EmptyStateView`(DesignSystem/StateViews.swift) 로 통합됐다.

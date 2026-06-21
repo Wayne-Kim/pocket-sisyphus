@@ -99,12 +99,14 @@ function writeBriefs(value: unknown): string {
   return file;
 }
 
-/** po_briefs 에 dedup 코퍼스 시드 직접 삽입 — lexical 백스톱/상태 제외 검증용. */
+/** po_briefs 에 dedup 코퍼스 시드 직접 삽입 — lexical 백스톱/상태 제외/ref 겹침 검증용. */
 function seedBrief(o: {
   repo_path?: string;
   title: string;
   problem: string;
   status?: string;
+  /** evidence ref (선택) — ref-겹침 신호 검증용. 생략 시 인식 불가 ref("r")로 트라이그램 경로만 검증. */
+  ref?: string;
 }): void {
   db()
     .prepare(
@@ -116,7 +118,7 @@ function seedBrief(o: {
       repo_path: o.repo_path ?? H.repoA,
       title: o.title,
       problem: o.problem,
-      evidence: JSON.stringify([{ kind: "x", ref: "r", summary: "s" }]),
+      evidence: JSON.stringify([{ kind: "x", ref: o.ref ?? "r", summary: "s" }]),
       status: o.status ?? "proposed",
       t: Date.now(),
     });
@@ -294,6 +296,26 @@ describe("ingestBriefs — 백로그 INSERT 게이트 불변식", () => {
     expect(r.score).toBe(2);
   });
 
+  it("가독성 신호(빽빽한 제목·코드 시작)는 «소프트» — 브리프를 버리지 않고 그대로 INSERT 한다", () => {
+    // 제목이 80자 초과 + 파일경로 + «—» 다중 절 (R1/R2/R3), problem 이 코드로 시작 (R4) 인 «빽빽한»
+    // 브리프 — readability 가 로깅/표면화만 하고 차단/감점하지 않음을 못박는다(스코프: 하드 reject 금지).
+    const dense = makeBrief({
+      title:
+        "lifecycle.ts 세션 정착 — settle 대기 — running 전이가 다시 빽빽해진 가독성 회귀 표본 제목이며 충분히 길게 이어집니다",
+      problem: "`watchExecForShipped` 가 정착 판정을 길이로만 본다",
+    });
+    const ids = ingestBriefs("s", H.repoA, writeBriefs([dense]));
+    expect(ids.length).toBe(1); // 신호가 있어도 버리지 않는다(소프트).
+    expect(row(ids[0]).status).toBe("proposed");
+  });
+
+  it("기존 길이 cap 동작 보존: 200자 초과 제목은 (가독성과 무관하게) 200 으로 잘려 INSERT 된다", () => {
+    const long = makeBrief({ title: "가".repeat(500) });
+    const ids = ingestBriefs("s", H.repoA, writeBriefs([long]));
+    expect(ids.length).toBe(1);
+    expect((row(ids[0]).title as string).length).toBe(200);
+  });
+
   it("필수필드 미달 원소는 건너뛰고 INSERT 되지 않는다", () => {
     const file = writeBriefs([
       makeBrief(), // 유효
@@ -368,6 +390,159 @@ describe("ingestBriefs — 백로그 INSERT 게이트 불변식", () => {
     const file = writeBriefs([makeBrief()]);
     const ids = ingestBriefs("s", H.repoA, file);
     expect(ids.length).toBe(1);
+  });
+
+  it("dedup ⑤: 같은 evidence ref·다른 제목 = ref 겹침으로 컷 (트라이그램 미달이어도)", () => {
+    // 제목·문제는 전혀 다르지만 같은 파일:라인을 가리키는 의미-중복 — 옛 백스톱은 못 잡던 누수.
+    seedBrief({
+      title: "다크 모드 지원",
+      problem: "야간에 화면이 너무 밝다",
+      status: "proposed",
+      ref: "ui/Theme.ts:42",
+    });
+    const file = writeBriefs([
+      makeBrief({
+        title: "어두운 테마 옵션",
+        problem: "밤에 눈이 부셔서 쓰기 힘들다",
+        // 디자인 렌즈 kind(design_token_drift)도 ref=파일:라인이라 동일 적용 — 인접 라인(42↔43)도 컷.
+        evidence: [{ kind: "design_token_drift", ref: "ui/Theme.ts:43", summary: "토큰 드리프트" }],
+        dedup: { relation: "new" },
+      }),
+    ]);
+    const ids = ingestBriefs("s", H.repoA, file);
+    expect(ids.length).toBe(0);
+  });
+
+  it("dedup ⑥: 다른 ref·비슷한 제목 = 트라이그램 경로 유지 (OR — 회귀 0)", () => {
+    // ref 가 다른 파일이어도 제목/문제가 닮으면 트라이그램이 컷한다(ref 차이가 트라이그램을 억누르지 않음).
+    seedBrief({
+      title: "라벨 추가 기능",
+      problem: "사용자가 항목을 분류할 방법이 없다",
+      status: "proposed",
+      ref: "a/x.ts:10",
+    });
+    const file = writeBriefs([
+      makeBrief({
+        evidence: [{ kind: "repo_todo", ref: "b/y.ts:999", summary: "다른 위치" }],
+        dedup: { relation: "new" },
+      }),
+    ]);
+    const ids = ingestBriefs("s", H.repoA, file);
+    expect(ids.length).toBe(0);
+  });
+
+  it("dedup ⑦: 다른 제목·인식 불가 ref = 통과 (폴백, 회귀 0)", () => {
+    // 제목 안 닮고 draft ref 가 라인 없는 맨 경로(인식 불가) → ref 신호 없음 → 트라이그램 폴백 → 통과.
+    seedBrief({
+      title: "다크 모드 지원",
+      problem: "야간에 화면이 너무 밝다",
+      status: "proposed",
+      ref: "ui/Theme.ts:42",
+    });
+    const file = writeBriefs([
+      makeBrief({
+        title: "오프라인 동기화",
+        problem: "지하철에서 연결이 끊기면 작업이 사라진다",
+        evidence: [{ kind: "repo_todo", ref: "docs/todo.md", summary: "동기화 요청" }],
+        dedup: { relation: "new" },
+      }),
+    ]);
+    const ids = ingestBriefs("s", H.repoA, file);
+    expect(ids.length).toBe(1);
+  });
+
+  it("dedup ⑧: 배치-내 같은 ref·다른 제목도 누적 코퍼스로 컷 (둘째가 ref 로 컷)", () => {
+    const file = writeBriefs([
+      makeBrief({
+        title: "첫 브리프 제목",
+        problem: "첫 문제 정의 서술",
+        evidence: [{ kind: "code_comment", ref: "src/a.ts:120", summary: "근거1" }],
+      }),
+      makeBrief({
+        title: "둘째 — 전혀 다른 제목",
+        problem: "둘째 — 전혀 다른 문제 서술",
+        evidence: [{ kind: "code_comment", ref: "src/a.ts:121", summary: "근거2" }], // 같은 파일 인접 라인
+      }),
+    ]);
+    const ids = ingestBriefs("s", H.repoA, file);
+    expect(ids.length).toBe(1);
+    expect(row(ids[0]).title).toBe("첫 브리프 제목");
+  });
+
+  describe("dedup ⑨ — 닫힌 결정 지문 백스톱 (po_dedup_fingerprint_v1, 윈도우 밖)", () => {
+    // dedup ②~⑧ 은 «윈도우 안» 코퍼스(dedupCorpus LIMIT 60)를 검증한다. 이 블록은 그 윈도우 «밖» 으로
+    // 밀려난 옛 닫힌 결정을 지문 백스톱이 잡는지 — 이 기능의 고유 가치를 못박는다. 60건의 살아있는
+    // 제안으로 윈도우를 가득 채워 닫힌 결정을 코퍼스 밖(행 61)으로 밀어낸 뒤 ingest 한다.
+    function fillWindow(): void {
+      for (let i = 0; i < 60; i++) {
+        seedBrief({
+          title: `윈도우 채움 제안 ${i}`,
+          problem: `이건 단지 코퍼스 윈도우를 채우는 항목 번호 ${i} 일 뿐이고 테스트 브리프와 안 닮았다`,
+          status: "proposed",
+        });
+      }
+    }
+
+    it("윈도우 밖으로 밀려난 옛 기각도 지문 lexical 로 재제안 컷", () => {
+      fillWindow();
+      seedBrief({
+        title: "라벨 추가 기능",
+        problem: "사용자가 항목을 분류할 방법이 없다",
+        status: "rejected",
+      });
+      // makeBrief 는 기각된 것과 동일 텍스트지만, 그 기각은 윈도우 밖이라 ② 윈도우 백스톱으론 안 잡힌다.
+      const ids = ingestBriefs("s", H.repoA, writeBriefs([makeBrief({ dedup: { relation: "new" } })]));
+      expect(ids.length).toBe(0);
+    });
+
+    it("윈도우 밖 옛 기각도 evidence ref 겹침으로 컷 (제목 미달이어도)", () => {
+      fillWindow();
+      seedBrief({
+        title: "다크 모드 지원",
+        problem: "야간에 화면이 너무 밝다",
+        status: "rejected",
+        ref: "ui/Theme.ts:42",
+      });
+      // 제목·문제는 전혀 다르지만 같은 파일:라인을 가리킨다 — 윈도우 밖이라 지문 백스톱만 잡을 수 있다.
+      const para = makeBrief({
+        title: "어두운 테마 옵션",
+        problem: "밤에 눈이 부셔서 쓰기 힘들다",
+        evidence: [{ kind: "design_token_drift", ref: "ui/Theme.ts:42", summary: "토큰 드리프트" }],
+        dedup: { relation: "new" },
+      });
+      const ids = ingestBriefs("s", H.repoA, writeBriefs([para]));
+      expect(ids.length).toBe(0);
+    });
+
+    it("missed 지문은 백스톱 조회에서 제외 — 같은 ref·다른 제목이어도 컷되지 않는다", () => {
+      // 지문 표는 missed 도 보존하되 조회에서 뺀다 (윈도우 코퍼스의 missed 제외 정책과 동형).
+      seedBrief({
+        title: "다크 모드 지원",
+        problem: "야간에 화면이 너무 밝다",
+        status: "missed",
+        ref: "ui/Theme.ts:42",
+      });
+      const para = makeBrief({
+        title: "어두운 테마 재시도",
+        problem: "밤에 눈이 부셔서 쓰기 힘들다",
+        evidence: [{ kind: "design_token_drift", ref: "ui/Theme.ts:42", summary: "토큰 드리프트" }],
+        dedup: { relation: "new" },
+      });
+      const ids = ingestBriefs("s", H.repoA, writeBriefs([para]));
+      expect(ids.length).toBe(1);
+    });
+
+    it("repo 격리: 다른 repo 의 닫힌 결정 지문은 조회되지 않아 컷되지 않는다", () => {
+      seedBrief({
+        repo_path: H.repoB,
+        title: "라벨 추가 기능",
+        problem: "사용자가 항목을 분류할 방법이 없다",
+        status: "rejected",
+        ref: "ui/Theme.ts:42",
+      });
+      const ids = ingestBriefs("s", H.repoA, writeBriefs([makeBrief()]));
+      expect(ids.length).toBe(1);
+    });
   });
 
   describe("불량 입력 — [] 반환, 예외 없음", () => {

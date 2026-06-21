@@ -26,9 +26,11 @@ import {
   listRunsForWorkflow,
   getRun,
   listNodeRuns,
+  listUnackedAttentionRuns,
+  ackRunAttention,
   type WorkflowInput,
 } from "../workflow/store.js";
-import { startWorkflowRun, cancelWorkflowRun, resolveWorkflowDecision } from "../workflow/engine.js";
+import { startWorkflowRun, cancelWorkflowRun, resolveWorkflowDecision, WORKFLOW_MAX_ITERATIONS } from "../workflow/engine.js";
 import { startWorkflowDesign, getWorkflowDesign } from "../workflow/design.js";
 import { listWorkflowTemplates } from "../persona/templates.js";
 import { normalizePoLocale } from "../persona/prompt.js";
@@ -138,18 +140,40 @@ workflows.get("/templates", (c) => {
   return c.json({ templates: listWorkflowTemplates(locale) });
 });
 
+// 모든 워크플로우에 걸친 «미해결 무인 실행» 집계 (workflow_attention_v1). attention_kind 가 있고
+// 아직 확인 안 됐으며(ack=0) 무인 트리거(cron/github)인 run 들 — 최근 N건 페이징 너머의 실패도
+// 여기엔 집계되므로 사용자가 «미해결이 있다» 를 놓치지 않는다(AC5). 워크플로우 탭이 이걸 폴링해
+// 상단 배너로 표면화한다. `/:id` 보다 «먼저» 등록해야 id="attention" 으로 안 먹힌다.
+workflows.get("/attention", (c) => {
+  const items = listUnackedAttentionRuns().map((r) => ({
+    run_id: r.id,
+    workflow_id: r.workflow_id,
+    workflow_title: r.workflow_title,
+    attention_kind: r.attention_kind,
+    trigger_kind: r.trigger_kind,
+    started_at: r.started_at,
+    ended_at: r.ended_at,
+  }));
+  // 워크플로우별 미해결 수 — 탭 행 배지에 쓸 수 있게 함께 내려준다.
+  const byWorkflow: Record<string, number> = {};
+  for (const it of items) byWorkflow[it.workflow_id] = (byWorkflow[it.workflow_id] ?? 0) + 1;
+  return c.json({ total: items.length, items, byWorkflow });
+});
+
 workflows.get("/:id", (c) => {
   const id = c.req.param("id");
   const row = getWorkflow(id);
   if (!row) return c.json({ error: "not_found" }, 404);
   return c.json({
-    workflow: workflowResponse(row),
-    runs: listRunsForWorkflow(id, 20).map((r) => ({
+    workflow: workflowResponse(row),    runs: listRunsForWorkflow(id, 20).map((r) => ({
       id: r.id,
       status: r.status,
       trigger_kind: r.trigger_kind,
       started_at: r.started_at,
       ended_at: r.ended_at,
+      // «미해결» 신호 (workflow_attention_v1) — 정상 결과와 시각 구분(합성본/빈 결과/실패)할 원천.
+      attention_kind: r.attention_kind,
+      attention_ack: r.attention_ack,
     })),
   });
 });
@@ -241,6 +265,8 @@ workflows.get("/runs/:id", (c) => {
       worktree_branch: run.worktree_branch,
       started_at: run.started_at,
       ended_at: run.ended_at,
+      // fail 루프 재시도 상한 — 캔버스가 «재시도 N/한도» 를 그린다 (per-node iteration 과 짝).
+      max_iterations: WORKFLOW_MAX_ITERATIONS,
     },
     nodes: def.nodes,
     edges: def.edges,
@@ -254,6 +280,15 @@ workflows.post("/runs/:id/cancel", (c) => {
   if (!run) return c.json({ error: "not_found" }, 404);
   const ok = cancelWorkflowRun(id);
   return c.json({ ok });
+});
+
+// 미해결 신호 «확인» (workflow_attention_v1) — 사용자가 배너에서 확인/처리하면 attention_ack=1 로
+// 박아 배너에서 사라지게 한다. 멱등 — 이미 확인됐거나 attention 없는 run 도 ok:true (no-op).
+workflows.post("/runs/:id/ack-attention", (c) => {
+  const id = c.req.param("id");
+  if (!getRun(id)) return c.json({ error: "not_found" }, 404);
+  ackRunAttention(id);
+  return c.json({ ok: true });
 });
 
 // 사용자 결정 — 승인 게이트(approve/reject) + 수동 개입(complete/retry). nid = node_run id.

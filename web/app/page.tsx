@@ -1,4 +1,6 @@
 import Hero from "@/components/Hero";
+import Differentiators from "@/components/Differentiators";
+import Comparison from "@/components/Comparison";
 import Principles from "@/components/Principles";
 import Agents from "@/components/Agents";
 import Architecture from "@/components/Architecture";
@@ -15,6 +17,8 @@ export default function Home() {
   return (
     <>
       <Hero />
+      <Differentiators />
+      <Comparison />
       <Principles />
       <Architecture />
       <Agents />

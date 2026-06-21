@@ -1,0 +1,60 @@
+name: daemon test gate
+
+# 제품 코어인 mac/daemon 의 `vitest run`(커버리지 floor 게이트 포함)을 main push + 모든 PR 에서 강제한다.
+# 왜: 코어 검증이 1인 개발자의 로컬 `vitest run` 에만 달려 있어, 공개 기여자 PR 이 코어를 깨도
+#   머지 전 자동 차단이 안 됐다 — «회귀가 조용히 들어옴» 의 직접 원인. 이 게이트가 닫히면
+#   테스트 1개라도 실패하거나 vitest.config.ts 의 커버리지 floor 미만이면 PR 이 차단된다.
+#
+# ── 러너 전략 (SSOT) ──────────────────────────────────────────────────────────
+# runs-on: macos-latest 를 «선택» 한다. 이유:
+#   • mac/daemon 은 네이티브 의존(node-pty, better-sqlite3)을 쓴다. 특히 node-pty 는
+#     src/agent/pty-snapshot.test.ts 가 «top-level import» 하므로(=모킹으로 우회 불가),
+#     테스트 «수집» 단계부터 네이티브 바이너리가 실제로 로드돼야 한다.
+#   • node-pty 1.1.0 은 prebuilds/ 에 darwin-arm64 / darwin-x64 / win32-* 만 싣고
+#     «linux» prebuild 가 없다 → ubuntu 러너에선 소스 빌드(또는 로드 실패) 리스크.
+#     macos-latest(arm64)는 darwin-arm64 prebuild 가 그대로 맞아 추가 빌드 없이 로드된다.
+#   • package.json 의 postinstall 이 darwin-arm64 spawn-helper 를 chmod +x 하는데,
+#     이 경로가 macos-latest(arm64)에서 그대로 유효하다.
+#   ⇒ ubuntu+모킹 대신 macos 러너로 «실제 네이티브 로드» 를 택해, 모킹 표류 없이
+#     로컬 `vitest run` 과 동일 조건으로 92+ 테스트를 돌린다.
+# ──────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mac/daemon/**"
+      - ".github/workflows/daemon-test.yml"
+  pull_request:
+    paths:
+      - "mac/daemon/**"
+      - ".github/workflows/daemon-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: mac/daemon
+    steps:
+      - uses: actions/checkout@v4
+
+      # setup-node 의 npm 캐시(~/.npm)로 재실행 시 의존 설치를 1~2분 내로 당긴다.
+      # cache-dependency-path 는 daemon 의 lockfile 을 가리켜 캐시 키를 그 해시로 고정한다.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mac/daemon/package-lock.json
+
+      # lockfile 고정 설치 — postinstall 이 node-pty darwin-arm64 spawn-helper 를 chmod 한다.
+      - name: install (npm ci)
+        run: npm ci
+
+      # 92+ 테스트 + 커버리지 floor 게이트. test 1개라도 실패하거나 vitest.config.ts 의
+      # thresholds(stmts/branch/funcs/lines) 미만이면 비-0 종료 → PR 차단.
+      - name: vitest run (게이트, 커버리지 floor 포함)
+        run: npm test -- --coverage

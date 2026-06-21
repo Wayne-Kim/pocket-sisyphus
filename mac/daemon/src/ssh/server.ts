@@ -76,6 +76,15 @@ export type SshStartOptions = {
 
 let activeProcess: ChildProcess | null = null;
 
+/**
+ * 임베디드 sshd child 가 살아 있는지 — 진단 스냅샷(/api/diagnostics)용. exit 시 activeProcess
+ * 가 null 로 비워지고, 자동 재시작 backoff 창 동안에도 null 이라 «listener 없음» 을 정직하게
+ * 노출한다(재시작 중이면 곧 다시 true). spawn 직후 동기적으로 set 되므로 「떠 있음」 의 근사.
+ */
+export function isSshProcessAlive(): boolean {
+  return activeProcess !== null && !activeProcess.killed;
+}
+
 // === sshd 자동 재시작 슈퍼바이저 (tor sidecar 와 대칭) ===
 //
 // 배경: sleep/wake 사이클이나 macOS 자체의 자원 회수로 «daemon(node) 은 멀쩡히 살아있는데

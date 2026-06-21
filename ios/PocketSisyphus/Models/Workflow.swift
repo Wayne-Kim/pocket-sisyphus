@@ -144,11 +144,64 @@ struct WorkflowRunInfo: Codable, Identifiable, Equatable {
     let trigger_kind: String?
     let started_at: Int64
     let ended_at: Int64?
+    /// fail 루프 재시도 상한 (GET /runs/:id 의 run 객체에만 — 목록 응답엔 없어 nil).
+    let max_iterations: Int?
+    /// «미해결» 신호 (workflow_attention_v1) — run 이 «진짜 결과 없이» 끝났는데 정상 «완료» 로 보이는
+    /// 막다른 길. nil = 정상(표시 없음). "failed"(하드 실패)|"empty"(빈 결과)|"synthetic"(합성본 소비).
+    /// GET /:id 의 runs 목록에만 실린다(GET /runs/:id 의 run 객체엔 없어 nil — 옛 daemon 도 nil).
+    let attention_kind: String?
+    /// 1 = 사용자가 확인/처리함 (배너에서 사라짐).
+    let attention_ack: Int?
+
+    init(
+        id: String,
+        workflow_id: String? = nil,
+        status: String,
+        trigger_kind: String? = nil,
+        started_at: Int64,
+        ended_at: Int64? = nil,
+        max_iterations: Int? = nil,
+        attention_kind: String? = nil,
+        attention_ack: Int? = nil
+    ) {
+        self.id = id
+        self.workflow_id = workflow_id
+        self.status = status
+        self.trigger_kind = trigger_kind
+        self.started_at = started_at
+        self.ended_at = ended_at
+        self.max_iterations = max_iterations
+        self.attention_kind = attention_kind
+        self.attention_ack = attention_ack
+    }
 }
 
 struct WorkflowDetailResponse: Codable {
     let workflow: WorkflowSummary
     let runs: [WorkflowRunInfo]
+}
+
+/// `GET /api/workflows/attention` 한 항목 (workflow_attention_v1) — 미해결 무인(cron/github) 실행 하나.
+/// 최근 N건 페이징 너머의 실패도 여기엔 집계되므로 사용자가 «미해결이 있다» 를 놓치지 않는다.
+struct WorkflowAttentionItem: Codable, Identifiable, Equatable {
+    let run_id: String
+    let workflow_id: String
+    let workflow_title: String?
+    /// "failed"(빨강) | "empty" | "synthetic" (둘 다 no란 «확인 필요»).
+    let attention_kind: String
+    let trigger_kind: String?
+    let started_at: Int64?
+    let ended_at: Int64?
+
+    var id: String { run_id }
+}
+
+/// `GET /api/workflows/attention` — 모든 워크플로우에 걸친 미해결 무인 실행 집계.
+struct WorkflowAttentionResponse: Codable {
+    let total: Int
+    let items: [WorkflowAttentionItem]
+    /// 워크플로우별 미해결 수 (탭 행 배지용).
+    let byWorkflow: [String: Int]?
 }
 
 struct WorkflowRunStartResponse: Codable {
@@ -169,6 +222,14 @@ struct WorkflowNodeRun: Codable, Identifiable, Equatable {
     let status: String          // pending|awaiting_approval|running|done|failed|needs_attention|skipped
     let verdict: String?
     let iteration: Int?
+    /// 이번에 fail 루프로 되돌아간 사유 한 줄 (daemon verdict.json summary). 루프 밖이면 nil.
+    let loopback_reason: String?
+    /// 1 = 재시도 한도(max_iterations) 도달로 루프가 멈췄음.
+    let limit_reached: Int?
+    /// 결과물 출처 (workflow_attention_v1) — nil/"agent"(에이전트가 result.md 를 직접 남김)|
+    /// "synthetic"(엔진이 터미널 출력으로 자동 합성)|"empty"(합성했으나 캡처가 사실상 빈 «빈 결과»).
+    /// 합성본/빈 결과는 캔버스에서 정상 결과와 시각 구분(warning 배지)한다.
+    let result_kind: String?
     let x: Double?
     let y: Double?
     let created_at: Int64
@@ -243,6 +304,7 @@ enum WorkflowTemplateCatalog {
     static func displayName(_ templateId: String) -> String {
         switch templateId {
         case "role_pipeline": return String(localized: "역할 파이프라인")
+        case "self_correcting_loop": return String(localized: "자기교정 루프")
         default: return templateId
         }
     }
@@ -252,6 +314,8 @@ enum WorkflowTemplateCatalog {
         switch templateId {
         case "role_pipeline":
             return String(localized: "기획 → 디자인 → 개발 → QA → 운영 순서로 역할별 전문 에이전트를 잇는 출발 템플릿이에요. QA 단계에서 사람 승인을 거쳐요.")
+        case "self_correcting_loop":
+            return String(localized: "생성 → 점검 순서로 만들고, 점검이 실패를 판정하면 생성으로 되돌아가 고치는 루프형 출발 템플릿이에요.")
         default: return ""
         }
     }
@@ -265,6 +329,8 @@ enum WorkflowTemplateCatalog {
         case "dev": return String(localized: "개발")
         case "qa": return String(localized: "QA")
         case "ops": return String(localized: "운영")
+        case "make": return String(localized: "생성")
+        case "check": return String(localized: "점검")
         case "end": return String(localized: "종료")
         default: return fallback
         }

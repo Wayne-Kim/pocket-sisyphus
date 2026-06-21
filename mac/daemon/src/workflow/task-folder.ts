@@ -144,6 +144,12 @@ export type BuildPromptArgs = {
   wantsVerdict: boolean;
   /** 노드별 «결과물 처리 지시» — result.md 에 무엇을/어떻게 담을지 추가 지침. 비면 기본만. */
   resultSpec?: string;
+  /**
+   * 루프 재시도(되돌아온 작업)일 때, 직전 점검 노드가 남긴 «실패 사유»(verdict summary). 첫 시도엔
+   * undefined/빈 문자열 — 그땐 종전과 동일하게 동작(무회귀). 2회차부터 «직전 시도는 다음 이유로
+   * 통과하지 못했다: …» 가 프롬프트에 들어가 «실패 사유를 먹인 재시도»(자기교정)를 가능케 한다.
+   */
+  priorFailure?: string;
 };
 
 /**
@@ -160,6 +166,16 @@ export function buildNodePrompt(args: BuildPromptArgs): string {
     for (const p of args.parents) {
       lines.push(`  - ${p.rel}/   (노드 "${p.title}")`);
     }
+    lines.push("");
+  }
+
+  // 루프 재시도(되돌아온 작업)면 직전 점검의 실패 사유를 먼저 알려 «자기교정» 을 유도한다.
+  // 사유가 비어 있으면(첫 시도 등) 아무것도 넣지 않아 종전 동작과 동일(무회귀).
+  const priorFailure = args.priorFailure?.trim();
+  if (priorFailure) {
+    lines.push("[이전 시도 실패] 직전 시도는 다음 이유로 통과하지 못했다:");
+    lines.push(`  ${priorFailure}`);
+    lines.push("같은 실수를 반복하지 말고 위 사유를 반영해 다시 작업하라.");
     lines.push("");
   }
 
@@ -206,6 +222,8 @@ export type HarvestResult = {
   done: boolean;
   /** verdict.json 의 pass (없거나 파싱 실패면 null). */
   verdictPass: boolean | null;
+  /** verdict.json 의 summary (사람 가독 한 줄 사유) — 없거나 파싱 실패면 null. 루프 재시도 프롬프트·캔버스 양쪽에 쓰인다. */
+  verdictSummary: string | null;
   /** branches.json 의 동적 분기 (없거나 비면 null). */
   branches: BranchSpec[] | null;
   /**
@@ -243,12 +261,17 @@ export async function harvestTaskFolder(
     needsAttention = false;
   }
   let verdictPass: boolean | null = null;
+  let verdictSummary: string | null = null;
   try {
     const raw = await fsp.readFile(path.join(abs, "verdict.json"), "utf8");
-    const o = JSON.parse(raw) as { pass?: unknown };
+    const o = JSON.parse(raw) as { pass?: unknown; summary?: unknown };
     if (typeof o.pass === "boolean") verdictPass = o.pass;
+    if (typeof o.summary === "string" && o.summary.trim()) {
+      verdictSummary = o.summary.trim();
+    }
   } catch {
     verdictPass = null;
+    verdictSummary = null;
   }
   let branches: BranchSpec[] | null = null;
   try {
@@ -276,5 +299,5 @@ export async function harvestTaskFolder(
   } catch {
     branches = null;
   }
-  return { resultMd, done, verdictPass, branches, needsAttention };
+  return { resultMd, done, verdictPass, verdictSummary, branches, needsAttention };
 }

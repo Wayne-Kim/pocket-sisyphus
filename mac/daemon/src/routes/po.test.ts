@@ -5,7 +5,7 @@
  * spawn 차단. ptyEvents 는 «진짜» EventEmitter 라 테스트가 turn_complete 를 emit 해
  * waitForSessionSettle 기반 흐름(수집 finalize / shipped 전이 감시)을 구동한다.
  */
-import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll, vi } from "vitest";
 import { Hono } from "hono";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -46,6 +46,18 @@ vi.mock("../config.js", () => ({
   },
   writeConfig: (cfg: unknown) => {
     fs.writeFileSync(H.configFile, JSON.stringify(cfg, null, 2), { mode: 0o600 });
+  },
+  PO_MAX_GENERATION_PASSES: 5,
+  // 다중 패스 설정 정규화 — 테스트는 po.multiPass 를 안 켜므로 기본 1패스(기존 단일 경로)로 떨어진다.
+  resolvePoMultiPass: (cfg: { po?: { multiPass?: { passes?: number; minAgree?: number } } } | null) => {
+    const raw = cfg?.po?.multiPass;
+    const clamp = (v: unknown, lo: number, hi: number, fb: number) => {
+      const n = typeof v === "number" && Number.isFinite(v) ? Math.round(v) : NaN;
+      return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : fb;
+    };
+    const passes = clamp(raw?.passes, 1, 5, 1);
+    const minAgree = clamp(raw?.minAgree, 1, passes, passes > 1 ? 2 : 1);
+    return { passes, minAgree };
   },
 }));
 
@@ -729,6 +741,133 @@ describe("수집 ingest — 하이브리드 dedup (자가분류 + lexical 백스
     expect(titles).not.toContain("다크 모드 지원하기");
     expect(titles).not.toContain("야간 테마");
     expect(titles).toHaveLength(2);
+  });
+});
+
+describe("수집 다중 패스 — 합치 채택 (po.multiPass)", () => {
+  const EV = [{ kind: "repo_todo", ref: "docs/todo.md", summary: "근거" }];
+  const baseConfig = {
+    port: 7777,
+    token: TEST_TOKEN,
+    tokenHash: hashToken(TEST_TOKEN),
+    createdAt: Date.now(),
+  };
+  function writeConfigWith(extra: Record<string, unknown>): void {
+    fs.writeFileSync(H.configFile, JSON.stringify({ ...baseConfig, ...extra }), { mode: 0o600 });
+    invalidateAuthCache();
+  }
+  // 다중 패스 설정이 다른 테스트로 새지 않게 매 테스트 후 기본 config 로 복원.
+  afterEach(() => writeConfigWith({}));
+
+  /** 한 패스를 settle — finalize 가 그 패스의 산출 파일을 쓸 때까지 대기 후 파일을 쓰고 turn_complete. */
+  async function settlePass(
+    sessionId: string,
+    passIndex: number,
+    briefs: unknown[],
+  ): Promise<void> {
+    // 다중 패스는 passFile = `${outFile}.p{n}` (n=1..). 패스 n 의 runUserMessagePty 호출을 기다린다.
+    await waitFor(() => vi.mocked(runUserMessagePty).mock.calls.length >= passIndex);
+    fs.writeFileSync(
+      path.join(os.tmpdir(), `ps-po-briefs-${sessionId}.json.p${passIndex}`),
+      JSON.stringify(briefs),
+    );
+    H.ptyEvents.emit("turn_complete", { sessionId });
+  }
+
+  it("2패스 모두에 나온 기회만 채택, 한 패스에만 튄 건 탈락(minAgree=2)", async () => {
+    writeConfigWith({ po: { multiPass: { passes: 2, minAgree: 2 } } });
+    const app = buildApp();
+    vi.mocked(runUserMessagePty).mockClear();
+
+    const collect = await app.request("/api/po/collect", {
+      method: "POST",
+      headers: AUTH,
+      body: JSON.stringify({ repoPath: H.repoDir }),
+    });
+    const { sessionId } = await jsonAs<{ sessionId: string }>(collect);
+
+    const shared1 = {
+      title: "오프라인 동기화 큐",
+      problem: "네트워크가 없을 때 작업을 큐에 쌓아 복구되면 보낸다",
+      evidence: EV,
+      impact: 5,
+      effort: 3,
+      scope: "S",
+      spec: "## 스펙",
+    };
+    // 패스2의 «같은 기회» — 조사/어미만 흔들린 근사 표현(lexical 백스톱이 같은 것으로 본다).
+    const shared2 = {
+      ...shared1,
+      title: "오프라인 동기화 큐 추가",
+      problem: "네트워크가 없을 때 작업을 큐에 쌓아서 복구되면 보낸다",
+    };
+    const p1Only = { ...shared1, title: "검색 인덱싱", problem: "전체 텍스트 검색을 위한 인덱스를 만든다" };
+    const p2Only = { ...shared1, title: "다국어 지원", problem: "여러 언어로 UI 문자열을 번역한다" };
+
+    await settlePass(sessionId, 1, [shared1, p1Only]);
+    await settlePass(sessionId, 2, [shared2, p2Only]);
+
+    // 합치 채택된 공유 기회만 삽입될 때까지 대기.
+    await waitFor(() => {
+      const r = db()
+        .prepare(`SELECT COUNT(*) AS n FROM po_briefs WHERE repo_path = ? AND title = ?`)
+        .get(H.repoDir, "오프라인 동기화 큐") as { n: number };
+      return r.n === 1;
+    });
+
+    const titles = (
+      db()
+        .prepare(`SELECT title FROM po_briefs WHERE repo_path = ?`)
+        .all(H.repoDir) as Array<{ title: string }>
+    ).map((r) => r.title);
+
+    // 2패스 모두 등장한 «오프라인 동기화 큐» 만 채택 — 대표는 가장 이른 패스(p1)의 제목.
+    expect(titles).toEqual(["오프라인 동기화 큐"]);
+    expect(titles).not.toContain("검색 인덱싱"); // p1 에만 — 탈락
+    expect(titles).not.toContain("다국어 지원"); // p2 에만 — 탈락
+    // runUserMessagePty 가 패스당 한 번씩, 총 2회 호출됐다(독립 2패스).
+    expect(vi.mocked(runUserMessagePty).mock.calls.length).toBe(2);
+  });
+
+  it("graceful fallback — 한 패스만 산출하면 그 패스를 그대로 채택(전부 실패만 빈 산출)", async () => {
+    writeConfigWith({ po: { multiPass: { passes: 2, minAgree: 2 } } });
+    const app = buildApp();
+    vi.mocked(runUserMessagePty).mockClear();
+
+    const collect = await app.request("/api/po/collect", {
+      method: "POST",
+      headers: AUTH,
+      body: JSON.stringify({ repoPath: H.repoDir }),
+    });
+    const { sessionId } = await jsonAs<{ sessionId: string }>(collect);
+
+    const only = {
+      title: "오프라인 동기화 큐",
+      problem: "네트워크가 없을 때 작업을 큐에 쌓아 복구되면 보낸다",
+      evidence: EV,
+      impact: 5,
+      effort: 3,
+      scope: "S",
+      spec: "## 스펙",
+    };
+    // 패스1 은 산출, 패스2 는 빈 산출(파일 없음 → settle 만).
+    await settlePass(sessionId, 1, [only]);
+    await waitFor(() => vi.mocked(runUserMessagePty).mock.calls.length >= 2);
+    H.ptyEvents.emit("turn_complete", { sessionId });
+
+    // minAgree=2 여도 산출 있는 패스가 1개뿐이라 실효 임계 1 → 그 패스의 제안 채택.
+    await waitFor(() => {
+      const r = db()
+        .prepare(`SELECT COUNT(*) AS n FROM po_briefs WHERE repo_path = ? AND title = ?`)
+        .get(H.repoDir, "오프라인 동기화 큐") as { n: number };
+      return r.n === 1;
+    });
+    const n = (
+      db().prepare(`SELECT COUNT(*) AS n FROM po_briefs WHERE repo_path = ?`).get(H.repoDir) as {
+        n: number;
+      }
+    ).n;
+    expect(n).toBe(1);
   });
 });
 

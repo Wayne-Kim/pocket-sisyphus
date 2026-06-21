@@ -93,6 +93,12 @@ function renderBriefLines(briefs: PoExistingBrief[], loc: PoLocale): string {
  * (1) 닫힌 결정/살아있는 제안(rejected/shipped/verified + proposed/held/approved/running) = «재제안 금지»,
  * (2) missed = «재시도 후보». missed 는 의미상 «미해결» 인데 옛 방식은 닫힌 결정과 똑같이 «영구 제외»
  * 시켜 베팅이 빗나간 미해결 갭이 백로그에 다시 못 올라오는 모순이 있었다 — 그래서 별도 분기로 안내한다.
+ *
+ * 끝에 «밀도 카운터웨이트» 한 줄(backlog.densityCounterweight)을 항상 덧붙인다 — 이 앵커가 매 수집에
+ * 과거 제목 60건(dedup 코퍼스)을 주입하면서 가독성 균형추가 없으면 빽빽한 제목 스타일이 «모방» 으로
+ * 누적 강화돼 («점점 어려워짐») 30초 결재가 무너진다. 새 제안은 더 평이하게 쓰라는 지시로 그 드리프트
+ * 루프를 끊는다. 항목 0건(«(없음)»)이어도 «위 항목이 빽빽하더라도» 식 표현이라 자연스럽고, 항상-주입이라
+ * 산출이 결정적이다(빈 배열/생략 경로 보존).
  */
 function renderBacklogAnchor(briefs: PoExistingBrief[], loc: PoLocale): string {
   const forbidden = briefs.filter((b) => b.status !== "missed");
@@ -101,6 +107,7 @@ function renderBacklogAnchor(briefs: PoExistingBrief[], loc: PoLocale): string {
   if (missed.length > 0) {
     block += `\n\n${t("backlog.missedHeader", loc)}\n${renderBriefLines(missed, loc)}\n${t("backlog.missedInstruction", loc)}`;
   }
+  block += `\n${t("backlog.densityCounterweight", loc)}`;
   return block;
 }
 
@@ -110,6 +117,9 @@ function renderBacklogAnchor(briefs: PoExistingBrief[], loc: PoLocale): string {
  * status 의미: rejected = 사람이 기각, approved = 사람이 승인(아직 검증 전),
  * verified = 출시 후 가설 적중, missed = 출시됐으나 가설 빗나감.
  * note 는 검증 근거(verify_note) 한 줄 — 기각/승인 행이나 옛 레코드엔 없을 수 있다(엣지).
+ * reason 은 결재 사유 enum 키(po_decide_reason_v1) — 렌더가 «기각» 행에 한해 지역화 라벨로
+ * 덧붙인다(같은 사유로 또 기각될 제안을 미리 피하게 하는 보정 신호). NULL(미선택)·approve 행은
+ * 라벨이 붙지 않는다 (routes/po.ts 의 «미선택은 NULL» 정책과 일치). 키 자체는 비번역 식별자.
  */
 export type PoDecisionRecord = {
   title: string;
@@ -117,6 +127,7 @@ export type PoDecisionRecord = {
   effort: number; // 1~5
   status: "rejected" | "approved" | "verified" | "missed";
   note?: string | null;
+  reason?: string | null;
 };
 
 /** 결정 이력 한 줄의 «결정/결과» 라벨 catalog id — 프롬프트가 사람 평가를 읽기 쉽게. */
@@ -128,7 +139,142 @@ const DECISION_LABEL_ID: Record<PoDecisionRecord["status"], MsgId> = {
 };
 
 /**
- * PO 산출 «언어» — collect/research/revise 가 만드는 «사람이 읽는» 산출(리서치 보고서 본문,
+ * 결재 사유 enum 키 → 사람이 읽는 라벨 catalog id (po_decide_reason_v1 / po_locale_v2). 키 집합은
+ * routes/po.ts 의 DECIDE_REASONS 와 동일하다 — 키 자체는 비번역 식별자라 카탈로그엔 «라벨» 만 채운다.
+ * 알 수 없는 키(옛 값/이상값)는 매핑 없음 → 렌더가 라벨을 안 붙인다(graceful — 그 줄은 byte-identical).
+ */
+const DECIDE_REASON_LABEL_ID: Record<string, MsgId> = {
+  priority_low: "reason.priorityLow",
+  scope_too_big: "reason.scopeTooBig",
+  already_exists: "reason.alreadyExists",
+  weak_evidence: "reason.weakEvidence",
+  wrong_direction: "reason.wrongDirection",
+};
+
+/**
+ * «과거 결정 요약» 점수 보정 블록 렌더 — 수집·리서치 «공통». 두 빌더가 같은 collect.history
+ * 카탈로그 블록·같은 한 줄 형식·같은 엣지 정책을 쓰게 한 곳에 모은다(중복 정의 금지). 이력
+ * 0건/생략이면 "" 를 돌려 프롬프트가 기존과 byte-identical (회귀 0 — prompt.ts 의 다른 선택
+ * 블록 폴백과 동형). 있으면 «건당 1줄» 로 채워 프롬프트 비대화를 막는다(호출부가 이미 최근
+ * N건으로 상한). note(verify_note)는 검증된 행만 있고 기각/승인·옛 레코드엔 없을 수 있다(엣지)
+ * → 없으면 « · 근거» 꼬리를 생략한다. 결재 사유(reason)는 «기각» 행 + 허용 enum 키일 때만
+ * « · 사유: {라벨}» 을 한 줄에 덧붙인다(같은 사유로 또 기각될 제안을 미리 피하게 하는 보정 신호) —
+ * NULL(미선택)·비-기각·이상값엔 안 붙어 그 줄이 byte-identical (회귀 0). 깨진 행은 호출부
+ * (executor.decisionHistory)가 status 4종 매핑에서 이미 거르므로 여기 도달하지 않는다.
+ */
+function renderDecisionHistory(
+  decisionHistory: PoDecisionRecord[] | undefined,
+  loc: PoLocale,
+): string {
+  if (!decisionHistory || decisionHistory.length === 0) return "";
+  return t("collect.history", loc, {
+    historyList: decisionHistory
+      .map((d) => {
+        const note = d.note?.trim() ? ` · ${d.note.trim().slice(0, 140)}` : "";
+        // 결재 사유 — «기각» 행에 한해, 허용 enum 키면 지역화 라벨을 한 줄에 덧붙인다.
+        // approve/검증/빗나감 행과 NULL(미선택)·이상값은 라벨 없음 → routes/po.ts 의
+        // «미선택은 NULL» 정책 준수, 사유 0건이면 그 줄이 기존과 byte-identical (회귀 0).
+        const reasonId =
+          d.status === "rejected" && d.reason ? DECIDE_REASON_LABEL_ID[d.reason] : undefined;
+        const reason = reasonId
+          ? ` · ${t("decision.reasonPrefix", loc)}: ${t(reasonId, loc)}`
+          : "";
+        return `- [${t(DECISION_LABEL_ID[d.status], loc)}] I${d.impact}/E${d.effort} · ${d.title}${note}${reason}`;
+      })
+      .join("\n"),
+  });
+}
+
+/**
+ * 점수대별 «과신 보정» 한 건의 입력 — po_briefs 의 «결과가 정해진» 행(기각/적중/빗나감).
+ * impact(1~5)와 결과만 본다 (title/effort/note/reason 은 집계에 무관). status 의미:
+ * verified = 출시 후 적중, missed = 출시 후 빗나감, rejected = 사람이 기각(출시 전 미적중).
+ * approved/running/shipped(아직 검증 전)는 «결과 미정» 이라 호출부가 넘기지 않는다.
+ */
+export type PoOutcomeRecord = {
+  impact: number; // 1~5
+  status: "rejected" | "verified" | "missed";
+};
+
+/** 평균 오차 임계 — |오차| 가 이 값 이상이면 과신/과소, 미만이면 «보정 양호». 결정적 상수. */
+const CALIBRATION_ERROR_THRESHOLD = 0.15;
+
+/** 점수대 정의 — impact 를 high(≥4)/mid(=3)/low(≤2) 세 구간으로. 표기 순서 = 출력 순서. */
+const CALIBRATION_BANDS = [
+  { key: "high", labelId: "calibration.bandHigh" as MsgId, test: (i: number) => i >= 4 },
+  { key: "mid", labelId: "calibration.bandMid" as MsgId, test: (i: number) => i === 3 },
+  { key: "low", labelId: "calibration.bandLow" as MsgId, test: (i: number) => i <= 2 },
+] as const;
+
+/** 한 점수대의 집계 결과 — 순수 함수가 만든다 (DB·임의성 없음, 같은 입력 → 같은 출력). */
+type CalibrationBucket = {
+  labelId: MsgId;
+  n: number;
+  hitRate: number; // 0~100 정수 (verified/n)
+  avgError: number; // impact/5 − 적중(0/1) 의 평균 — 양수면 과신
+};
+
+/**
+ * 점수대별 과신을 «결정적» 으로 집계한다 (외부 서비스·임의성 없이 같은 입력 → 같은 버킷).
+ * 각 행: 적중 = verified(1), 미적중 = missed·rejected(0). 점수가 함의한 확신 = impact/5.
+ * - hitRate = verified / n (이 점수대로 본 제안 중 실제 적중 비율)
+ * - avgError = mean(impact/5 − 적중) — 양수면 그 구간을 «체계적으로 과신» 한 것.
+ * n=0 인 점수대는 제외한다(빈 구간은 보고하지 않음). 결과가 한 건도 없으면 빈 배열.
+ */
+export function aggregateCalibration(records: PoOutcomeRecord[] | undefined): CalibrationBucket[] {
+  if (!records || records.length === 0) return [];
+  const out: CalibrationBucket[] = [];
+  for (const band of CALIBRATION_BANDS) {
+    const rows = records.filter((r) => band.test(r.impact));
+    if (rows.length === 0) continue;
+    const hits = rows.filter((r) => r.status === "verified").length;
+    const errSum = rows.reduce((s, r) => s + (r.impact / 5 - (r.status === "verified" ? 1 : 0)), 0);
+    out.push({
+      labelId: band.labelId,
+      n: rows.length,
+      hitRate: Math.round((hits / rows.length) * 100),
+      avgError: errSum / rows.length,
+    });
+  }
+  return out;
+}
+
+/** 평균 오차 → 판정 라벨 catalog id. 임계 이상 양수 = 과신, 이하 음수 = 과소, 사이 = 양호. */
+function calibrationVerdictId(avgError: number): MsgId {
+  if (avgError >= CALIBRATION_ERROR_THRESHOLD) return "calibration.verdictOver";
+  if (avgError <= -CALIBRATION_ERROR_THRESHOLD) return "calibration.verdictUnder";
+  return "calibration.verdictOk";
+}
+
+/**
+ * 점수대별 과신 보정 «한 문단» 렌더 — 수집·리서치 «공통». collect.history 블록 «옆» 에 붙는다
+ * (빌더가 history 뒤에 이어 붙임). 결과 데이터(기각/적중/빗나감)가 0건이면 "" 를 돌려 프롬프트가
+ * 기존과 byte-identical (회귀 0 — collect.history 0건 폴백과 동형). 집계는 호출부가 repo_path 로
+ * 격리해 넘긴 «이 레포» 이력만 쓴다(다른 레포가 새 제안을 오염시키지 않게). 같은 입력 → 같은
+ * 요약(외부 서비스·임의성 없음) — prompt.test.ts 가 회귀로 고정한다.
+ */
+function renderDecisionCalibration(
+  records: PoOutcomeRecord[] | undefined,
+  loc: PoLocale,
+): string {
+  const buckets = aggregateCalibration(records);
+  if (buckets.length === 0) return "";
+  const lines = buckets
+    .map((b) => {
+      const error = `${b.avgError >= 0 ? "+" : ""}${b.avgError.toFixed(2)}`;
+      return t("calibration.line", loc, {
+        band: t(b.labelId, loc),
+        n: b.n,
+        hitRate: b.hitRate,
+        error,
+        verdict: t(calibrationVerdictId(b.avgError), loc),
+      });
+    })
+    .join("\n");
+  return t("collect.calibration", loc, { lines });
+}
+
+/**
  * 브리프의 title·problem·scope·spec·evidence summary)을 «사용자 앱 언어» 로 쓰게 하는 i18n 축.
  *
  * 배경: 프롬프트의 «지시 본문» 은 한국어다(제품 언어·세션 transcript 와 일치). 그래서 비-한국어
@@ -338,6 +484,14 @@ export function buildPoCollectPrompt(opts: {
    */
   decisionHistory?: PoDecisionRecord[];
   /**
+   * 점수대별 «과신 보정» 입력 (선택, po_briefs 의 결과가 정해진 행 — 기각/적중/빗나감). decisionHistory
+   * 가 «최근 N건 한 줄 나열» 이라면 이것은 «이 레포 전체 누적» 을 영향도 점수대로 묶어 적중률·평균
+   * 오차로 «결정적» 집계해 한 문단으로 주입한다(어느 점수대에서 체계적으로 과신하는지). 호출부가
+   * repo_path 로 격리해 넘긴다(다른 레포 오염 방지). 0건/생략이면 블록이 통째로 빠져 기존과
+   * byte-identical (회귀 0). decisionHistory 와 직교 — 둘 다/하나만/둘 다 없음 모두 안전.
+   */
+  outcomeHistory?: PoOutcomeRecord[];
+  /**
    * GitHub «피드백 repo» 오버라이드 (선택, po_profiles.github_feedback_repo, owner/name).
    * 이 레포의 origin 은 개발용 소스 repo 라 사용자에게 직접 안내하지 않아 글이 안 모인다 — 실제 피드백(이슈·
    * Discussions)은 별도 공개 repo 에 모인다. 설정되면 GitHub 신호 분기가 로컬 origin 대신
@@ -424,17 +578,13 @@ export function buildPoCollectPrompt(opts: {
   // impact/effort 를 매 회차 감으로 매기면 과거 승인/기각·출시 후 검증과 무관해져 점수가
   // 신뢰를 못 얻는다 — 그러면 30초 결재가 무너진다. 이력 0건이면 섹션을 통째로 빼서 기존
   // 동작과 동일(회귀 없음). 건당 1줄·호출부가 N건으로 잘라 넘기므로 프롬프트가 비대해지지 않는다.
+  // 리서치 빌더와 «같은» renderDecisionHistory 를 공유해 한 줄 형식·사유 라벨·엣지 정책이 갈리지 않게 한다.
+  // 점수대별 과신 보정 — 결과 데이터(기각/적중/빗나감)를 영향도 점수대로 «결정적» 집계해 history
+  // 블록 «옆» 에 한 문단을 잇는다(어느 점수대에서 과신하는지). 0건/생략이면 "" → history 만 남아
+  // 기존과 byte-identical (회귀 0). history 와 직교라 history 0건이어도 결과만 있으면 보정은 붙는다.
   const history =
-    opts.decisionHistory && opts.decisionHistory.length > 0
-      ? t("collect.history", loc, {
-          historyList: opts.decisionHistory
-            .map((d) => {
-              const note = d.note?.trim() ? ` · ${d.note.trim().slice(0, 140)}` : "";
-              return `- [${t(DECISION_LABEL_ID[d.status], loc)}] I${d.impact}/E${d.effort} · ${d.title}${note}`;
-            })
-            .join("\n"),
-        })
-      : "";
+    renderDecisionHistory(opts.decisionHistory, loc) +
+    renderDecisionCalibration(opts.outcomeHistory, loc);
 
   // GitHub 신호 분기 — 피드백 repo 가 설정되면 로컬 origin 대신 그 repo 를 `gh -R` 로 읽는다.
   // 비면 현행 그대로 (로컬 origin 을 gh 의 기본 대상으로). 코드·TODO·git·문서 신호는 어느
@@ -525,6 +675,17 @@ export function buildPoResearchPrompt(opts: {
   briefsFile: string;
   /** 기존·과거 백로그 (중복 제안 방지 dedup 앵커) — 수집과 동형(닫힌 결정 포함). */
   existingBriefs: PoExistingBrief[];
+  /**
+   * «과거 결정 이력» (선택, po_briefs 의 결정/검증된 행) — 수집과 «동형». 점수·제안 방향을 사람의
+   * 누적 평가에 맞춰 보정하는 컨텍스트다. 리서치산 브리프도 수집산과 «같은 백로그» 에 score 정렬로
+   * 들어와 같은 30초 결재를 받는데, 보정이 없으면 점수 신뢰도가 수집산보다 낮아 그 결재가 약해진다.
+   * 호출부가 이 repo 행만(다른 레포가 새 제안을 오염시키지 않게) 최근 N건·건당 1줄로 잘라 넘긴다.
+   * 0건/생략이면 블록 자체를 빼 기존 리서치 프롬프트와 byte-identical (회귀 0).
+   */
+  decisionHistory?: PoDecisionRecord[];
+  /** 점수대별 «과신 보정» 입력 (선택) — 수집과 «동형». 결과 데이터(기각/적중/빗나감)를 영향도 점수대로
+   * 결정적 집계해 history 옆에 한 문단. 0건/생략이면 byte-identical (회귀 0). */
+  outcomeHistory?: PoOutcomeRecord[];
   /** 디자인 컨텍스트 «선언» (선택, po_profiles.design_directive) — 수집과 동형. 비면 자동 발견. */
   designDirective?: string;
   /**
@@ -559,6 +720,13 @@ export function buildPoResearchPrompt(opts: {
 }): string {
   const loc = poLoc(opts.locale);
   const backlog = renderBacklogAnchor(opts.existingBriefs, loc);
+  // 과거 결정 요약 — 수집과 «같은» 점수 보정 블록(collect.history). 리서치산 브리프도 같은
+  // 백로그·같은 결재를 받으니 점수를 사람의 누적 평가에 맞춘다. 0건/생략이면 "" → 아래 본문의
+  // {{history}} 가 통째로 사라져 기존 리서치 프롬프트와 byte-identical (회귀 0). 점수대별 과신
+  // 보정도 수집과 동형으로 history 옆에 잇는다 — 결과 0건이면 "" 라 회귀 0.
+  const history =
+    renderDecisionHistory(opts.decisionHistory, loc) +
+    renderDecisionCalibration(opts.outcomeHistory, loc);
   const repoOnly = opts.scope === "repo_only";
   // 렌즈 머리말 — design SSOT 대비/재현·로그 등 «무엇을 우선·어떤 근거» 를 강조. 전방위(default)는
   // 빈 문자열 → 아래 블록이 통째로 사라져 기존 프롬프트와 byte-identical (디자인 제약과 1단계 사이의
@@ -581,6 +749,7 @@ export function buildPoResearchPrompt(opts: {
     persona: lensPersona(opts.lens ?? "default", loc),
     intro,
     topic: opts.topic,
+    history,
     designContext: buildDesignContext({ designDirective: opts.designDirective, locale: opts.locale }),
     lensBlock,
     investigation,

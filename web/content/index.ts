@@ -4,3 +4,14 @@
  */
 export { site } from "./site.en";
 export type { Site } from "./site.en";
+
+// 차별화 카피 + 비교표 — 10개 로케일 번역 데이터(소스 ko). 라이브 렌더는 en,
+// `getDifferentiators(locale)` 로 이미 locale 선택 가능(라우팅 붙이면 i18n 완성).
+export {
+  differentiators,
+  getDifferentiators,
+  DEFAULT_LOCALE,
+  AXIS_META,
+  ROW_META,
+} from "./differentiators";
+export type { Differentiators, Locale } from "./differentiators";

@@ -236,8 +236,13 @@ Pocket Sisyphus 의 약속은 **«맥에서 돌아가는 코드 에이전트 CLI
   성격, ② **소유자 opt-in**(아래) 이며 기본 비활성, ③ 가져오는 것은 **읽기 신호 집계**(리뷰·크래시)뿐.
 - **완화:**
   - **0600 권한** — 키는 `config.json`(소유자만 read/write)에만 산다. 파일 경로가 아니라 PEM 본문을 박제.
-  - **opt-in + 소유자 전용** — Mac 앱 설정 「App Store」 탭이 `/api/po/asc-key`(로컬 운영자 전용 경로)로만
-    저장한다. **폰(QR/페어링)에는 절대 들어가지 않는다** — A3 페어링 묶음과 완전 분리된 별개 자산.
+  - **opt-in + 소유자 전용, 코드로 강제** — Mac 앱 설정 「App Store」 탭이 `/api/po/asc-key`(**로컬 운영자
+    전용 경로**)로만 저장한다. 이 라우트들(`GET`/`PUT`/`DELETE /asc-key` + `POST /asc-key/verify`)은 bearer
+    «위에» `requireLocalAdmin` 으로 게이트된다: 호출자는 `X-PS-Local == localAdminSecret` 을 제시해야 하는데,
+    이 비밀은 Mac 앱이 `config.json` 에서 읽지만 **QR/페어링 번들엔 절대 실리지 않는다**. 따라서 A3 Bearer(+
+    attest 토큰)만 쥔 폰은 `keyId`/`issuerId`(개발자 Apple 팀 신원)를 **읽지도**, 장수 키를 덮어쓰거나 지우지도
+    **못한다** — `403 local_admin_required`. **폰(QR/페어링)에는 절대 들어가지 않는다** — A3 페어링 묶음과
+    완전 분리된 별개 자산이며, A5↔폰 분리가 «선언» 이 아니라 «코드» 로 지켜진다.
   - **읽기 신호 한정** — 채널은 리뷰·크래시 «집계 읽기» 에만 쓰인다(되쓰기·배포·메타데이터 변경 없음).
   - **키 미설정 시 채널 부재** — `asc` 미설정이면 outbound ASC 호출 자체가 일어나지 않는다(기능이 꺼져
     있으면 경계가 존재하지 않음). 회귀 없음.
@@ -266,15 +271,20 @@ Pocket Sisyphus 의 약속은 **«맥에서 돌아가는 코드 에이전트 CLI
   - **단일 게이트(누락 방지)** — 모든 비-LAN outbound 경로가 **한 helper**(`mac/daemon/src/egress.ts`
    의 `guardNonLanEgress()`)를 거친다. 새 outbound 를 추가하는 사람이 한 줄만 잊지 않으면 «한 경로만 깜빡»
    유출이 구조적으로 막힌다. 적용 지점: `nat/external-ip.ts`(echo)·`nat/port-mapping.ts`(UPnP/PMP)·
-   `po/asc.ts`·`po/crash.ts`·`po/asc-check.ts`(ASC)·`notify/discord.ts`(webhook).
+   `po/asc.ts`·`po/crash.ts`·`po/asc-check.ts`(ASC)·`notify/discord.ts`(webhook)·
+   `local-llm/download.ts`(모델 다운로드 — HF `fetch` + `aria2c` 서브프로세스; `aria2c` 는 별도 프로세스라
+   `fetch` 만 감싸선 못 막으므로 게이트를 **`spawn` 전**에 적용).
   - **경로별 기본 deny 동작** — echo 는 **호출 skip**(캐시 있으면 마지막 IP, 없으면 `none`), UPnP/NAT-PMP
    는 **매핑 시도 중단**(공인 노출 불필요), ASC 는 **outbound 차단 + 「모드와 충돌」 throw**(수집은 죽지
    않고 해당 신호 섹션만 생략, ASC 가용성 프로브는 «불확실» 처리로 거짓 「키 만료」 경고 억제), Discord 는
-   **알림 전송 차단**(repo·세션 제목 등 메타데이터 미유출).
+   **알림 전송 차단**(repo·세션 제목 등 메타데이터 미유출), 모델 다운로드는 **부작용 전 `lan_only_mode` 동기
+   throw 로 거부**(mkdir·partial 파일·진행 상태 전환 0 — «이 Mac 이 HF 에서 모델 X 를 받는 중» 사실·목적지를
+   흘릴 부분 다운로드 방지).
   - **모드 OFF 회귀 0** — 게이트는 모드 OFF 시 부작용 0(로그조차 없음)으로 «그냥 통과» 한다. 기본값이 OFF
    이라 기존 사용자 동작은 한 비트도 바뀌지 않는다.
   - **계약 테스트** — `mac/daemon/src/egress.test.ts` 가 모드 ON 에서 echo/UPnP/ASC/Discord 의 실제
-   `fetch` 호출이 **0** 임을, 모드 OFF 에선 echo 가 정상 fetch 경로를 탐을 단언한다.
+   `fetch` 호출이 **0** 임을, 모델 다운로드가 **`fetch` 0 + `aria2c` spawn 0**(`lan_only_mode` 로 거부)임을,
+   모드 OFF 에선 echo 가 정상 fetch 경로를·모델 다운로드가 정상 다운로드 경로(aria2c spawn)를 탐을 단언한다.
 - **잔여 위험:** ① **OS 레벨 트래픽은 못 막는다** — DNS 해석·ARP·NTP·OS 업데이트 점검 등 daemon 이 아닌
   운영체제/다른 프로세스가 내는 패킷은 이 게이트의 통제 밖이다(진짜 «egress 0» 은 OS/네트워크 방화벽 층의
   책임). ② **모드 OFF 시 종전 노출** — 기본값이 OFF 이므로 명시적으로 켜지 않은 사용자는 §5.10 등 종전
@@ -324,7 +334,7 @@ Pocket Sisyphus 의 약속은 **«맥에서 돌아가는 코드 에이전트 CLI
    이는 README 「외부 서버 0」 원칙의 (수용된) 예외이기도 하다 — 대상이 Apple 자사 API·opt-in·소유자 전용·
    읽기 신호 한정이라 수용한다. 좁은 키 role 발급과 유출 시 수동 폐기 책임은 사용자에게 남는다.
 10. **LAN 전용 모드는 opt-in + OS 레벨 트래픽 밖이다.** egress confinement(§5.11)는 daemon 의 «비-LAN»
-    부수 outbound(echo·UPnP/NAT-PMP·ASC·Discord)를 단일 게이트로 기본 deny 하지만, **기본값이 OFF**
+    부수 outbound(echo·UPnP/NAT-PMP·ASC·Discord·모델 다운로드)를 단일 게이트로 기본 deny 하지만, **기본값이 OFF**
     이고 DNS·ARP·NTP 같은 **OS 레벨 트래픽은 통제 밖**이다. 「패킷이 회사 밖으로 한 비트도 안 나간다」 의
     완전 보증은 OS/네트워크 방화벽 층의 책임이고, 이 통제는 «daemon 이 자발적으로 내는 부수 outbound 차단»
     까지다. 모드 토글이 `config.json` 신뢰에 기대는 점(침해 시 해제 가능)도 수용한다.

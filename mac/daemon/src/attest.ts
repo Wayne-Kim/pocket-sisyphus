@@ -248,6 +248,24 @@ function isLocalAdmin(secret: string | undefined): boolean {
 }
 
 /**
+ * 로컬 운영자(=같은 머신의 Mac 앱) «전용» 게이트 — bearer 위에 한 겹 더 얹어, X-PS-Local 이
+ * localAdminSecret 과 일치하지 «않으면» 거부한다(403 `local_admin_required`).
+ *
+ * `requireAttestation` 안의 X-PS-Local 분기와 헤더는 같지만 «의미가 정반대» 다: 거기선 폰의
+ * attest 를 «면제» 하는 우회라 폰을 막지 않았다. 여기선 그 비밀이 없는 «모든» 호출자를 막는다 —
+ * localAdminSecret 은 QR/페어링 번들에 절대 안 실리므로(config.ts·docs/THREAT_MODEL §5.10) 폰은
+ * 이 헤더를 만들 수 없고, 그래서 폰 Bearer(+attest) 보유자도 거부된다. fail-closed: localAdminSecret
+ * 미설정이면 `isLocalAdmin` 이 항상 false → 누구도 통과 못 한다(부팅 시 보장 생성하므로 정상 daemon 엔
+ * 항상 존재). ASC .p8 키처럼 «A3 페어링과 분리된 로컬 운영자 전용 자산»(§5.10 A5) 라우트에 쓴다.
+ */
+export const requireLocalAdmin: MiddlewareHandler = async (c, next) => {
+  if (!isLocalAdmin(c.req.header("x-ps-local"))) {
+    return c.json({ error: "local_admin_required" }, 403);
+  }
+  return next();
+};
+
+/**
  * WS 업그레이드용 게이트 — 헤더를 못 붙이는 WS 라 `?attest=` query 로 받는다.
  * soft 모드(미등록)면 항상 true. 등록된 뒤엔 토큰 검증 결과.
  *

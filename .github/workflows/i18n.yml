@@ -1,0 +1,77 @@
+name: i18n gate
+
+# i18n 완역/카탈로그 우회 가드 — main push + 모든 PR 에서 강제한다.
+# 왜: i18n-lint.sh 의 [T] 완역 커버리지·[O] orphan 점검은 «옵트인 플래그»(--coverage/--orphans)라
+#   기본 실행에서 빠지고 CI 강제도 없어, 새 노출 문자열이 «번역 없이» 머지될 수 있었다
+#   (CLAUDE.md 가 못박은 «자동 추출 ≠ 번역 완료» 회귀 — 비-ko 로케일에서 한글 노출).
+# 무엇:
+#   1) ./scripts/i18n-lint.sh --strict — A–D(카탈로그 우회)+[T](미완역)를 «차단», [O] 는 비차단.
+#      knownRegions(ios/mac project.yml = SSOT)에서 로케일 집합을 읽어 «전부» 채워졌나 본다
+#      (로케일 수 하드코딩 없음). 기존/의도된 부채는 scripts/i18n-lint-baseline.tsv 로 차감하므로
+#      «새»(미등재) 차단 후보만 PR 을 막는다(레포의 diff-집중 래칫).
+#   2) ./scripts/test-i18n-lint.sh — 검출 로직 «자체» 의 회귀 방지(self-test). git blob 비교가
+#      있어 fetch-depth: 0(전체 히스토리)로 체크아웃한다.
+#   3) ./scripts/doc-pair-lint.sh — 같은 패밀리. 영어·한국어 문서쌍(NAME.md ↔ NAME.ko.md)의
+#      짝·언어 스위처 헤더·슬롯 역전을 «차단»(블로킹)한다(CLAUDE.md 「Documentation」 규칙).
+#      과거엔 «고쳐야 할» 미번역 드리프트(ios/README.md·web/README.md)가 남아 «리포트만»(--soft)이었으나,
+#      그 둘을 영어 1차본(README.md) + 한국어 짝(README.ko.md)으로 쌍을 맞춰 게이트를 닫았다 — 이제
+#      후보가 1건이라도 있으면 PR 을 막아 새 문서쌍 드리프트를 머지 전에 차단한다. 허용목록
+#      (scripts/doc-pair-lint-baseline.tsv)은 «의도적 영어 단독/벤더링»(web/AGENTS.md·web/CLAUDE.md)
+#      전용이라 진짜 드리프트를 숨기지 않는다. 검출 로직 자체는 test-doc-pair-lint.sh 로 «차단» 검증한다.
+#   4) ./scripts/test-po-brief-readability-lint.sh — 같은 패밀리. PO 산출 «기회 브리프» 의 가독성
+#      (제목 80자·파일경로/코드심볼·«—» 다중 절·problem 코드시작) 검출 로직 self-test 를 «차단» 으로 돌린다.
+#      배경: 시각 디자인(design-lint, 아래 5·6번)·중복(dedup)엔 자동 게이트가 있는데 «이해 가능성» 엔
+#      없어, 프롬프트를 평이하게 고쳐도 보정 앵커·모델 드리프트로 제목이 다시 빽빽해지는 회귀를 막을
+#      장치가 없었다. 런타임 미러는 daemon 의 readability.ts(ingest 소프트 경고)이고, 이 CI 게이트는
+#      «검출 로직 자체» 의 회귀를 막는다(노드/빌드 불필요 — 파이썬으로 돈다). 린트 스크립트
+#      (po-brief-readability-lint.sh)는 산출 브리프 JSON 을 받아 후보를 띄우는 «소프트» 표면화 도구라,
+#      CI 에선 그 self-test 를 차단으로 고정한다.
+#   5) ./scripts/design-lint.sh --strict — 같은 패밀리(시각 디자인). CLAUDE.md 「색상 토큰 정책」 위반
+#      (의미 토큰 밖 .orange/.yellow/.blue 날색·흑백 하드코딩·전역 .tint() 번짐 등)을 합치기 «전» 에
+#      막는다. i18n-lint --strict 와 동형으로, 기존 부채는 scripts/design-lint-baseline.tsv 로 차감하고
+#      «새»(미등재) 후보만 PR 을 막는다(diff-집중 래칫). iOS·Mac Swift 양쪽을 스캔한다.
+#   6) ./scripts/test-design-lint.sh — design-lint 검출 로직(L/W/T/A/S/R/O/I + strict 래칫) self-test 를
+#      «차단» 으로 돌린다(회귀 방지).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  i18n:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # test-i18n-lint.sh 의 git show 37bb50a^ 회귀 고정에 전체 히스토리 필요
+
+      # ubuntu-latest 는 python3·bash 기본 제공 — 별도 설치 없이 휴리스틱이 그대로 돈다.
+      - name: i18n-lint --strict (게이트)
+        run: ./scripts/i18n-lint.sh --strict
+
+      - name: test-i18n-lint (검출 로직 self-test)
+        run: ./scripts/test-i18n-lint.sh
+
+      # 문서쌍 짝·헤더·슬롯 게이트(차단) — 드리프트를 쌍으로 고쳐 닫았다. 후보 1건이라도 있으면 막는다.
+      - name: doc-pair-lint (문서쌍 게이트)
+        run: ./scripts/doc-pair-lint.sh
+
+      - name: test-doc-pair-lint (검출 로직 self-test)
+        run: ./scripts/test-doc-pair-lint.sh
+
+      # PO 브리프 가독성 게이트 — 검출 로직 self-test 를 «차단» 으로(파이썬, 노드/빌드 불필요).
+      # 런타임 미러는 daemon readability.ts(ingest 소프트 경고). design-lint·po-agent-lint 와 같은 패밀리.
+      - name: test-po-brief-readability-lint (가독성 검출 로직 self-test)
+        run: ./scripts/test-po-brief-readability-lint.sh
+
+      # 시각 디자인(색상 토큰 정책) 게이트 — i18n-lint --strict 와 동형의 baseline 래칫(차단).
+      # 기존 부채는 scripts/design-lint-baseline.tsv 로 차감하고 «새» 색-드리프트 후보만 PR 을 막는다.
+      - name: design-lint --strict (색상 토큰 정책 게이트)
+        run: ./scripts/design-lint.sh --strict
+
+      - name: test-design-lint (검출 로직 self-test)
+        run: ./scripts/test-design-lint.sh

@@ -231,6 +231,38 @@ describe("POST /api/cron — 검증", () => {
   });
 });
 
+describe("무인 trifecta 정적 거부 (capability_caps C1/M3)", () => {
+  it("repo `.mcp.json` 에 캡 대상 MCP 가 연결돼 있으면 cron 생성을 409 로 거부", async () => {
+    // 별도 하위 디렉토리(다른 repo 경로)에 정체불명(비-pocket) MCP 가 박힌 .mcp.json 시드 —
+    // 분류 불명 → 보수적으로 EGRESS → 무인 cron 을 못 만든다.
+    const capRepo = `${H.repoDir}/caps-trifecta`;
+    fs.mkdirSync(capRepo, { recursive: true });
+    fs.writeFileSync(
+      `${capRepo}/.mcp.json`,
+      JSON.stringify({ mcpServers: { some_outbound_tool: { type: "http", url: "https://x" } } }),
+    );
+    const res = await buildApp().request("/api/cron", {
+      method: "POST",
+      headers: AUTH,
+      body: JSON.stringify({
+        agent: "claude_code",
+        repoPath: capRepo,
+        command: "어제 한 일 요약해줘",
+        schedule: "0 9 * * *",
+      }),
+    });
+    expect(res.status).toBe(409);
+    expect((await jsonAs<{ error: string }>(res)).error).toBe("unattended_trifecta_denied");
+  });
+
+  it("MCP 가 없는 repo 는 종전대로 cron 생성 가능 (회귀 0)", async () => {
+    const cleanRepo = `${H.repoDir}/caps-clean`;
+    fs.mkdirSync(cleanRepo, { recursive: true });
+    const job = await createJob(buildApp(), { repoPath: cleanRepo });
+    expect(job.id).toBeTruthy();
+  });
+});
+
 describe("터미널 예약 (kind=terminal)", () => {
   it("스크립트 파일로 생성 → agent='shell' 고정 + command(경로)·shell 보존", async () => {
     const app = buildApp();

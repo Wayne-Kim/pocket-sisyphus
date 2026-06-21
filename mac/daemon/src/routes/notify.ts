@@ -13,6 +13,7 @@ import { bearerAuth } from "../auth.js";
 import { readConfig, writeConfig, type DiscordNotifyConfig } from "../config.js";
 import {
   DEFAULT_DEEP_LINK_BRIDGE_BASE,
+  checkDeepLinkBridgeHealth,
   isValidDeepLinkBaseUrl,
   isValidDiscordWebhookUrl,
   normalizeDeepLinkBaseUrl,
@@ -157,4 +158,29 @@ notify.post("/test", async (c) => {
     );
   }
   return c.json({ ok: true });
+});
+
+/**
+ * GET — 딥링크 브리지(«Open in app» 가 거치는 https 페이지) 도달 가능성 점검.
+ *
+ * 설정 화면 진입 / 테스트 알림 시 Mac 앱이 호출 — 죽은 주소를 «디스코드에서 눌러보기 전» 에
+ * 설정 화면 경고로 드러낸다. 비차단(알림 발송과 무관) + discord.com control 핑으로 오프라인
+ * 거짓경고를 방지한다.
+ *
+ * `?base=` 쿼리를 주면 그 주소를(저장 전 입력값 검증용), 없으면 저장된 설정의 deepLinkBaseUrl
+ * (또는 기본 페이지)을 점검한다. 검사 실패는 알림 발송을 막지 않는다 — 여기선 점검만 한다.
+ */
+notify.get("/deeplink-health", async (c) => {
+  const override = c.req.query("base")?.trim();
+  let base: string | null;
+  if (override !== undefined && override !== "") {
+    if (!isValidDeepLinkBaseUrl(override)) {
+      return c.json({ error: "invalid_deep_link_url" }, 400);
+    }
+    base = override;
+  } else {
+    base = readConfig()?.notify?.discord?.deepLinkBaseUrl ?? null;
+  }
+  const health = await checkDeepLinkBridgeHealth(base);
+  return c.json(health);
 });

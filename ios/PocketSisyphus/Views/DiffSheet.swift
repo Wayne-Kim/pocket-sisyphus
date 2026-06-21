@@ -37,7 +37,7 @@ struct DiffSheet: View {
         NavigationStack {
             Group {
                 if files.isEmpty {
-                    DiffEmptyState(
+                    EmptyStateView(
                         title: "변경 사항 없음",
                         systemImage: "checkmark.circle",
                         message: "커밋되지 않은 파일이 없다.",
@@ -113,14 +113,14 @@ private struct DiffDetailView: View {
                             loadGitBlob: loadGitBlob,
                         )
                     } else {
-                        DiffEmptyState(
+                        EmptyStateView(
                             title: "바이너리 파일",
                             systemImage: "doc.zipper",
                             message: "미리 보기를 지원하지 않는다.",
                         )
                     }
                 } else if resp.diff.isEmpty {
-                    DiffEmptyState(
+                    EmptyStateView(
                         title: "변경 내용 없음",
                         systemImage: "doc",
                         message: "표시할 diff 본문이 비어 있다.",
@@ -129,7 +129,7 @@ private struct DiffDetailView: View {
                     DiffBody(diff: resp.diff, truncated: resp.truncated, untracked: resp.untracked, path: file.path)
                 }
             } else if didFail {
-                DiffEmptyState(
+                EmptyStateView(
                     title: "불러오기 실패",
                     systemImage: "exclamationmark.triangle",
                     message: "연결이 회복되면 다시 시도된다.",

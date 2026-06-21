@@ -78,6 +78,7 @@ ko 원문이 샜다). 문자열/번역이 닿는 변경이면 **코드 레벨로
 ./scripts/i18n-lint.sh            # 양갈래 한글 ternary·Text(String변수)·raw 한글 return·중첩 보간 후보
 ./scripts/i18n-lint.sh --orphans  # 위 + 카탈로그 orphan([O]) 점검(아래) — 죽은 키 유지보수 스윕
 ./scripts/i18n-lint.sh --coverage # 위 + 완역 커버리지([T]) 점검(아래) — knownRegions 각 로케일이 «실제로» 채워졌나
+./scripts/i18n-lint.sh --strict   # CI 게이트(아래): A–D+[T] 차단·[O] 비차단·baseline 차감 (PR 에서 강제)
 ./scripts/design-lint.sh          # 리터럴 색(.orange/.yellow/.blue) 우회·흑백 하드코딩·전역 .tint() 번짐·아이콘 버튼 a11y 라벨 누락 후보
 ./scripts/po-agent-lint.sh        # PO 세션 spawn(collect/research/decide/cleanup/restart) 진입점의 agent passthrough 누락 후보 (ARCHITECTURE §14.4)
 ```
@@ -118,6 +119,20 @@ non-orphan 만 — orphan 부분누락은 [O] 소관).
 확인한다. 약은 «번역 채움»(사람/번역 패치 스크립트)이지 자동 생성이 아니다 — 비번역 의도면
 `Text(verbatim:)`·`shouldTranslate:false`·모든 로케일=원문 으로 명시하면 빠진다. 종료코드 규약 동일
 (후보≥1→비-0, `--soft`→항상 0, `--quiet` 지원).
+
+### CI 게이트 — `--strict` (PR 에서 강제)
+
+`--coverage`/`--orphans` 가 옵트인이라 기본 실행에서 빠지고 CI 강제도 없어, 새 노출 문자열이
+«번역 없이» 머지될 수 있었다. `--strict` 가 그 구멍을 막는 게이트다 — **A–D + [T] 를 차단**,
+**[O] 를 비차단** 으로 묶는다([O] orphan 은 동적 조회로 거짓 양성이 날 수 있어 «사람 판정» 용
+후보로만 표면화하고 게이트는 막지 않는다). 로케일은 `knownRegions`(SSOT)에서 읽고 **하드코딩하지
+않는다**. 기존 부채로 CI 가 처음부터 빨개지지 않도록, **baseline**(`scripts/i18n-lint-baseline.tsv`,
+`--baseline=PATH`·`I18N_LINT_BASELINE` 로 교체)에 등재된 차단 후보는 게이트에서 **차감** 한다 —
+«새»(미등재) 차단 후보만 PR 을 막는다(레포의 «이 diff 가 새로 들인 후보에 집중» 래칫). 게이트가
+막으면 후보의 fingerprint 를 `### BASELINE-PASTE-BEGIN..END` 블록으로 찍어 준다 — 알려진/의도된
+부채면 그 줄을 그대로 baseline 에 붙이고, 진짜 누락이면 번역을 채우거나(카탈로그 우회를 고치거나)
+한다. CI 는 매 PR 에서 `.github/workflows/i18n.yml` 로 `./scripts/i18n-lint.sh --strict` +
+`./scripts/test-i18n-lint.sh`(검출 로직 self-test)를 돌린다.
 
 스크린샷은 «보이는» 색만 본다 — 안 보이는 화면·상태의 색 정책 위반(CLAUDE.md 「색상 토큰 정책」 이
 «어겨서 사고난 이력 있음» 이라 한 그 드리프트)은 `design-lint.sh` 가 텍스트로 잡는다. 같은 톤·계약:

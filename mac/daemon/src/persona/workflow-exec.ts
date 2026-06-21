@@ -38,6 +38,8 @@ import { insertWorkflow } from "../workflow/store.js";
 import { getRun, listNodeRuns, countActiveWorktreeRuns } from "../workflow/store.js";
 import { startWorkflowRun } from "../workflow/engine.js";
 import { createWorktree } from "../git/worktree.js";
+import { prepareUnattendedCwd } from "../mcp/unattended.js";
+import { computeInitialTaint, markSessionTainted } from "../taint.js";
 import { dispatchPoWorkflowNotification } from "../notify/index.js";
 import { buildPoWorkflowDesignPrompt, buildDesignerReviewPrompt, poLoc } from "./prompt.js";
 import { t } from "./i18n/t.js";
@@ -332,6 +334,10 @@ export async function startPoWorkflowApproval(
   const worktree = { path: wt.path, branch };
   console.log(`[po] workflow run worktree created brief=${brief.id} branch=${branch} path=${wt.path}`);
 
+  // 무인 trifecta(capability_caps C1/M3·C2) — 설계 세션·모든 노드가 이 격리 worktree 에서 돈다.
+  // 그 `.mcp.json` 을 READ/LOCAL 만 남게 다시 써서 EGRESS·SOURCE_WRITE 도구를 «미연결» 로 둔다.
+  prepareUnattendedCwd(worktree.path, { isolated: true });
+
   // 설계 세션 + 모든 노드가 worktree 에서 돈다 (공유 repo 아님).
   const sessionId = createSession(
     worktree.path,
@@ -340,6 +346,9 @@ export async function startPoWorkflowApproval(
     true,
     agentId,
   );
+  // 오염 전파(capability_caps T1) — worktree 의 cwd 로는 원본 repo 의 MCP 가 안 잡히므로, 원본
+  // repo 에 개인-데이터 MCP 가 연결돼 있으면 이 worktree 세션을 명시적으로 오염 표시한다.
+  if (computeInitialTaint(repoPath)) markSessionTainted(sessionId, "worktree:origin-mcp");
   const outFile = path.join(os.tmpdir(), `ps-po-wf-${sessionId}.json`);
   // 설계 노드들이 쓸 수 있는 에이전트 — 무인 실행 적합(cron_eligible_v1)만 후보로 준다.
   const eligible = listAgents()

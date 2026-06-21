@@ -467,6 +467,15 @@ private struct TriageBriefRow: View {
                     Text(brief.title)
                         .font(.callout.weight(.semibold))
                         .lineLimit(2)
+                    // «한눈에» 한 줄 — 트리아지에서 제목·점수만 보고 보류/기각하지 않게 problem 첫 줄을
+                    // 평이하게(중립 .secondary). 산출물 데이터라 번역 대상 아님 → Text(verbatim:).
+                    // 비면(구형 브리프) 줄 자체를 숨긴다(하위호환).
+                    if let glance = brief.glanceLine {
+                        Text(verbatim: glance)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
                     HStack(spacing: Theme.Spacing.m) {
                         Label("영향 \(brief.impact)", systemImage: "arrow.up.right")
                         scoreBadge

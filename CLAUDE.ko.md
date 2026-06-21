@@ -4,7 +4,7 @@
 
 ## 색상 토큰 정책 (필수)
 
-색은 «의미» 로 쓴다 — hue 자체가 약속이다. 단일 정의는 iOS `ios/PocketSisyphus/DesignSystem/DesignTokens.swift` 의 `Theme` (맨 위 «색상 정책» 주석 블록이 SSOT). Mac 앱(`mac/PocketSisyphusMac`)은 별도 `Theme` 가 없어 리터럴 색을 쓰되 **같은 약속**을 따른다.
+색은 «의미» 로 쓴다 — hue 자체가 약속이다. 단일 정의는 iOS `ios/PocketSisyphus/DesignSystem/DesignTokens.swift` 의 `Theme` (맨 위 «색상 정책» 주석 블록이 SSOT). Mac 앱(`mac/PocketSisyphusMac`)은 **그 약속을 자기 `Theme`(`mac/PocketSisyphusMac/DesignTokens.swift`)에 미러**한다: 값의 SSOT 는 iOS 파일이고, Mac `Theme` 는 같은 의미 이름(`accent`/`success`/`danger`/`warning`/`info`/`pro`)을 대응 SwiftUI 표준색에 매핑한다 — iOS 와 픽셀 동일(`accent` 는 `Color.accentColor` 경유). **raw hue(`.orange`/`.yellow`/`.blue`)가 아니라 의미 토큰을 적는다** — 이제 `scripts/design-lint.sh` 가 Mac 의 raw 리터럴도 후보로 띄운다.
 
 - **accent = 보라** : 브랜드/선택/주요 인터랙티브. 기본 틴트. **두 앱의 `AccentColor` 에셋(시스템 purple)이 «통일된» accent 토큰** — 색 안 정한 기본 컨트롤(버튼·토글·피커·선택 체크·탭 선택·링크)은 이 에셋 덕에 자동으로 보라가 된다. iOS는 `Theme.accent`, Mac은 `Color.accentColor` 로 같은 값을 쓴다. **파랑은 거의 안 쓴다**(info·노드 end 정도). 「닫기/취소」 같은 해제 버튼과 「피커 선택값」 텍스트는 강조색이 아니라 **`Color.primary`(중립, 라이트=검정·다크=흰색)** 로 둔다.
 - **success = 초록 / danger = 빨강 / info = 파랑** : 상태 신호색.

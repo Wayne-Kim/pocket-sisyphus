@@ -38,6 +38,13 @@ final class AgentWaitNotifier: NSObject, ObservableObject {
     private var auth: AuthStore?
     private var conn: ConnectionManager?
     private weak var deepLink: DeepLinkRouter?
+    /// 함대 상태(세션 목록)의 앱 전역 단일 source of truth. 글로벌 WS 의 «대기 진입/해소»
+    /// 이벤트가 올 때 이 캐시를 다시 채워(scheduleFleetRefresh) Live Activity 가 «앱 생존 동안»
+    /// running→waiting 전이를 즉시 반영하게 한다. (Live Activity 자체는 FleetLiveActivityController
+    /// 가 이 캐시를 구독해 갱신 — 이 notifier 는 «데이터 신선도» 만 책임진다.)
+    private var sessionCache: SessionListCache?
+    /// 세션 이벤트 연쇄를 짧게 coalesce 하는 fleet 목록 재요청 태스크.
+    private var fleetRefreshTask: Task<Void, Never>?
 
     // MARK: - away-gating 상태
     /// 지금 채팅으로 열려 있는 세션 (ChatView 가 onAppear/onDisappear 로 세팅). nil = 목록/딴 화면.
@@ -72,10 +79,11 @@ final class AgentWaitNotifier: NSObject, ObservableObject {
 
     /// 연결이 준비된 뒤 AppRoot 가 호출. 의존성 주입 + 델리게이트 + 권한 + 글로벌 WS 가동.
     /// 멱등 — 재호출 시 의존성만 갱신하고 WS 는 이미 떠 있으면 그대로 둔다.
-    func configure(auth: AuthStore, conn: ConnectionManager, deepLink: DeepLinkRouter) {
+    func configure(auth: AuthStore, conn: ConnectionManager, deepLink: DeepLinkRouter, sessionCache: SessionListCache) {
         self.auth = auth
         self.conn = conn
         self.deepLink = deepLink
+        self.sessionCache = sessionCache
         UNUserNotificationCenter.current().delegate = self
         registerCategoriesIfNeeded()
         requestAuthorizationIfNeeded()
@@ -87,6 +95,9 @@ final class AgentWaitNotifier: NSObject, ObservableObject {
     func teardown() {
         globalWS?.stop()
         globalWS = nil
+        fleetRefreshTask?.cancel()
+        fleetRefreshTask = nil
+        sessionCache = nil
         actionStates.removeAll()
     }
 
@@ -112,6 +123,10 @@ final class AgentWaitNotifier: NSObject, ObservableObject {
         kind: String, sessionId: String,
         repoName: String?, title: String?, agentName: String?, preview: String?,
     ) {
+        // 함대 상태가 바뀌었을 가능성이 있는 모든 이벤트(대기 진입·해소·턴 완료)에서 세션 목록을
+        // 다시 채워, 잠금화면 Live Activity 가 running→waiting/해소를 «앱 생존 동안» 즉시 반영하게 한다.
+        scheduleFleetRefresh()
+
         switch kind {
         case "waiting":
             handleWaitingEntry(
@@ -252,6 +267,23 @@ final class AgentWaitNotifier: NSObject, ObservableObject {
     private func makeApi() -> ApiClient? {
         guard let auth, let conn else { return nil }
         return ApiClient(auth: auth, conn: conn)
+    }
+
+    /// 함대 목록을 조용히(label nil — in-flight 배너 미표시) 다시 받아 `SessionListCache` 를 갱신한다.
+    /// 여러 세션 이벤트가 연달아 오면 400ms 로 coalesce 해 한 번만 받는다. 실패는 무시 — 다음
+    /// 이벤트/폴링이 곧 메운다. (Live Activity 갱신은 캐시를 구독하는 FleetLiveActivityController 가 처리.)
+    private func scheduleFleetRefresh() {
+        guard let auth, let conn, let sessionCache else { return }
+        fleetRefreshTask?.cancel()
+        fleetRefreshTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            if Task.isCancelled { return }
+            let api = ApiClient(auth: auth, conn: conn)
+            guard let list = try? await api.listSessions(label: nil) else { return }
+            if Task.isCancelled { return }
+            sessionCache.save(list)
+            _ = self
+        }
     }
 
     private func drainPendingActions() {

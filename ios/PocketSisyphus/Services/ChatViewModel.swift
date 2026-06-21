@@ -15,6 +15,11 @@ final class ChatViewModel: ObservableObject {
         case reconnecting
     }
     @Published private(set) var ptyInputDelivery: PtyInputDelivery = .ok
+    /// WS 재연결이 «비복구» 사유(페어링 만료/인증 폐기 등)로 «중단» 됐을 때 사용자에게 보여줄
+    /// 안내 한 줄. nil = 정상/복구 가능(자동 재연결 중). 「설정 필요」 계열이라 UI 는 warning
+    /// 톤의 일시 배너로 그린다(danger 아님 — 데이터 손실/파괴가 아니라 «재페어링/업데이트»
+    /// 라는 사용자 액션이 필요한 상태). start() 마다 초기화한다.
+    @Published private(set) var connectionNonRecoverable: String?
 
     @Published private(set) var items: [ChatItem] = []
     @Published private(set) var isSending: Bool = false
@@ -133,12 +138,23 @@ final class ChatViewModel: ObservableObject {
         terminalContentVersion &+= 1
     }
 
+    /// 터미널이 «한 글자라도» 받아 그릴 내용이 생겼는가 — ChatView 의 로딩 오버레이 게이트.
+    /// 콜드 진입(특히 Tor 위 느린 첫 호출)에서 첫 청크가 도착하기 전까지 검은 빈 터미널 대신
+    /// «대화를 불러오는 중…» 을 띄우려는 1회성 신호다(false→true 로 한 번만 바뀌어 본문 재평가
+    /// 비용도 1회). 같은 세션 재진입은 StateObject 가 유지돼 buffer 가 차 있으므로 즉시 true.
+    /// 강제 재시작(restartPty)에서 buffer 리셋 시 false 로 되돌렸다가 clear 시퀀스로 곧 true 가 된다.
+    @Published private(set) var hasTerminalContent = false
+
     /// PTY 모드 raw chunk 수신 — buffer 에 누적 + hook 등록돼 있으면 즉시 전달.
     func appendPtyBytes(_ data: Data) {
         #if DEBUG
         PtyLog.shared.notice("[PTY-2/VM] appendPtyBytes +\(data.count, privacy: .public) total_buf=\(self.ptyBuffer.count, privacy: .public) hook=\(self.ptyBuffer.isHookRegistered ? "YES" : "NO", privacy: .public)")
         #endif
         ptyBuffer.append(data)
+        // 첫 내용 도착 → 로딩 오버레이 해제(1회만 publish).
+        if !hasTerminalContent, ptyBuffer.count > 0 {
+            hasTerminalContent = true
+        }
     }
 
     private let api: ApiClient
@@ -299,6 +315,9 @@ final class ChatViewModel: ObservableObject {
         seenMessageIds.removeAll()
         pendingSends.removeAll()
         ptyBuffer.reset()
+        // 버퍼를 비웠으니 로딩 게이트도 리셋 — 직후 clear 시퀀스(appendPtyBytes)가 곧 true 로
+        // 되돌리므로 깜빡임 없이, 새 splash 가 안 올 때만 로딩 오버레이가 다시 보인다.
+        hasTerminalContent = false
         isAwaitingReply = false
         isSending = false
         lastError = nil
@@ -364,10 +383,16 @@ final class ChatViewModel: ObservableObject {
                 onConnectionChange: { [weak self] connected in
                     self?.handleWSConnectionChange(connected)
                 },
+                onNonRecoverable: { [weak self] message in
+                    // 비복구 종료 — 자동 재연결 루프가 멈췄으므로 사용자에게 명확히 안내한다.
+                    self?.connectionNonRecoverable = message
+                },
             ) { [weak self] event in
                 self?.handleWSEvent(event)
             }
         }
+        // 재진입 시 stale 비복구 배너 제거 — 새 연결 시도가 다시 살아날 수 있다.
+        connectionNonRecoverable = nil
         ws?.start()
     }
 

@@ -1,100 +1,102 @@
+**English** · [한국어](README.ko.md)
+
 # Pocket Sisyphus — iOS
 
-듀얼 채널 모델 (SSH-first + Tor fallback) iOS 클라이언트. NEPacketTunnelProvider 익스텐션 없음 — Tor.framework 를 메인 앱 프로세스 내에서 lazy 운용, SSH 채택 후 stop. 「같은 Wi‑Fi 전용」 모드(opt-in)면 Tor 를 아예 건너뛰고 사설 주소로만 직결한다(`LanOnlyPolicy`/`ConnectionModeView`, fail-closed).
+The iOS client for the dual-channel model (SSH-first + Tor fallback). No NEPacketTunnelProvider extension — Tor.framework runs lazily inside the main app process and is stopped once SSH is adopted. In «same Wi‑Fi only» mode (opt-in), Tor is skipped entirely and the app connects straight to the private address only (`LanOnlyPolicy`/`ConnectionModeView`, fail-closed).
 
-## 빌드 / 실행
+## Build / run
 
 ```bash
 cd ios
-xcodegen generate           # project.yml → PocketSisyphus.xcodeproj + Pods 자동 install
-open PocketSisyphus.xcworkspace   # CocoaPods 라 .xcworkspace 사용
+xcodegen generate           # project.yml → PocketSisyphus.xcodeproj + auto-installs Pods
+open PocketSisyphus.xcworkspace   # CocoaPods, so use the .xcworkspace
 
-# 또는 CLI:
-# 시뮬레이터:
+# Or via CLI:
+# Simulator:
 xcodebuild -workspace PocketSisyphus.xcworkspace -scheme PocketSisyphus \
   -destination 'generic/platform=iOS Simulator' -configuration Debug build
 
-# 실기기 (Apple Dev 팀 ID 필요):
+# Real device (requires an Apple Dev team ID):
 xcodebuild -workspace PocketSisyphus.xcworkspace -scheme PocketSisyphus \
   -destination 'generic/platform=iOS' -configuration Debug \
   -allowProvisioningUpdates build
 
-# 디바이스에 설치:
+# Install on the device:
 xcrun devicectl device install app --device <DEVICE-UUID> \
   ~/Library/Developer/Xcode/DerivedData/PocketSisyphus-*/Build/Products/Debug-iphoneos/PocketSisyphus.app
 xcrun devicectl device process launch --device <DEVICE-UUID> pe.wayne.pocketsisyphus
 ```
 
-## 구조
+## Structure
 
 ```
 ios/
 ├── project.yml                  # xcodegen spec (source of truth)
-├── Podfile                      # Tor (CocoaPods) 의존
+├── Podfile                      # Tor (CocoaPods) dependency
 ├── PocketSisyphus/
-│   ├── PocketSisyphusApp.swift  # @main 진입점 + 환경 객체 셋업
+│   ├── PocketSisyphusApp.swift  # @main entry point + environment object setup
 │   ├── Info.plist
-│   ├── PocketSisyphus.entitlements   # Keychain only (NetworkExtension/App Group 제거됨)
+│   ├── PocketSisyphus.entitlements   # Keychain only (NetworkExtension/App Group removed)
 │   ├── Services/
-│   │   ├── AuthStore.swift          # PairConfig Keychain 저장
-│   │   ├── TorManager.swift         # in-process Tor + stop/start 5단계 시퀀스
+│   │   ├── AuthStore.swift          # PairConfig stored in the Keychain
+│   │   ├── TorManager.swift         # in-process Tor + 5-step stop/start sequence
 │   │   ├── SSHClient.swift          # Citadel + NWListener local TCP forwarding
-│   │   ├── ConnectionManager.swift  # happy eyeballs SSH 채택 + Tor lazy + LAN 전용 분기
-│   │   ├── LanOnlyPolicy.swift       # 「같은 Wi‑Fi 전용」 순수 정책(후보 필터·Tor skip·fail-closed)
-│   │   ├── ConnectionModePolicy.swift # 연결 방식 최초 선택 여부(modeChosen) 게이트 키
-│   │   ├── EndpointCache.swift      # /endpoint 응답 Keychain 캐시
+│   │   ├── ConnectionManager.swift  # happy eyeballs SSH adoption + Tor lazy + LAN-only branch
+│   │   ├── LanOnlyPolicy.swift       # «same Wi‑Fi only» pure policy (candidate filter · Tor skip · fail-closed)
+│   │   ├── ConnectionModePolicy.swift # gate key for whether the connection mode was first chosen (modeChosen)
+│   │   ├── EndpointCache.swift      # Keychain cache of the /endpoint response
 │   │   ├── ApiClient.swift          # HTTP via SSH local forward
 │   │   ├── WSClient.swift           # WS via SSH local forward
-│   │   ├── ChatViewModel.swift      # PTY stream + 폴링 + 송신 이력
-│   │   ├── EntitlementDecision.swift  # trial / IAP 게이트 (단위 테스트 있음)
+│   │   ├── ChatViewModel.swift      # PTY stream + polling + send history
+│   │   ├── EntitlementDecision.swift  # trial / IAP gate (has unit tests)
 │   │   └── ...
 │   └── Views/
-│       ├── AppRoot.swift            # 상태 기반 라우팅 + 연결 방식 게이트 + Tor fallback banner
-│       ├── ConnectionModeView.swift # 첫 실행 연결 방식 선택(어디서나(Tor)/같은 Wi‑Fi 전용)
-│       ├── BootView.swift           # Tor bootstrap progress / SSH 채택 spinner
-│       ├── PairView.swift           # 페어링 v=3 QR 검증
-│       ├── SessionsView.swift       # 세션 리스트
-│       ├── ChatView.swift           # PTY SwiftTerm 렌더
+│       ├── AppRoot.swift            # state-based routing + connection-mode gate + Tor fallback banner
+│       ├── ConnectionModeView.swift # first-run connection-mode choice (Anywhere (Tor) / same Wi‑Fi only)
+│       ├── BootView.swift           # Tor bootstrap progress / SSH adoption spinner
+│       ├── PairView.swift           # pairing v=3 QR verification
+│       ├── SessionsView.swift       # session list
+│       ├── ChatView.swift           # PTY SwiftTerm rendering
 │       └── ...
 ├── Shared/
-│   └── PairConfig.swift             # v=3 페어링 페이로드 + 모델
-└── PocketSisyphusTests/             # XCTest — 순수 struct 단위만
+│   └── PairConfig.swift             # v=3 pairing payload + models
+└── PocketSisyphusTests/             # XCTest — pure struct units only
 ```
 
-## 의존성
+## Dependencies
 
-- **Tor.framework** (CocoaPods, iCepa `~> 409.8`) — Tor 0.4.9.x 임베드. 메인 앱 프로세스 내 in-process 운용.
+- **Tor.framework** (CocoaPods, iCepa `~> 409.8`) — embeds Tor 0.4.9.x. Runs in-process inside the main app process.
 - **Citadel** (SwiftPM, `from: 0.12.1`) — swift-nio-ssh wrapper. SSH client + direct-tcpip channel.
-- **SwiftTerm** (SwiftPM, `1.13.0`) — xterm-호환 터미널 에뮬레이터. PTY raw bytes 렌더.
+- **SwiftTerm** (SwiftPM, `1.13.0`) — xterm-compatible terminal emulator. Renders PTY raw bytes.
 
-NMSSH 는 검토 후 폐기 — vendored libcrypto.a 가 Xcode 26 + arm64-sim linker 와 alignment 충돌.
+NMSSH was evaluated and dropped — its vendored libcrypto.a conflicts in alignment with the Xcode 26 + arm64-sim linker.
 
-## 빌드 노트
+## Build notes
 
-- `DEVELOPMENT_TEAM`: `project.yml` 의 `AZ9NKP8D9G` (개인 Apple Dev 팀 ID)
+- `DEVELOPMENT_TEAM`: `AZ9NKP8D9G` in `project.yml` (a personal Apple Dev team ID)
 - Bundle ID: `pe.wayne.pocketsisyphus`
-- Deployment target: **iOS 17.0+** (Citadel 의 swift-nio 의존)
-- Code Signing: Debug 는 Automatic (개발용). Release(배포) 서명은 메인테이너 전용.
-- `EAGER_LINKING=NO` + `EAGER_LINKING_TBDS=NO` 필수 (Xcode 26+ 의 Tor.framework self-link 회피)
+- Deployment target: **iOS 17.0+** (Citadel's swift-nio dependency)
+- Code Signing: Debug is Automatic (for development). Release (distribution) signing is maintainer-only.
+- `EAGER_LINKING=NO` + `EAGER_LINKING_TBDS=NO` are required (avoids the Tor.framework self-link on Xcode 26+)
 
-## 백그라운드 정책
+## Background policy
 
-iOS 앱은 백그라운드에서 **아무것도 유지하지 않음**:
-- 백그라운드 진입 → SSH + Tor 모두 stop
-- 포그라운드 복귀 → 캐시 endpoint 로 SSH 직행 시도 → 실패 시 Tor → `/endpoint` 갱신
-- APNs / BGAppRefreshTask / BGProcessingTask **영구 미구현**. 백그라운드 push 없음. 도구 승인 등 실시간 이벤트는 사용자가 앱을 포그라운드로 가져온 시점에 처리
+The iOS app keeps **nothing alive** in the background:
+- Entering background → stop both SSH and Tor
+- Returning to foreground → try a direct SSH to the cached endpoint → on failure, Tor → refresh `/endpoint`
+- APNs / BGAppRefreshTask / BGProcessingTask are **permanently unimplemented**. No background push. Real-time events such as tool approvals are handled the moment the user brings the app to the foreground.
 
-## 페어링 QR (v=3)
+## Pairing QR (v=3)
 
-Mac daemon 이 발급하는 페어링 페이로드:
-- `onion` + `onion_auth` — Tor 회로 빌드 + endpoint 조회용
-- `endpoint_token` / `daemon_token` — Bearer 인증
-- `ssh_host_key_fingerprint` — SSH 연결 시 host key pin (현재 1차 acceptAnything, P3.6 에서 strict pin)
-- `ssh_client_priv` — 페어링당 새 ed25519 priv (PKCS8 PEM base64)
-- `ssh_user` — sshd AllowUsers (macOS 현재 user)
+The pairing payload issued by the Mac daemon:
+- `onion` + `onion_auth` — for building the Tor circuit + endpoint lookup
+- `endpoint_token` / `daemon_token` — Bearer authentication
+- `ssh_host_key_fingerprint` — host key pin on SSH connect (currently acceptAnything in the first pass, strict pin in P3.6)
+- `ssh_client_priv` — a fresh ed25519 priv per pairing (PKCS8 PEM base64)
+- `ssh_user` — sshd AllowUsers (the current macOS user)
 
-v<3 페이로드는 거부 — 사용자에게 "Mac 앱 업데이트 후 재페어링" 안내.
+v<3 payloads are rejected — the user is told to «update the Mac app, then re-pair».
 
-## 자세한 아키텍처
+## Detailed architecture
 
-[`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) 참고.
+See [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md).

@@ -1,6 +1,266 @@
 {
   "sourceLanguage": "ko",
   "strings": {
+    "자기교정 루프": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حلقة التصحيح الذاتي"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Self-correcting loop"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucle autocorrectivo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boucle auto-correctrice"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्व-सुधार लूप"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自己修正ループ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자기교정 루프"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loop autocorretivo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Самокорректирующийся цикл"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自我修正循环"
+          }
+        }
+      }
+    },
+    "생성 → 점검 순서로 만들고, 점검이 실패를 판정하면 생성으로 되돌아가 고치는 루프형 출발 템플릿이에요.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قالب بداية يُنشئ ← يفحص، وعند حكم الفحص بالفشل يعود إلى الإنشاء لإصلاحه."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A starter template that generates → checks, and when the check judges a failure, loops back to generation to fix it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una plantilla inicial que genera → revisa y, cuando la revisión determina un fallo, vuelve a la generación para corregirlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un modèle de départ qui génère → vérifie et, quand la vérification conclut à un échec, revient à la génération pour corriger."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "एक स्टार्टर टेम्पलेट जो सृजन → जाँच करता है, और जब जाँच विफलता का निर्णय देती है तो ठीक करने के लिए सृजन पर लौट आता है।"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成 → 点検の順で作り、点検が失敗と判定したら生成へ戻って直すループ型の出発テンプレートです。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "생성 → 점검 순서로 만들고, 점검이 실패를 판정하면 생성으로 되돌아가 고치는 루프형 출발 템플릿이에요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um modelo inicial que gera → verifica e, quando a verificação julga uma falha, volta à geração para corrigir."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Стартовый шаблон, который создаёт → проверяет, и когда проверка выносит вердикт «неудача», возвращается к созданию для исправления."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一个起始模板:按生成 → 检查的顺序进行,当检查判定为失败时,回到生成进行修正。"
+          }
+        }
+      }
+    },
+    "점검": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فحص"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifier"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "जाँच"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点検"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "점검"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверка"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "检查"
+          }
+        }
+      }
+    },
+    "생성": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إنشاء"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crear"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créer"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "बनाएँ"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作成"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "생성"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Criar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создать"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "创建"
+          }
+        }
+      }
+    },
     "config.json 을 찾지 못함": {
       "extractionState": "manual",
       "localizations": {
@@ -41252,6 +41512,331 @@
           "stringUnit": {
             "state": "translated",
             "value": "工作流 — 串联多个 Agent 的多 Agent 作业流程。iPhone 应用中工作流标签页的按钮为橙色。"
+          }
+        }
+      }
+    },
+    "딥링크 주소가 동작하는지 확인 중…": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ التحقق مما إذا كان الرابط العميق يعمل…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking whether the deep link URL works…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando si el enlace profundo funciona…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérification du lien profond…"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "जाँचा जा रहा है कि डीप लिंक URL काम करता है या नहीं…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ディープリンクの URL が機能するか確認中…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "딥링크 주소가 동작하는지 확인 중…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificando se o deep link funciona…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверка работоспособности глубокой ссылки…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在检查深层链接地址是否可用…"
+          }
+        }
+      }
+    },
+    "지금은 딥링크 주소가 동작하는지 확인할 수 없어요 — 네트워크 연결을 확인해 주세요.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر الآن التحقق مما إذا كان الرابط العميق يعمل — يُرجى التحقق من اتصال الشبكة."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can't verify whether the deep link URL works right now — please check your network connection."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ahora mismo no se puede verificar si el enlace profundo funciona; comprueba tu conexión de red."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de vérifier le lien profond pour le moment — vérifiez votre connexion réseau."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अभी यह जाँचा नहीं जा सकता कि डीप लिंक URL काम करता है या नहीं — कृपया अपना नेटवर्क कनेक्शन जाँचें।"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在、ディープリンクの URL が機能するか確認できません — ネットワーク接続を確認してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금은 딥링크 주소가 동작하는지 확인할 수 없어요 — 네트워크 연결을 확인해 주세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No momento não é possível verificar se o deep link funciona — confira sua conexão de rede."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сейчас не удаётся проверить работу глубокой ссылки — проверьте подключение к сети."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前无法检查深层链接地址是否可用——请检查网络连接。"
+          }
+        }
+      }
+    },
+    "딥링크 주소의 도달 여부를 지금은 확인할 수 없어요": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر الآن التحقق من إمكانية الوصول إلى الرابط العميق"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can't verify the deep link URL's reachability right now"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ahora mismo no se puede verificar la accesibilidad del enlace profundo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de vérifier l'accessibilité du lien profond pour le moment"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अभी डीप लिंक URL की पहुँच की पुष्टि नहीं की जा सकती"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ディープリンクの URL に到達できるか、現在は確認できません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "딥링크 주소의 도달 여부를 지금은 확인할 수 없어요"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No momento não é possível verificar a acessibilidade do deep link"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сейчас не удаётся проверить доступность глубокой ссылки"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前无法确认深层链接地址是否可达"
+          }
+        }
+      }
+    },
+    "이 딥링크 주소가 응답하지 않아요 — 알림의 「Open in app」 링크가 동작하지 않을 수 있어요. 주소를 확인하거나 칸을 비워 기본 페이지로 되돌리세요.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا الرابط العميق لا يستجيب — قد لا يعمل رابط «Open in app» في الإشعار. تحقّق من العنوان أو امسح الحقل لاستعادة الصفحة الافتراضية."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This deep link URL isn't responding — the notification's “Open in app” link may not work. Check the URL or clear the field to restore the default page."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este enlace profundo no responde: es posible que el enlace «Open in app» de la notificación no funcione. Comprueba la URL o vacía el campo para restaurar la página predeterminada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce lien profond ne répond pas — le lien « Open in app » de la notification risque de ne pas fonctionner. Vérifiez l'URL ou videz le champ pour rétablir la page par défaut."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "यह डीप लिंक URL जवाब नहीं दे रहा — सूचना का “Open in app” लिंक काम नहीं कर सकता। URL जाँचें या फ़ील्ड खाली करके डिफ़ॉल्ट पेज पर लौटें।"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このディープリンクの URL が応答しません — 通知の「Open in app」リンクが機能しない可能性があります。URL を確認するか、欄を空にして既定のページに戻してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 딥링크 주소가 응답하지 않아요 — 알림의 「Open in app」 링크가 동작하지 않을 수 있어요. 주소를 확인하거나 칸을 비워 기본 페이지로 되돌리세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este deep link não está respondendo — o link “Open in app” da notificação pode não funcionar. Verifique a URL ou limpe o campo para restaurar a página padrão."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эта глубокая ссылка не отвечает — ссылка «Open in app» в уведомлении может не работать. Проверьте URL или очистите поле, чтобы вернуть страницу по умолчанию."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此深层链接地址没有响应——通知中的「Open in app」链接可能无法使用。请检查地址，或清空该字段以恢复默认页面。"
+          }
+        }
+      }
+    },
+    "경고: 딥링크 주소가 응답하지 않아 「Open in app」 링크가 동작하지 않을 수 있어요": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تحذير: الرابط العميق لا يستجيب، لذا قد لا يعمل رابط «Open in app»"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warning: the deep link URL isn't responding, so the “Open in app” link may not work"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Advertencia: el enlace profundo no responde, por lo que el enlace «Open in app» podría no funcionar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avertissement : le lien profond ne répond pas, le lien « Open in app » risque de ne pas fonctionner"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "चेतावनी: डीप लिंक URL जवाब नहीं दे रहा, इसलिए “Open in app” लिंक काम नहीं कर सकता"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "警告: ディープリンクの URL が応答しないため、「Open in app」リンクが機能しない可能性があります"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경고: 딥링크 주소가 응답하지 않아 「Open in app」 링크가 동작하지 않을 수 있어요"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aviso: o deep link não está respondendo, então o link “Open in app” pode não funcionar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Предупреждение: глубокая ссылка не отвечает, поэтому ссылка «Open in app» может не работать"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "警告：深层链接地址没有响应，「Open in app」链接可能无法使用"
           }
         }
       }

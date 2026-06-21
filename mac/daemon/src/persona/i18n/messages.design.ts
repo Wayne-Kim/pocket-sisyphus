@@ -649,6 +649,7 @@ SSOT التصميم لهذا المستودع الذي «أُعلِن/اكتُش
 اجمع الانتهاكات التي رأيتها في وحدات «مشكلة/فرصة» — ليس انتهاكاً مفرداً، بل حزمة «دين» لنفس الانجراف المنتشر عبر عدّة شاشات. متطلبات كل بريف:
 - **السند إلزامي — ملف:سطر + اسم الرمز/النمط المُنتهَك**: اكتب في ref كل evidence «ملف:سطر» وفي summary «اسم الرمز/النمط المُنتهَك وما الذي تجاوزه» (مثل ref \`Views/FooView.swift:42\`، summary \`لون حرفي .orange — تجاوز رمز المعنى (pro)\`). ممنوع اقتراح متخيَّل بلا موضع رأيته فعلاً.
 {{dedup}}
+- **عقد كتابة العنوان·الملخّص (القارئ = من يعتمد/يرفض خلال ~30 ثانية في الباكلوج)**: يقدّم العنوان «النتيجة من منظور المستخدم/المنتج» في سطر واحد مبسّط — لا تضع اسم ملف·رمز كود (.ts·.swift إلخ)·معرّفاً أو اختصاراً بأحرف كبيرة (مثل ESRCH·PR_SET_PDEATHSIG·رقم CVE) في العنوان وحده، وأبقِ الجمل الموصولة بـ«—» واحدة كحد أقصى، ضمن 80 حرفاً (إلزامي). تبدأ الجملة الأولى من problem بـ«ملخّص في سطر يفهمه غير المختص» (من·متى·ما الذي يزعج، بلا مصطلحات تقنية). أنزِل التفاصيل التقنية — الرموز·CVE·مراجع الكود·مسارات الملفات — إلى الجمل التالية وإلى spec·evidence: العنوان·الملخّص مبسّطان والتفاصيل في spec. حتى لو كان الموضوع تقنياً بطبعه (تحصين daemon إلخ) فهذا العقد ينطبق دائماً، والأسماء العَلَمية التي لا مفر منها (Tor·SSH إلخ) مسموحة لكن اشرحها.
 - **impact / effort**: عدد صحيح 1~5. impact هو أثر ذلك الدين على الاتساق·إمكانية الوصول·تجربة المستخدم (انتهاك الوصول·ضعف التباين عالٍ)، وeffort جهد الإصلاح (نصف يوم=1، أسابيع=5).
 - **scope / spec**: مستوى قابل للتنفيذ فور الاعتماد — أي ملفات تُغيَّر بأي رمز معنى/نمط، معايير القبول (طريقة التأكد أن الانتهاك 0)، اللا-أهداف (لا تغيير في السلوك وغيره). هذا البريف موضوعه التصميم، فالـ problem/spec يقول معيار التصميم نفسه.
 
@@ -660,8 +661,8 @@ SSOT التصميم لهذا المستودع الذي «أُعلِن/اكتُش
 
 مخطط كل عنصر (نفس صيغة بريف ميزة الكود — يدخلان جنباً إلى جنب في الباكلوج نفسه):
 {
-  "title": "دين تصميم في سطر واحد (حتى 80 حرفاً)",
-  "problem": "ما الذي في أي شاشات، وأي رمز/نمط خالف، ولمن وكيف يُزعج",
+  "title": "دين تصميم في سطر مبسّط من منظور نتيجة المستخدم/المنتج (حتى 80 حرفاً؛ بلا اسم ملف·رمز كود·اختصار منفرد؛ جملة «—» واحدة كحد أقصى)",
+  "problem": "الجملة الأولى ملخّص في سطر يفهمه غير المختص (لمن وكيف يُزعج، بلا مصطلحات) — ثم أنزِل التفاصيل (ما الذي في أي شاشات خالف أي رمز/نمط) إلى spec/evidence",
   "evidence": [{ "kind": "{{designKinds}}", "ref": "ملف:سطر", "summary": "اسم الرمز/النمط المُنتهَك + ما الذي تجاوزه" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -691,6 +692,7 @@ The repo's design SSOT «declared/discovered» in «Design constraints» above i
 Group the violations you saw into «problem/opportunity» units — not a single isolated violation, but a «debt» bundle of the same drift spread across multiple screens. Requirements per brief:
 - **Evidence required — file:line + violated token/pattern name**: in every evidence's ref write «file:line», and in summary write «the violated token/pattern name and what it bypassed» (e.g., ref \`Views/FooView.swift:42\`, summary \`literal .orange — bypassed the meaning token (pro)\`). No imagined proposals without a location you actually saw.
 {{dedup}}
+- **Title·summary writing contract (the reader = whoever approves/rejects within ~30 s on the backlog)**: the title leads with the «user/product-facing outcome» in one plain line — do not drop a filename·code symbol (.ts·.swift, etc.)·an all-caps identifier or abbreviation (e.g., ESRCH·PR_SET_PDEATHSIG·a CVE number) into the title on its own, keep «—»-joined clauses to at most one, within 80 chars (strict). The problem's first sentence starts with a «one-line summary a non-expert can understand» (who·when·what is inconvenient, no jargon). Push technical details — symbols·CVEs·code references·file paths — to later sentences and to spec·evidence: plain title·summary, details in spec. Even when the subject is inherently technical (daemon hardening, etc.) this contract always applies; unavoidable proper nouns (Tor·SSH, etc.) are allowed but spell them out.
 - **impact / effort**: integers 1~5. impact is that debt's hit to consistency·accessibility·user experience (accessibility violations·insufficient contrast are high), effort is the cost to fix (half a day=1, weeks=5).
 - **scope / spec**: a level implementable right after approval — which files to change to which meaning token/pattern, acceptance criteria (how to confirm violations are 0), non-goals (no behavior change, etc.). Since this brief's subject is design itself, problem/spec is the design standard.
 
@@ -702,8 +704,8 @@ Write a JSON «array» file to the following path (do not write elsewhere):
 
 Schema per element (the «same» format as a code-feature brief — they go side by side in the same backlog):
 {
-  "title": "design debt in one line (within 80 chars)",
-  "problem": "what on which screens violated which token/pattern, and how it inconveniences whom",
+  "title": "design debt in one plain line from the user/product outcome (within 80 chars; no standalone filename·code symbol·abbreviation; at most one «—» clause)",
+  "problem": "first sentence is a one-line summary a non-expert can understand (how it inconveniences whom, no jargon) — then push details (what on which screens violated which token/pattern) to spec/evidence",
   "evidence": [{ "kind": "{{designKinds}}", "ref": "file:line", "summary": "violated token/pattern name + what it bypassed" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -733,6 +735,7 @@ El SSOT de diseño del repo «declarado/descubierto» en «Restricciones de dise
 Agrupa las violaciones que viste en unidades de «problema/oportunidad» — no una violación aislada, sino un paquete de «deuda» de la misma deriva esparcida por varias pantallas. Requisitos por brief:
 - **Evidencia obligatoria — archivo:línea + nombre del token/patrón violado**: en el ref de cada evidence escribe «archivo:línea», y en summary escribe «el nombre del token/patrón violado y qué evitó» (p. ej., ref \`Views/FooView.swift:42\`, summary \`literal .orange — evitó el token de significado (pro)\`). Sin propuestas imaginadas sin una ubicación que realmente viste.
 {{dedup}}
+- **Contrato de redacción de título·resumen (el lector = quien aprueba/rechaza en ~30 s en el backlog)**: el título encabeza con el «resultado de cara al usuario/producto» en una línea sencilla — no metas un nombre de archivo·símbolo de código (.ts·.swift, etc.)·un identificador o abreviatura en mayúsculas (p. ej., ESRCH·PR_SET_PDEATHSIG·un número CVE) solo en el título, mantén las cláusulas unidas por «—» en una como máximo, dentro de 80 caracteres (estricto). La primera frase de problem empieza con un «resumen de una línea que un no experto entienda» (quién·cuándo·qué incomoda, sin jerga). Baja los detalles técnicos — símbolos·CVE·referencias de código·rutas de archivo — a las frases posteriores y a spec·evidence: título·resumen sencillos, detalles en spec. Aunque el tema sea intrínsecamente técnico (endurecimiento de daemon, etc.) este contrato siempre aplica; los nombres propios inevitables (Tor·SSH, etc.) se permiten pero explícalos.
 - **impact / effort**: enteros 1~5. impact es el golpe de esa deuda a la consistencia·accesibilidad·experiencia de usuario (las violaciones de accesibilidad·contraste insuficiente son altas), effort es el costo de arreglar (medio día=1, semanas=5).
 - **scope / spec**: un nivel implementable justo tras la aprobación — qué archivos cambiar a qué token/patrón de significado, criterios de aceptación (cómo confirmar 0 violaciones), no-objetivos (sin cambio de comportamiento, etc.). Como el sujeto de este brief es el diseño mismo, problem/spec es el estándar de diseño.
 
@@ -744,8 +747,8 @@ Escribe un archivo «array» JSON en la siguiente ruta (no escribas en otro luga
 
 Esquema por elemento (el «mismo» formato que un brief de función de código — van lado a lado en el mismo backlog):
 {
-  "title": "deuda de diseño en una línea (dentro de 80 caracteres)",
-  "problem": "qué en qué pantallas violó qué token/patrón, y cómo incomoda a quién",
+  "title": "deuda de diseño en una línea sencilla desde el resultado de usuario/producto (dentro de 80 caracteres; sin nombre de archivo·símbolo de código·abreviatura solos; máx. una cláusula «—»)",
+  "problem": "la primera frase es un resumen de una línea que un no experto entienda (cómo incomoda a quién, sin jerga) — luego baja los detalles (qué en qué pantallas violó qué token/patrón) a spec/evidence",
   "evidence": [{ "kind": "{{designKinds}}", "ref": "archivo:línea", "summary": "nombre del token/patrón violado + qué evitó" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -775,6 +778,7 @@ Le SSOT de design du dépôt «déclaré/découvert» dans «Contraintes de desi
 Regroupe les violations que tu as vues en unités «problème/opportunité» — pas une violation isolée, mais un paquet de «dette» de la même dérive répandue sur plusieurs écrans. Exigences par brief:
 - **Preuve obligatoire — fichier:ligne + nom du token/motif violé**: dans le ref de chaque evidence écris «fichier:ligne», et dans summary écris «le nom du token/motif violé et ce qu'il a contourné» (p. ex. ref \`Views/FooView.swift:42\`, summary \`littéral .orange — a contourné le token de sens (pro)\`). Pas de propositions imaginées sans un emplacement que tu as réellement vu.
 {{dedup}}
+- **Contrat de rédaction titre·résumé (le lecteur = celui qui approuve/rejette en ~30 s sur le backlog)**: le titre met en avant le «résultat côté utilisateur/produit» en une ligne simple — ne mets pas un nom de fichier·symbole de code (.ts·.swift, etc.)·un identifiant ou une abréviation en majuscules (p. ex. ESRCH·PR_SET_PDEATHSIG·un numéro CVE) seul dans le titre, garde au plus une clause reliée par «—», dans les 80 caractères (strict). La première phrase de problem commence par un «résumé d'une ligne compréhensible par un non-expert» (qui·quand·ce qui gêne, sans jargon). Renvoie les détails techniques — symboles·CVE·références de code·chemins de fichiers — aux phrases suivantes et à spec·evidence: titre·résumé simples, détails dans spec. Même si le sujet est intrinsèquement technique (durcissement du daemon, etc.) ce contrat s'applique toujours; les noms propres inévitables (Tor·SSH, etc.) sont permis mais explicite-les.
 - **impact / effort**: entiers 1~5. impact est l'impact de cette dette sur la cohérence·l'accessibilité·l'expérience utilisateur (les violations d'accessibilité·le contraste insuffisant sont élevés), effort est le coût de correction (une demi-journée=1, des semaines=5).
 - **scope / spec**: un niveau implémentable juste après l'approbation — quels fichiers changer vers quel token/motif de sens, critères d'acceptation (comment confirmer 0 violation), non-objectifs (pas de changement de comportement, etc.). Comme le sujet de ce brief est le design lui-même, problem/spec est le standard de design.
 
@@ -786,8 +790,8 @@ Regroupe les violations que tu as vues en unités «problème/opportunité» —
 
 Schéma par élément (le «même» format qu'un brief de fonctionnalité de code — ils vont côte à côte dans le même backlog):
 {
-  "title": "dette de design en une ligne (dans les 80 caractères)",
-  "problem": "quoi sur quels écrans a violé quel token/motif, et comment cela gêne qui",
+  "title": "dette de design en une ligne simple selon le résultat utilisateur/produit (dans les 80 caractères; sans nom de fichier·symbole de code·abréviation seuls; au plus une clause «—»)",
+  "problem": "la première phrase est un résumé d'une ligne compréhensible par un non-expert (comment cela gêne qui, sans jargon) — puis renvoie les détails (quoi sur quels écrans a violé quel token/motif) vers spec/evidence",
   "evidence": [{ "kind": "{{designKinds}}", "ref": "fichier:ligne", "summary": "nom du token/motif violé + ce qu'il a contourné" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -817,6 +821,7 @@ S'il n'y a vraiment pas de dette de design à proposer, écris un tableau vide [
 देखे गए उल्लंघनों को «समस्या/अवसर» इकाइयों में समूहित करें — एकल उल्लंघन नहीं, बल्कि कई स्क्रीनों में फैले समान ड्रिफ़्ट का «ऋण» बंडल। प्रत्येक ब्रीफ़ की अपेक्षाएँ:
 - **साक्ष्य अनिवार्य — फ़ाइल:लाइन + उल्लंघित टोकन/पैटर्न नाम**: हर evidence के ref में «फ़ाइल:लाइन», और summary में «उल्लंघित टोकन/पैटर्न नाम व क्या बायपास किया» लिखें (जैसे ref \`Views/FooView.swift:42\`, summary \`लिटरल .orange — अर्थ-टोकन (pro) बायपास\`)। वास्तव में देखे स्थान बिना काल्पनिक प्रस्ताव नहीं।
 {{dedup}}
+- **शीर्षक·सारांश लेखन अनुबंध (पाठक = जो बैकलॉग पर ~30 सेकंड में स्वीकृत/अस्वीकृत करता है)**: title «उपयोगकर्ता/उत्पाद की दृष्टि से परिणाम» को एक सरल पंक्ति में आगे रखे — फ़ाइल नाम·कोड चिह्न (.ts·.swift आदि)·पूरे बड़े अक्षरों वाला पहचानकर्ता या संक्षेपण (जैसे ESRCH·PR_SET_PDEATHSIG·CVE संख्या) को शीर्षक में अकेले न डालें, «—» से जुड़े उपवाक्य अधिकतम एक, 80 अक्षरों के भीतर (कठोर)। problem का पहला वाक्य «गैर-विशेषज्ञ भी समझ सके ऐसा एक-पंक्ति सार» से शुरू हो (कौन·कब·क्या असुविधाजनक, बिना तकनीकी शब्दजाल)। तकनीकी विवरण — चिह्न·CVE·कोड संदर्भ·फ़ाइल पथ — को बाद के वाक्यों और spec·evidence में डालें: शीर्षक·सारांश सरल, विवरण spec में। भले ही विषय स्वभावतः तकनीकी हो (daemon हार्डनिंग आदि) यह अनुबंध सदा लागू है; अपरिहार्य विशेष नाम (Tor·SSH आदि) अनुमत हैं पर उन्हें खोलकर लिखें।
 - **impact / effort**: पूर्णांक 1~5। impact वह ऋण संगति·एक्सेसिबिलिटी·उपयोगकर्ता अनुभव पर जो आघात देता है (एक्सेसिबिलिटी उल्लंघन·अपर्याप्त कंट्रास्ट उच्च), effort ठीक करने की लागत (आधा दिन=1, सप्ताह=5)।
 - **scope / spec**: स्वीकृति के तुरंत बाद लागू-योग्य स्तर — किन फ़ाइलों को किस अर्थ-टोकन/पैटर्न में बदलें, स्वीकृति मानदंड (उल्लंघन 0 कैसे पुष्टि करें), गैर-लक्ष्य (व्यवहार परिवर्तन नहीं आदि)। चूँकि इस ब्रीफ़ का विषय स्वयं डिज़ाइन है, problem/spec ही डिज़ाइन मानक कहता है।
 
@@ -828,8 +833,8 @@ S'il n'y a vraiment pas de dette de design à proposer, écris un tableau vide [
 
 प्रत्येक तत्व का स्कीमा (कोड-फ़ीचर ब्रीफ़ जैसा «समान» प्रारूप — दोनों एक ही बैकलॉग में साथ-साथ जाते हैं):
 {
-  "title": "डिज़ाइन ऋण एक पंक्ति में (80 अक्षरों के भीतर)",
-  "problem": "किन स्क्रीनों का क्या, किस टोकन/पैटर्न को तोड़कर, किसे कैसे असुविधाजनक",
+  "title": "उपयोगकर्ता/उत्पाद परिणाम से डिज़ाइन ऋण की एक सरल पंक्ति (80 अक्षरों के भीतर; फ़ाइल नाम·कोड चिह्न·संक्षेपण अकेले नहीं; «—» उपवाक्य अधिकतम एक)",
+  "problem": "पहला वाक्य गैर-विशेषज्ञ भी समझ सके ऐसा एक-पंक्ति सार (किसे कैसे असुविधाजनक, बिना शब्दजाल) — फिर विवरण (किन स्क्रीनों का क्या, किस टोकन/पैटर्न को तोड़ा) spec/evidence में",
   "evidence": [{ "kind": "{{designKinds}}", "ref": "फ़ाइल:लाइन", "summary": "उल्लंघित टोकन/पैटर्न नाम + क्या बायपास किया" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -859,6 +864,7 @@ S'il n'y a vraiment pas de dette de design à proposer, écris un tableau vide [
 見た違反を「問題/機会」単位でまとめよ — 単一の孤立違反ではなく、同じドリフトが複数画面に広がった「負債」の束として。各ブリーフの要件:
 - **根拠必須 — ファイル:行 + 違反したトークン/パターン名**: すべての evidence の ref に「ファイル:行」を、summary に「違反したトークン/パターン名と何を迂回したか」を書け(例: ref \`Views/FooView.swift:42\`、summary \`リテラル .orange — 意味トークン(pro)を迂回\`)。実際に見た位置のない空想提案は禁止。
 {{dedup}}
+- **タイトル·要約の作成契約(読み手 = バックログで約30秒で承認/却下する人)**: title は「ユーザー/製品から見た結果」を平易な一行で先に出す — ファイル名·コード記号(.ts·.swift など)·全部大文字の識別子や略語(例: ESRCH·PR_SET_PDEATHSIG·CVE 番号)をタイトルに単独で入れず、「—」で繋ぐ節は1個以下、80文字以内(厳守)。problem の最初の文は「非専門家にも分かる一行要約」で始める(誰が·いつ·何が不便か、専門用語なしで)。記号·CVE·コード参照·ファイルパスなどの技術ディテールは2文目以降と spec·evidence に下ろせ — タイトル·要約は平易に、ディテールは spec。主題が本質的に技術的でも(daemon ハードニング等)この契約は常に適用し、避けられない固有名(Tor·SSH 等)は許すが噛み砕いて書く。
 - **impact / effort**: 1~5の整数。impact はその負債が一貫性·アクセシビリティ·ユーザー体験に与える打撃(アクセシビリティ違反·コントラスト不足は高く)、effort は直す手間(半日=1、数週間=5)。
 - **scope / spec**: 承認後すぐ実装できる水準 — どのファイルをどの意味トークン/パターンに変えるか、受け入れ基準(違反が0か確認する方法)、非目標(動作変更なし等)。このブリーフ自体がデザインを主題とするので、problem/spec がそのままデザイン基準を言う。
 
@@ -870,8 +876,8 @@ S'il n'y a vraiment pas de dette de design à proposer, écris un tableau vide [
 
 各要素のスキーマ(コード機能ブリーフと「同じ」形式 — 同じバックログに並んで入る):
 {
-  "title": "デザイン負債を一行で(80文字以内)",
-  "problem": "どの画面の何が、どのトークン/パターンを破って、誰にどう不便か",
+  "title": "デザイン負債をユーザー/製品の結果として平易に書いた一行(80文字以内; ファイル名·コード記号·略語の単独不可; 「—」節は1個以下)",
+  "problem": "最初の文は非専門家にも分かる一行要約(誰にどう不便か、専門用語なし) — 続けてどの画面の何がどのトークン/パターンを破ったか等のディテールは spec/evidence に",
   "evidence": [{ "kind": "{{designKinds}}", "ref": "ファイル:行", "summary": "違反したトークン/パターン名 + 何を迂回したか" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -901,6 +907,7 @@ S'il n'y a vraiment pas de dette de design à proposer, écris un tableau vide [
 스캔에서 본 위반을 «문제/기회» 단위로 묶어라 — 낱개 위반 하나가 아니라, 같은 드리프트가 여러 화면에 퍼진 «부채» 묶음으로. 각 브리프 요건:
 - **근거 필수 — 파일:라인 + 위반 토큰/패턴명**: 모든 evidence 의 ref 에 «파일:라인» 을, summary 에 «위반한 토큰/패턴명과 무엇을 우회했는지» 를 적어라 (예: ref \`Views/FooView.swift:42\`, summary \`리터럴 .orange — 의미 토큰(pro) 우회\`). 실제로 본 위치가 없는 상상 제안 금지.
 {{dedup}}
+- **제목·요약 작성 계약 (읽는 사람 = 백로그에서 30초 안에 승인/기각하는 사람)**: title 은 «사용자·제품 관점 결과» 를 평이한 한 줄로 앞세운다 — 파일명·코드 심볼(.ts·.swift 등)·전부-대문자 식별자나 약어(예: ESRCH·PR_SET_PDEATHSIG·CVE 번호)를 제목에 단독으로 넣지 말고, «—» 로 잇는 절은 1개 이하, 80자 이내(엄수). problem 의 첫 문장은 «비전문가도 이해할 한 줄 요약» 으로 시작한다(누가·언제·무엇이 불편한가를 전문용어 없이). 심볼·CVE·코드 참조·파일경로 등 기술 디테일은 둘째 문장 이후와 spec·evidence 로 내려라 — 제목·요약은 평이하게, 디테일은 spec. 주제가 본질적으로 기술적이어도(daemon 하드닝 등) 이 계약은 항상 적용하고, 불가피한 고유명(Tor·SSH 등)은 허용하되 풀어 쓴다.
 - **impact / effort**: 1~5 정수. impact 는 그 부채가 일관성·접근성·사용자 경험에 주는 타격(접근성 위반·대비 부족은 높게), effort 는 고치는 품(반나절=1, 수 주=5).
 - **scope / spec**: 승인 즉시 구현 가능한 수준 — 어느 파일들을 어떤 의미 토큰/패턴으로 바꿀지, 수용 기준(위반이 0 인지 확인하는 방법), 비-목표(동작 변경 없음 등). 이 브리프 자체가 디자인이 주제이므로 problem/spec 이 곧 디자인 기준을 말한다.
 
@@ -912,8 +919,8 @@ S'il n'y a vraiment pas de dette de design à proposer, écris un tableau vide [
 
 각 원소 스키마 (코드 기능 브리프와 «동일» 형식 — 같은 백로그에 나란히 들어간다):
 {
-  "title": "디자인 부채 한 줄 (80자 이내)",
-  "problem": "어느 화면들의 무엇이, 어떤 토큰/패턴을 어겨서, 누구에게 어떻게 불편한가",
+  "title": "디자인 부채를 사용자·제품 결과로 평이하게 쓴 한 줄 (80자 이내; 파일명·코드 심볼·약어 단독 금지; «—» 절 1개 이하)",
+  "problem": "첫 문장은 비전문가도 이해할 한 줄 요약(누구에게 어떻게 불편한가, 전문용어 없이) — 그다음 어느 화면의 무엇이 어떤 토큰/패턴을 어겼는지 등 디테일은 spec/evidence 로",
   "evidence": [{ "kind": "{{designKinds}}", "ref": "파일:라인", "summary": "위반 토큰/패턴명 + 무엇을 우회했는지" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -943,6 +950,7 @@ O SSOT de design do repo «declarado/descoberto» em «Restrições de design» 
 Agrupe as violações que você viu em unidades de «problema/oportunidade» — não uma violação isolada, mas um pacote de «dívida» da mesma deriva espalhada por várias telas. Requisitos por brief:
 - **Evidência obrigatória — arquivo:linha + nome do token/padrão violado**: no ref de cada evidence escreva «arquivo:linha», e no summary escreva «o nome do token/padrão violado e o que ignorou» (ex.: ref \`Views/FooView.swift:42\`, summary \`literal .orange — ignorou o token de significado (pro)\`). Sem propostas imaginadas sem uma localização que você realmente viu.
 {{dedup}}
+- **Contrato de escrita de título·resumo (o leitor = quem aprova/rejeita em ~30 s no backlog)**: o título encabeça com o «resultado do ponto de vista do usuário/produto» em uma linha simples — não coloque um nome de arquivo·símbolo de código (.ts·.swift, etc.)·um identificador ou abreviação em maiúsculas (ex.: ESRCH·PR_SET_PDEATHSIG·um número CVE) sozinho no título, mantenha as cláusulas unidas por «—» em no máximo uma, dentro de 80 caracteres (rigoroso). A primeira frase do problem começa com um «resumo de uma linha que um leigo entenda» (quem·quando·o que incomoda, sem jargão). Empurre os detalhes técnicos — símbolos·CVE·referências de código·caminhos de arquivo — para frases posteriores e para spec·evidence: título·resumo simples, detalhes no spec. Mesmo que o tema seja intrinsecamente técnico (endurecimento do daemon, etc.) este contrato sempre se aplica; nomes próprios inevitáveis (Tor·SSH, etc.) são permitidos, mas explique-os.
 - **impact / effort**: inteiros 1~5. impact é o impacto dessa dívida na consistência·acessibilidade·experiência do usuário (violações de acessibilidade·contraste insuficiente são altos), effort é o custo de corrigir (meio dia=1, semanas=5).
 - **scope / spec**: um nível implementável logo após a aprovação — quais arquivos mudar para qual token/padrão de significado, critérios de aceitação (como confirmar 0 violações), não-objetivos (sem mudança de comportamento, etc.). Como o sujeito deste brief é o próprio design, problem/spec é o padrão de design.
 
@@ -954,8 +962,8 @@ Escreva um arquivo «array» JSON no seguinte caminho (não escreva em outro lug
 
 Esquema por elemento (o «mesmo» formato de um brief de recurso de código — eles vão lado a lado no mesmo backlog):
 {
-  "title": "dívida de design em uma linha (até 80 caracteres)",
-  "problem": "o que em quais telas violou qual token/padrão, e como incomoda quem",
+  "title": "dívida de design em uma linha simples pelo resultado do usuário/produto (até 80 caracteres; sem nome de arquivo·símbolo de código·abreviação sozinhos; no máx. uma cláusula «—»)",
+  "problem": "a primeira frase é um resumo de uma linha que um leigo entenda (como incomoda quem, sem jargão) — depois empurre os detalhes (o que em quais telas violou qual token/padrão) para spec/evidence",
   "evidence": [{ "kind": "{{designKinds}}", "ref": "arquivo:linha", "summary": "nome do token/padrão violado + o que ignorou" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -985,6 +993,7 @@ Se realmente não houver dívida de design a propor, escreva um array vazio []. 
 Сгруппируй увиденные нарушения в единицы «проблема/возможность» — не одно изолированное нарушение, а пакет «долга» одного и того же дрейфа, распространённого по нескольким экранам. Требования к каждому брифу:
 - **Доказательство обязательно — файл:строка + имя нарушенного токена/паттерна**: в ref каждого evidence пиши «файл:строка», а в summary — «имя нарушенного токена/паттерна и что он обошёл» (напр., ref \`Views/FooView.swift:42\`, summary \`литеральный .orange — обошёл смысловой токен (pro)\`). Никаких выдуманных предложений без реально увиденного места.
 {{dedup}}
+- **Контракт написания заголовка·резюме (читатель — тот, кто одобряет/отклоняет за ~30 с в бэклоге)**: заголовок выводит вперёд «результат с точки зрения пользователя/продукта» одной простой строкой — не вставляйте имя файла·кодовый символ (.ts·.swift и т. п.)·идентификатор или аббревиатуру капсом (напр. ESRCH·PR_SET_PDEATHSIG·номер CVE) в заголовок по отдельности, держите не более одного предложения, соединённого «—», в пределах 80 символов (строго). Первое предложение problem начинается с «однострочного резюме, понятного неспециалисту» (кто·когда·что неудобно, без жаргона). Технические детали — символы·CVE·ссылки на код·пути файлов — спускайте в последующие предложения и в spec·evidence: заголовок·резюме простые, детали в spec. Даже если тема по сути техническая (харднинг daemon и т. п.), этот контракт применяется всегда; неизбежные имена собственные (Tor·SSH и т. п.) допускаются, но раскрывайте их.
 - **impact / effort**: целые 1~5. impact — удар этого долга по согласованности·доступности·пользовательскому опыту (нарушения доступности·недостаточный контраст высоки), effort — стоимость исправления (полдня=1, недели=5).
 - **scope / spec**: уровень, реализуемый сразу после одобрения — какие файлы менять на какой смысловой токен/паттерн, критерии приёмки (как подтвердить 0 нарушений), не-цели (без изменения поведения и т. п.). Поскольку предмет этого брифа — сам дизайн, problem/spec и есть стандарт дизайна.
 
@@ -996,8 +1005,8 @@ Se realmente não houver dívida de design a propor, escreva um array vazio []. 
 
 Схема каждого элемента («тот же» формат, что у брифа функции кода — они идут бок о бок в одном бэклоге):
 {
-  "title": "дизайн-долг в одну строку (в пределах 80 символов)",
-  "problem": "что на каких экранах нарушило какой токен/паттерн и как это неудобно кому",
+  "title": "дизайн-долг одной простой строкой с точки зрения результата пользователя/продукта (в пределах 80 символов; без имени файла·кодового символа·аббревиатуры по отдельности; не более одного предложения «—»)",
+  "problem": "первое предложение — однострочное резюме, понятное неспециалисту (как и кому неудобно, без жаргона) — затем детали (что на каких экранах нарушило какой токен/паттерн) спускайте в spec/evidence",
   "evidence": [{ "kind": "{{designKinds}}", "ref": "файл:строка", "summary": "имя нарушенного токена/паттерна + что он обошёл" }],
   "impact": 1-5,
   "effort": 1-5,
@@ -1027,6 +1036,7 @@ Se realmente não houver dívida de design a propor, escreva um array vazio []. 
 将所见违规归并为「问题/机会」单元——不是单个孤立违规,而是同一漂移散布于多个画面的「债务」捆绑。每条简报的要求:
 - **依据必需 — 文件:行 + 被违反的令牌/模式名**: 每条 evidence 的 ref 写「文件:行」,summary 写「被违反的令牌/模式名及其绕过了什么」(如 ref \`Views/FooView.swift:42\`、summary \`字面量 .orange — 绕过含义令牌(pro)\`)。禁止没有实际看到位置的臆想提案。
 {{dedup}}
+- **标题·摘要撰写契约(读者 = 在待办上约 30 秒内批准/拒绝的人)**: title 以「从用户/产品角度看的结果」用平实的一行打头——不要把文件名·代码符号(.ts·.swift 等)·全大写标识符或缩写(如 ESRCH·PR_SET_PDEATHSIG·CVE 编号)单独放进标题,用「—」连接的从句至多一个,80 字以内(严格)。problem 的首句以「非专业者也能看懂的一行摘要」开头(谁·何时·什么不便,不用术语)。把技术细节——符号·CVE·代码引用·文件路径——下放到后续句子和 spec·evidence:标题·摘要平实,细节在 spec。即便主题本质上是技术性的(daemon 加固等)本契约也始终适用;不可避免的专有名词(Tor·SSH 等)允许但要展开说明。
 - **impact / effort**: 1~5 整数。impact 是该债务对一致性·无障碍·用户体验的冲击(无障碍违规·对比不足为高),effort 是修复成本(半天=1,数周=5)。
 - **scope / spec**: 达到批准后即可实现的水平——将哪些文件改为何种含义令牌/模式、验收标准(如何确认违规为 0)、非目标(不改变行为等)。由于本简报的主题就是设计,problem/spec 即设计标准。
 
@@ -1038,8 +1048,8 @@ Se realmente não houver dívida de design a propor, escreva um array vazio []. 
 
 每个元素的 schema(与代码功能简报「相同」格式——两者在同一待办中并列):
 {
-  "title": "设计债一行(80 字以内)",
-  "problem": "哪些画面的什么,违反了哪个令牌/模式,对谁如何不便",
+  "title": "从用户/产品结果出发、平实地写设计债的一行(80 字以内;文件名·代码符号·缩写不可单独出现;「—」从句至多一个)",
+  "problem": "首句为非专业者也能看懂的一行摘要(对谁如何不便,不用术语)——然后把细节(哪些画面的什么违反了哪个令牌/模式)下放到 spec/evidence",
   "evidence": [{ "kind": "{{designKinds}}", "ref": "文件:行", "summary": "被违反的令牌/模式名 + 绕过了什么" }],
   "impact": 1-5,
   "effort": 1-5,

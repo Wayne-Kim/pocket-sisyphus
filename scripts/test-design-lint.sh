@@ -3,8 +3,10 @@
 # test-design-lint.sh — scripts/design-lint.sh 의 회귀/단위 테스트.
 #
 # 1) «단위»: L/W/T/A/S/R/O/I 여덟 패밀리 각각의 positive/negative 픽스처로 검출·비검출을 단언한다
-#    (합성 픽스처 — 작업 트리·히스토리를 건드리지 않는다). iOS/Mac 경로 분기(L 패밀리:
-#    iOS 는 .orange/.yellow/.blue 전부, Mac 은 .blue 만)도 픽스처 경로로 검증한다.
+#    (합성 픽스처 — 작업 트리·히스토리를 건드리지 않는다). L 패밀리는 iOS·Mac «모두» raw
+#    .orange/.yellow/.blue 를 후보로 잡고(Mac 도 DesignTokens.swift 에 Theme 색 미러가 도입돼
+#    raw hue 가 warning↔pro 혼동을 숨기는 사각이 닫혔다), Theme.pro/.warning 의미 상수 경유·
+#    토큰정의 파일(DesignTokens.swift 화이트리스트)·allow 는 «안» 잡히는지까지 픽스처로 검증한다.
 #    S/R(spacing·radius)은 «토큰값 SSOT = 실제 DesignTokens.swift» 를 파싱하므로, 권장 토큰명이
 #    실제 토큰(보정으로 추가된 Spacing.xxxxl=32·Radius.sm=8 포함)을 정확히 가리키는지, 그리고
 #    온그리드 무토큰(20)·오프그리드(14)를 반올림하지 «않고» 구분 표기하는지까지 단언한다.
@@ -15,6 +17,9 @@
 #    .shadow/배경·neutral/accent tint, S/R 의 토큰 사용·변수 인자·0/1 미만이 «안» 잡히는지 음성 검증.
 # 3) «종료코드 계약»: 후보 0→0, 후보≥1→1(기본), --soft→항상 0 (i18n-lint.sh 와 동일).
 # 4) «스모크»: 실제 소스 루트에 돌려 크래시 없이(종료코드 0/1) 완료하는지 확인.
+# 5) «--strict baseline 래칫»: i18n-lint --strict 와 동형. 후보를 baseline 으로 차감해 «새»(미등재)
+#    후보만 비-0 으로 막고, baseline 등재 후엔 통과(0)하며, 막을 때 «### BASELINE-PASTE» 블록을
+#    찍는지 + 실제 scripts/design-lint-baseline.tsv 로 repo 가 0 통과(기존 부채 차감)하는지 단언한다.
 #
 # 종료코드: 모든 검사 통과 0, 하나라도 실패 1.
 #
@@ -141,19 +146,39 @@ struct APosNoParamLabel: View { var body: some View {
 } }
 SWIFT
 
-# ── Mac 픽스처 (Mac 경로: Theme 없음 → .orange/.yellow 리터럴은 정상, .blue 만 후보) ─────────────
+# ── Mac 픽스처 (Mac 경로: 이제 DesignTokens.swift 에 Theme 색 미러가 있어, raw .orange/.yellow/.blue
+#    는 «의미를 숨기는» 후보다. 의미 상수(Theme.pro/.warning) 경유·토큰정의 파일·allow 만 제외) ────────
 cat > "$FX/PocketSisyphusMac/Sample.swift" <<'SWIFT'
 import SwiftUI
 
-// [L] Mac 양성: .blue 는 accent 누락 의심 → 후보
-struct MacLBlue: View { var body: some View {
-    Text("맥파랑").foregroundStyle(.blue)  // mac_blue_pos
+// [L] Mac 양성: raw 리터럴 .orange/.yellow/.blue 는 의미 상수 부재 → 후보.
+//   Theme 없던 시절 «.orange=pro» 가정이 깨졌다 — raw orange 는 warning↔pro 혼동을 숨긴다.
+struct MacLRaw: View { var body: some View {
+    Text("맥주황raw").foregroundStyle(.orange)  // mac_orange_pos
+    Text("맥노랑raw").foregroundStyle(.yellow)  // mac_yellow_pos
+    Text("맥파랑raw").foregroundStyle(.blue)    // mac_blue_pos
 } }
-// [L] Mac 음성: Theme 없는 Mac 은 .orange(pro)·.yellow(warning) 리터럴이 «정상» → 통과
-struct MacLOK: View { var body: some View {
-    Text("맥주황").foregroundStyle(.orange)  // mac_orange_legit
-    Text("맥노랑").foregroundStyle(.yellow)  // mac_yellow_legit
+// [L] Mac 음성: 의미 상수(Theme.pro/.warning) 경유 = 정답 → 통과 (pro 강조 orange 정상 사용은 안 잡힘)
+struct MacLSemantic: View { var body: some View {
+    Text("맥프로").foregroundStyle(Theme.pro)            // mac_pro_legit
+    Text("맥경고").foregroundStyle(Theme.warning)        // mac_warning_legit
+    Text("맥액센트").foregroundStyle(Color.accentColor)  // mac_accent_legit
 } }
+// [L] Mac 음성: 의도적 우회 allow → 통과
+struct MacLAllow: View { var body: some View {
+    Text("맥예외").foregroundStyle(.orange)  // design-lint: allow  mac_orange_allow
+} }
+SWIFT
+
+# ── Mac 토큰정의 픽스처 (basename DesignTokens.swift = 화이트리스트 — raw 색이 정상인 SSOT) ──────────
+# iOS 와 동일한 EXCLUDE 계약: 토큰 «정의» 파일은 통째로 제외돼 후보를 만들지 않는다(Mac 도 동일).
+cat > "$FX/PocketSisyphusMac/DesignTokens.swift" <<'SWIFT'
+import SwiftUI
+// Mac 의미-색 레이어(iOS Theme 색 미러). 여기선 raw 색이 정상 — 화이트리스트로 통째 제외돼야 한다.
+enum Theme {
+    static let pro = Color.orange       // mac_tokendef_orange
+    static let warning = Color.yellow   // mac_tokendef_yellow
+}
 SWIFT
 
 # ── S·R 픽스처 (spacing/radius 리터럴 — 토큰값 SSOT 는 «실제» DesignTokens.swift 를 파싱) ─────────
@@ -293,16 +318,25 @@ assert_no_round() { # <needle> <kind: Spacing|Radius> <설명>
   else ok "비-그리드(반올림-강제 안 함): $3"; fi
 }
 
-echo "[1] [L] 리터럴 색 우회 (iOS=셋다 / Mac=blue만) + 제외(토큰·accent·allow)"
+echo "[1] [L] 리터럴 색 우회 (iOS·Mac 모두 셋다 — Mac 도 Theme 미러 도입) + 제외(토큰정의·의미상수·accent·allow)"
 assert_hit L '.foregroundStyle(.orange)'        "iOS .orange 리터럴"
 assert_hit L '.foregroundStyle(.yellow)'        "iOS .yellow 리터럴"
 assert_hit L 'Color.blue'                       "iOS Color.blue 리터럴"
-assert_hit L 'mac_blue_pos'                     "Mac .blue (accent 누락 의심)"
+assert_hit L 'mac_orange_pos'                   "Mac raw .orange (의미 상수 부재 → 후보)"
+assert_hit L 'mac_yellow_pos'                   "Mac raw .yellow (의미 상수 부재 → 후보)"
+assert_hit L 'mac_blue_pos'                     "Mac raw .blue (accent 누락 의심)"
+# 권장 단언: raw orange 는 pro↔warning 판별을 위해 Theme.pro 를(경고면 Theme.warning), yellow 는 Theme.warning 을 가리켜야 한다.
+assert_rec  L 'mac_orange_pos' 'Theme.pro'      "Mac raw .orange 권장 = Theme.pro(경고 의미면 Theme.warning)"
+assert_rec  L 'mac_yellow_pos' 'Theme.warning'  "Mac raw .yellow 권장 = Theme.warning"
 assert_miss 'ok_theme_pro'                      "Theme.pro 의미 토큰"
 assert_miss 'ok_accent_color'                   "Color.accentColor (AccentColor 에셋 경유)"
 assert_miss 'design-lint: allow'                "// design-lint: allow 우회"
-assert_miss 'mac_orange_legit'                  "Mac .orange 리터럴(Theme 없음 → 정상)"
-assert_miss 'mac_yellow_legit'                  "Mac .yellow 리터럴(Theme 없음 → 정상)"
+assert_miss 'mac_pro_legit'                     "Mac Theme.pro 의미 상수(pro 강조 정상 사용 → 안 잡힘)"
+assert_miss 'mac_warning_legit'                 "Mac Theme.warning 의미 상수 (→ 안 잡힘)"
+assert_miss 'mac_accent_legit'                  "Mac Color.accentColor (→ 안 잡힘)"
+assert_miss 'mac_orange_allow'                  "Mac .orange // design-lint: allow → 스킵"
+assert_miss 'mac_tokendef_orange'               "Mac DesignTokens.swift 토큰정의 raw .orange → 화이트리스트(안 잡힘)"
+assert_miss 'mac_tokendef_yellow'               "Mac DesignTokens.swift 토큰정의 raw .yellow → 화이트리스트(안 잡힘)"
 
 echo "[2] [W] 흑백 하드코딩 + 제외(.primary·그림자·전체배경)"
 assert_hit W '.foregroundStyle(.white)'         ".foregroundStyle(.white)"
@@ -405,6 +439,62 @@ echo "[7] 스모크: 실제 iOS·Mac 소스 루트에서 크래시 없이 완료
 DT_OUT="$(cd "$REPO_ROOT" && "$LINT" --soft "$REPO_ROOT/ios/PocketSisyphus/DesignSystem/DesignTokens.swift" 2>&1)"
 printf '%s\n' "$DT_OUT" | grep -Fq "후보 0건" && ok "DesignTokens.swift 화이트리스트(토큰 정의 → 후보 0)" \
   || bad "DesignTokens.swift 가 후보를 만들었다(화이트리스트 깨짐)"
+
+# ── (8) --strict baseline 래칫 (i18n-lint --strict 와 동형) ────────────────────────────────
+echo "[8] strict: baseline 차감 후 «새» 후보만 차단 + BASELINE-PASTE 래칫"
+STR="$TMP/strict"; mkdir -p "$STR"
+# 새 색-드리프트 후보(의미 토큰 밖 .orange) 하나를 둔다.
+cat > "$STR/New.swift" <<'SWIFT'
+import SwiftUI
+struct NewProbe: View { var body: some View {
+    Text("프로").foregroundStyle(.orange)
+} }
+SWIFT
+
+# (8a) baseline 없음 → 새 후보가 게이트로 잡혀 비-0 종료(--soft 면 0).
+(cd "$REPO_ROOT" && "$LINT" --strict --quiet --baseline=/dev/null "$STR" >/dev/null 2>&1); rc_str=$?
+[ "$rc_str" -ne 0 ] && ok "[strict] baseline 없이 새 후보 → 비-0($rc_str) (수용 기준: 새 위반 차단)" \
+                    || bad "[strict] 새 후보 있는데 종료코드 0"
+(cd "$REPO_ROOT" && "$LINT" --strict --soft --quiet --baseline=/dev/null "$STR" >/dev/null 2>&1); rc_strs=$?
+[ "$rc_strs" -eq 0 ] && ok "[strict] --soft → 차단 있어도 0" || bad "[strict] --soft 인데 $rc_strs"
+
+# (8b) 래칫: 막을 때 찍는 «### BASELINE-PASTE» fingerprint 를 baseline 에 넣으면 통과(0).
+STR_OUT="$(cd "$REPO_ROOT" && "$LINT" --strict --soft --quiet --baseline=/dev/null "$STR" 2>/dev/null)"
+PASTE="$(printf '%s\n' "$STR_OUT" | sed -n '/BASELINE-PASTE-BEGIN/,/BASELINE-PASTE-END/p' \
+         | grep -v 'BASELINE-PASTE' | grep -Ev '^[[:space:]]*$')"
+PASTE_N="$(printf '%s\n' "$PASTE" | grep -c . )"
+[ "$PASTE_N" -eq 1 ] && ok "[strict] paste 블록에 새 후보 fingerprint 1건" \
+                     || bad "[strict] paste 블록 fingerprint 수 이상($PASTE_N, 1 기대)"
+STR_BASE="$TMP/strict_base.tsv"
+printf '%s\n' "$PASTE" > "$STR_BASE"
+(cd "$REPO_ROOT" && "$LINT" --strict --quiet --baseline="$STR_BASE" "$STR" >/dev/null 2>&1); rc_ratchet=$?
+[ "$rc_ratchet" -eq 0 ] && ok "[strict] 래칫: baseline 등재 후 동일 후보는 통과(0)" \
+                       || bad "[strict] 래칫 실패: baseline 등재했는데 $rc_ratchet"
+
+# (8c) 실제 repo baseline(scripts/design-lint-baseline.tsv)로 repo 스캔 시 0 통과(기존 부채 차감).
+(cd "$REPO_ROOT" && "$LINT" --strict --quiet >/dev/null 2>&1); rc_repo=$?
+[ "$rc_repo" -eq 0 ] && ok "[strict] 현재 repo 상태 → 게이트 통과(0): 기존 부채는 baseline 으로 차감" \
+                     || bad "[strict] repo baseline 차감 실패: 종료코드 $rc_repo (새 부채 유입 or baseline 스테일)"
+
+# (8d) down-ratchet: baseline 에 있지만 코드엔 없는 줄 → stale 로 표면화(비차단) + burn-down.
+# i18n-lint --strict 와 동형. 죽은 등재(고쳐졌거나 코드 이동)를 «차단 아닌 surfacing» 으로 띄우고
+# «고친 N · 남은 M» 진척을 보인다. 깨끗한 스캔 디렉터리 + 죽은 등재만으론 비-0 으로 막지 않는다.
+SDIR="$TMP/strict_stale_dir"; mkdir -p "$SDIR"
+cat > "$SDIR/Clean.swift" <<'SWIFT'
+import SwiftUI
+struct CleanProbe: View { var body: some View { Text("ok").foregroundStyle(Theme.pro) } }
+SWIFT
+STALE_BASE="$TMP/strict_stale.tsv"
+printf '# c\nL\tmac/PocketSisyphusMac/GoneNowhere.swift\t.foregroundStyle(.orange)\n' > "$STALE_BASE"
+(cd "$REPO_ROOT" && "$LINT" --strict --quiet --baseline="$STALE_BASE" "$SDIR" >/dev/null 2>&1); rc_st=$?
+[ "$rc_st" -eq 0 ] && ok "[strict] stale: 죽은 등재만으론 비차단(0 종료)" || bad "[strict] stale 가 막음(rc=$rc_st, 비차단 기대)"
+STALE_OUT="$(cd "$REPO_ROOT" && "$LINT" --strict --baseline="$STALE_BASE" "$SDIR" 2>/dev/null)"
+if printf '%s\n' "$STALE_OUT" | sed -n '/BASELINE-STALE-BEGIN/,/BASELINE-STALE-END/p' | grep -Fq 'GoneNowhere.swift'; then
+  ok "[strict] stale: 코드에 없는 baseline 줄이 BASELINE-STALE 로 표면화"
+else bad "[strict] stale 등재가 표면화 안 됨"; fi
+if printf '%s\n' "$STALE_OUT" | grep -q 'burn-down: 고친 부채 1건 · 남은 부채 0건'; then
+  ok "[strict] stale: burn-down «고친 1 · 남은 0» 진척 표기"
+else bad "[strict] burn-down 진척 라인 누락/오표기"; fi
 
 # ── 결과 ──────────────────────────────────────────────────────────────────────────────
 echo

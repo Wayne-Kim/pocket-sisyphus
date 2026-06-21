@@ -10,7 +10,7 @@
  * 격리 전략: sessions.test.ts 와 동일 — `../config.js` 를 tmpdir 파일로 mock.
  * `../notify/index.js` 는 stub (db/ws 를 끌고 오는 dispatchTestNotification 차단).
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 
 const H = vi.hoisted(() => {
@@ -211,5 +211,51 @@ describe("POST /test — deepLinkBaseUrl override", () => {
     const res = await post("/test", { webhookUrl: WEBHOOK, deepLinkBaseUrl: "http://x" });
     expect(res.status).toBe(400);
     expect(((await res.json()) as { error: string }).error).toBe("invalid_deep_link_url");
+  });
+});
+
+describe("GET /deeplink-health — 브리지 도달 가능성 점검", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function getHealth(query = ""): Promise<Response> {
+    return notify.request(`/deeplink-health${query}`, {
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+  }
+
+  it("저장된 base 가 정상 응답이면 ok", async () => {
+    writeConfigFile({
+      ...baseConfig(),
+      notify: { discord: { webhookUrl: WEBHOOK, enabled: true, deepLinkBaseUrl: BRIDGE } },
+    });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }));
+    const body = (await (await getHealth()).json()) as { status: string; base: string; custom: boolean };
+    expect(body.status).toBe("ok");
+    expect(body.base).toBe(BRIDGE);
+    expect(body.custom).toBe(true);
+  });
+
+  it("base 미설정이면 기본 페이지를 점검 (custom=false)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }));
+    const body = (await (await getHealth()).json()) as { status: string; base: string; custom: boolean };
+    expect(body.custom).toBe(false);
+    expect(body.base).toBe(DEFAULT_DEEP_LINK_BRIDGE_BASE);
+  });
+
+  it("?base= 오버라이드 — 저장 전 입력값으로 점검", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 500 }));
+    const body = (await (await getHealth(`?base=${encodeURIComponent(BRIDGE)}`)).json()) as {
+      status: string;
+      base: string;
+    };
+    expect(body.status).toBe("http_error");
+    expect(body.base).toBe(BRIDGE);
+  });
+
+  it("잘못된 ?base= → 400", async () => {
+    const res = await getHealth("?base=http%3A%2F%2Fx");
+    expect(res.status).toBe(400);
   });
 });

@@ -59,13 +59,13 @@ struct CommitsView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if commits.isEmpty {
                 if didFail {
-                    DiffEmptyState(
+                    EmptyStateView(
                         title: "불러오기 실패",
                         systemImage: "exclamationmark.triangle",
                         message: "연결이 회복되면 다시 시도된다.",
                     )
                 } else {
-                    DiffEmptyState(
+                    EmptyStateView(
                         title: "커밋이 없어요",
                         systemImage: "clock",
                         message: "이 브랜치에는 아직 커밋이 없어요.",
@@ -298,7 +298,7 @@ struct CommitDetailView: View {
                 }
                 .listStyle(.insetGrouped)
             } else {
-                DiffEmptyState(
+                EmptyStateView(
                     title: "불러오기 실패",
                     systemImage: "exclamationmark.triangle",
                     message: "연결이 회복되면 다시 시도된다.",
@@ -365,13 +365,13 @@ struct CommitFileDiffView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let resp = response {
                 if resp.binary {
-                    DiffEmptyState(
+                    EmptyStateView(
                         title: "바이너리 파일",
                         systemImage: "doc.zipper",
                         message: "미리 보기를 지원하지 않는다.",
                     )
                 } else if resp.diff.isEmpty {
-                    DiffEmptyState(
+                    EmptyStateView(
                         title: "변경 내용 없음",
                         systemImage: "doc",
                         message: "표시할 diff 본문이 비어 있다.",
@@ -380,7 +380,7 @@ struct CommitFileDiffView: View {
                     DiffBody(diff: resp.diff, truncated: resp.truncated, untracked: false, path: target.file.path)
                 }
             } else if didFail {
-                DiffEmptyState(
+                EmptyStateView(
                     title: "불러오기 실패",
                     systemImage: "exclamationmark.triangle",
                     message: "연결이 회복되면 다시 시도된다.",
@@ -480,7 +480,7 @@ struct CheckpointsView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if checkpoints.isEmpty {
                 if didFail {
-                    DiffEmptyState(
+                    EmptyStateView(
                         title: "불러오기 실패",
                         systemImage: "exclamationmark.triangle",
                         message: "연결이 회복되면 다시 시도된다.",

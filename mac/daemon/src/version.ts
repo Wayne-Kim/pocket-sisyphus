@@ -359,6 +359,17 @@ export const DAEMON_CAPABILITIES: readonly string[] = [
   // 조용히 default(전방위)로 폴백 → «거짓 UI». iOS 는 이 capability 가 있을 때만 ux 옵션을 픽커에
   // 넣는다. 이전 렌즈는 그대로라 회귀 0.
   "po_research_lens_v9",
+  // 리서치 «전문가 관점» 렌즈 집합 확장 — lens="readability" (가독성·유지보수성 전문가) 추가. lens.ts 가
+  // 가독성 머리말(코드 «표면» legibility 우선 — 명명 명확성·일관성, 파일/함수 길이, 구조 분해, 중첩 깊이,
+  // 매개변수 수, 매직 넘버, 주석 품질; spec=현재 가독성 문제(위치·왜)/더 읽기 쉬운 형태(동작 보존)/동작
+  // 보존 검증/blast-radius; 레포=파일:라인+무엇이 왜 읽기 어려운가, 웹=클린 코드·명명·함수 분해 사례)을
+  // 주입한다. logic(도메인·정합성) 렌즈와 «다른» 렌즈 — logic 이 «규칙이 맞는가·일관적인가»(불변식)면
+  // readability 는 «코드 표면이 읽기 쉬운가»(사람-가독성)만 본다(도메인 로직 정합·불변식은 logic 에
+  // 명시적으로 위임 — 중복 정의 금지). design(시각)↔ux(사용성)를 직교 렌즈로 쪼갠 전례와 동형. v9 «위» 의
+  // 별도 capability 인 이유는 위와 동일 — readability 를 모르는 옛 daemon 에 보내면 parseLens 가 조용히
+  // default(전방위)로 폴백 → «거짓 UI». iOS 는 이 capability 가 있을 때만 readability 옵션을 픽커에 넣는다.
+  // 이전 렌즈는 그대로라 회귀 0. (수집(collect)은 후속 단계 — 이번엔 리서치 우선.)
+  "po_research_lens_v10",
   // POST /api/po/research body 에 scope="web_repo" | "repo_only" — 리서치 «조사 범위» 선택.
   // 기본/생략(옛 클라이언트)은 "web_repo" = 기존 웹+레포 조사(회귀 없음). "repo_only" 면
   // buildPoResearchPrompt 가 «웹 조사 (핵심)» 단계를 «레포만 조사 — 웹 검색 금지» 로 치환하고,
@@ -453,6 +464,30 @@ export const DAEMON_CAPABILITIES: readonly string[] = [
   // 배지를 띄운다(default 면 배지 숨김). 옛 row·옛 daemon 은 lens 누락/'default' → 배지 숨김으로
   // 회귀 0. 리서치가 만든 브리프는 po_research.lens 와도 일치(카드는 JOIN 없이 이 컬럼만 읽음).
   "po_brief_lens_v1",
+  // GET /api/diagnostics — 로컬 진단 번들(서브시스템 스냅샷 + 최근 crash 마커 + 마스킹된
+  // unified.log tail). iOS 「문제 신고/진단」 화면이 «사용자가 직접» 묶어 공유/내보내기 한다.
+  // 자동 전송 없음(LAN 전용·무텔레메트리). 비밀(webhook URL·토큰·키)은 마스킹된다. iOS 는 이
+  // capability 가 있을 때만 진단 화면 진입점을 노출 — 없으면 숨김(옛 daemon 은 /api/diagnostics
+  // 가 404 라 보여주면 거짓 UI 가 된다).
+  "diagnostics_v1",
+  // GET /api/connection-diagnostics — 서브시스템 «읽기 전용» 연결 진단 스냅샷. Tor(부트스트랩%·
+  // onion 게시 여부)·sshd listening·외부 연결성(LAN 전용 정책)·에이전트 CLI 탐지·디스크 여유·
+  // unified.log/pty_chunk 크기·마지막 IP변경/재연결 시각을 안정적 코드(connection-diagnostics/
+  // codes.ts)로 분류해 내보낸다. 연결 실패가 원인 없는 일반 에러로 떨어지던 걸, iOS 「연결 진단」
+  // 화면이 코드→사람이 읽는 localize 문구·권장 조치로 매핑하게 한다. (별개의 `diagnostics_v1` 은
+  // «문제 신고/진단 번들» — crash 마커+마스킹 로그 tail — 이라 식별자를 분리한다.) iOS 가 이
+  // capability 보고 설정에 「연결 진단」 진입점을 노출 — 없으면 숨김(soft, 옛 daemon 은 이 라우트가 404).
+  "connection_diagnostics_v1",
+  // GET /api/workflows/attention + POST /api/workflows/runs/:id/ack-attention (workflow_attention_v1).
+  // 노드 결과가 «에이전트가 직접 남긴 것»(agent)인지 «터미널 출력 자동 합성본»(synthetic)/«빈 결과»
+  // (empty)인지 구분하는 표식(workflow_node_runs.result_kind)을 산출·저장하고, run 마감 시 종합해
+  // run 행에 «미해결» 신호(workflow_runs.attention_kind: failed|empty|synthetic)를 박는다. 무인
+  // (cron/github) 실행이 «진짜 결과 없이» 끝났는데 정상 «완료» 로 보이던 막다른 길을, 앱이 워크플로우
+  // 탭 배너(/attention 집계 — 최근 N건 페이징 너머도 집계)와 실행 기록/캔버스 칩·배지로 표면화한다.
+  // 확인하면 ack-attention 으로 attention_ack=1 → 배너에서 사라진다(거짓 경보 방지). iOS 가 이
+  // capability 보고 배너/집계 폴링을 켠다 — 없으면 숨김(soft, 옛 daemon 은 /attention 이 404). result_kind
+  // 는 GET /runs/:id 의 nodeRuns 와 GET /:id 의 runs 에 함께 실려, 옛 클라이언트는 모르는 키로 무시(회귀 0).
+  "workflow_attention_v1",
 ] as const;
 
 /**
@@ -510,8 +545,13 @@ export function buildVersionResponse(): VersionResponse {
 
 import type { MiddlewareHandler } from "hono";
 
-/** 단순 dot-separated semver 비교. pre-release 태그(-beta.x)는 자르고 숫자만 본다. */
-function compareSemver(a: string, b: string): number {
+/**
+ * 단순 dot-separated semver 비교. pre-release 태그(-beta.x)는 자르고 숫자만 본다.
+ *
+ * export 인 이유: 426 게이트의 «순서/경계» 판정(예: 1.9.0 < 1.10.0 을 문자열이 아니라
+ * 숫자로 본다)을 version.test.ts 에서 표로 직접 고정하기 위함. 런타임 동작 불변.
+ */
+export function compareSemver(a: string, b: string): number {
   const pa = parts(a);
   const pb = parts(b);
   const len = Math.max(pa.length, pb.length);

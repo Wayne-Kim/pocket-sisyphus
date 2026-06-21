@@ -21,10 +21,13 @@
 
 import { Hono } from "hono";
 import { bearerAuth } from "../auth.js";
+import { requireLocalAdmin } from "../attest.js";
 import { db } from "../db/index.js";
 import { hasAgent, getAgent } from "../agent/registry.js";
 import { runUserMessagePty } from "../agent/pty-runner.js";
 import { createSession, resolveAndEnsureRepoDir } from "../routes/sessions.js";
+import { prepareUnattendedCwd } from "../mcp/unattended.js";
+import { computeInitialTaint, markSessionTainted } from "../taint.js";
 import {
   startPoCollection,
   startPoResearch,
@@ -46,6 +49,17 @@ import { readConfig, writeConfig, type AscConfig } from "../config.js";
 
 export const po = new Hono();
 po.use("*", bearerAuth);
+
+// ASC .p8 키 관리 라우트(/asc-key*)는 «같은 머신의 Mac 앱 운영자» 전용 — bearer 위에 로컬 운영자
+// 게이트를 한 겹 더 얹는다. 폰이 쥔 Bearer(+attest)만으론 통과 못 하고, config 의 localAdminSecret
+// (QR/페어링 번들에 안 실림)을 X-PS-Local 로 제시해야 한다. §5.10 의 «A5(.p8 키)는 A3 페어링과
+// 분리된 로컬 운영자 전용 자산» 선언을 코드로 강제한다 — 폰 Bearer 보유자가 GET 으로
+// keyId/issuerId(개발자 Apple 팀 신원 식별자)를 읽거나, PUT/DELETE 로 회전 모델 밖 장수 자격증명을
+// 덮어쓰거나 지우지 못하게. /verify 도 저장된 키를 읽거나 후보 키를 시험하는 «키 취급» 이라 같은
+// 게이트(`/asc-key/*`). 이 라우트들은 Mac 설정 «App Store» 탭만 호출한다 — iOS 는 /profile 의
+// ascKeyConfigured(불리언 신호)만 읽고 /asc-key 는 부르지 않으므로 폰 측 회귀 없음.
+po.use("/asc-key", requireLocalAdmin);
+po.use("/asc-key/*", requireLocalAdmin);
 
 type PoBriefRow = {
   id: string;
@@ -742,6 +756,12 @@ po.post("/briefs/:id/decide", async (c) => {
     console.log(`[po] brief ${id} exec worktree created branch=${branch} path=${cwd}`);
   }
 
+  // 무인 trifecta(capability_caps C1/M3) — 구현 세션은 skip_permissions 무인 세션이다. 격리
+  // worktree 면 그 `.mcp.json` 을 READ/LOCAL 만 남게 다시 쓰고, 공유 repo 면 캡 대상 MCP 가
+  // 연결돼 있을 때 정적 거부(개인-데이터+외부통신 동시 불가).
+  const prep = prepareUnattendedCwd(cwd, { isolated: useWorktree });
+  if (!prep.ok) return c.json({ error: prep.code, capped: prep.capped }, 409);
+
   // 디자인 컨텍스트 선언 — workflow-exec / executor 와 동형. 있으면 「디자인 제약」 섹션에
   // 그대로, 없으면 자동 발견으로 폴백. 기본(세션) 승인의 구현 프롬프트가 UI 브리프면 레포가
   // 정한 색 의미·로케일 집합·상태·접근성을 알고 시작하게 한다 (워크플로우를 안 켜도). 옛
@@ -753,6 +773,9 @@ po.post("/briefs/:id/decide", async (c) => {
   )?.design_directive;
 
   const sessionId = createSession(cwd, `📋 ${row.title}`.slice(0, 120), undefined, true, agentId);
+  // 오염 전파(capability_caps T1) — worktree 면 cwd 로 원본 repo MCP 가 안 잡히므로 원본(dir.path)
+  // 기준으로 한 번 더 표시한다(멱등 — 공유 repo 면 createSession 이 이미 표시했다).
+  if (computeInitialTaint(dir.path)) markSessionTainted(sessionId, "po-exec:origin-mcp");
   void runUserMessagePty(
     { sessionId, cwd, adapter: getAgent(agentId) },
     buildPoExecPrompt(row, designDirective ?? undefined, locale),
@@ -1194,8 +1217,10 @@ po.delete("/design-directive/draft", (c) => {
 });
 
 // ─── ASC API 키 설정 (Mac 설정 «App Store» 탭 전용) ──────────────────────────
-// 키는 config.json(0600) 에만 산다 — 폰/QR 에 절대 안 들어간다. notify/config 와 같은
-// bearer 인증 (127.0.0.1 바인딩 + 같은 머신의 Mac 앱이 평문 token 으로 호출).
+// 키는 config.json(0600) 에만 산다 — 폰/QR 에 절대 안 들어간다. 라우트는 bearer «위에»
+// requireLocalAdmin(X-PS-Local == localAdminSecret) 으로 게이트돼 «같은 머신의 Mac 앱 운영자» 만
+// 통과한다 (위쪽 po.use("/asc-key"…) 등록). 폰 Bearer 보유자는 localAdminSecret 이 없어 403 —
+// §5.10 의 A5(.p8 키)↔폰(A3) 분리를 코드로 강제한다.
 
 // GET — 설정 여부 + 비밀 아닌 식별자만 (p8 본문은 절대 반환 안 함).
 po.get("/asc-key", (c) => {

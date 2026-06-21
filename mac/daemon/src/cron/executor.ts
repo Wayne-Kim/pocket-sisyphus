@@ -25,6 +25,8 @@ import {
 } from "../agent/pty-runner.js";
 import { createSession, resolveAndEnsureRepoDir } from "../routes/sessions.js";
 import { dispatchCronNotification } from "../notify/index.js";
+import { guardUnattendedRepo } from "../mcp/unattended.js";
+import { propagateTaint } from "../taint.js";
 import { markCronSession, unmarkCronSession } from "./registry.js";
 import { resolveScriptFile, resolveShellBinary, buildScriptSpawnArgs } from "./terminal.js";
 import {
@@ -146,6 +148,15 @@ function prepareRun(job: CronJobRow, trigger: "schedule" | "manual"): PreparedRu
   }
   const repoPath = dir.path;
 
+  // 무인 trifecta 하드 차단(capability_caps C1/M3) — 이 repo `.mcp.json` 에 EGRESS·SOURCE_WRITE
+  // (또는 정체불명) MCP 가 연결돼 있으면 무인 실행을 시작 전에 «정적 거부». 공유 repo 라 파일을
+  // 안전하게 못 깎으므로 fail-closed 로 아예 안 띄운다(사용자가 캡 MCP 를 떼거나 cron 을 끈다).
+  // 캡 MCP 가 없는 절대다수 repo 는 ok → 회귀 0. config 생성 단계에서 이미 막혀 평소엔 안 걸린다.
+  const guard = guardUnattendedRepo(repoPath);
+  if (!guard.ok) {
+    return earlyError(job, trigger, startedAt, `${guard.code}: ${guard.capped.join(", ")}`);
+  }
+
   return job.kind === "terminal"
     ? prepareTerminalRun(job, trigger, startedAt, repoPath)
     : prepareAgentRun(job, trigger, startedAt, repoPath);
@@ -195,6 +206,9 @@ function prepareAgentRun(
   const title = `⏰ ${label}`;
   const skipPermissions = job.skip_permissions === 1;
   const sessionId = createSession(repoPath, title, resumeFrom, skipPermissions, job.agent);
+  // continue 모드는 직전 세션의 컨텍스트를 이어받으므로 오염도 함께 전파한다(capability_caps T1,
+  // 단조·해제 없음). fresh 모드는 컨텍스트를 안 물려받아 전파하지 않는다.
+  if (job.session_mode === "continue") propagateTaint(job.last_session_id, sessionId);
   const runId = recordRunStart(job.id, sessionId, trigger, startedAt);
   console.log(
     `[cron] job=${job.id} run session=${sessionId} agent=${job.agent} trigger=${trigger} resume=${resumeFrom ?? "-"}`,

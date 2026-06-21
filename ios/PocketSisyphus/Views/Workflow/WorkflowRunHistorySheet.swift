@@ -107,6 +107,17 @@ private struct WorkflowRunRowView: View {
                 Text(verbatim: Self.relative(run.started_at))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                // 정상 «완료» 로 보이지만 합성본/빈 결과를 소비한 run 은 둘째 줄에 «확인 필요» 표식을
+                // 단다 (status=done 칩만으론 안 드러나는 막다른 길). 실패는 이미 status 칩(빨강)이 알린다.
+                if let marker = attentionMarker {
+                    Label { marker } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                    }
+                    .labelStyle(.titleAndIcon)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(Theme.warning)
+                    .accessibilityElement(children: .combine)
+                }
             }
             Spacer(minLength: 0)
             durationText
@@ -118,6 +129,15 @@ private struct WorkflowRunRowView: View {
         }
         .contentShape(Rectangle())
         .padding(.vertical, Theme.Spacing.xxs)
+    }
+
+    /// «확인 필요» 표식 — 합성본/빈 결과를 소비한 run 에만 (실패는 status 칩이 이미 알림). 정상 결과엔 nil.
+    private var attentionMarker: Text? {
+        switch run.attention_kind {
+        case "empty": return Text("빈 결과")
+        case "synthetic": return Text("합성본 — 확인 필요")
+        default: return nil
+        }
     }
 
     /// 상태 칩 — 캔버스와 같은 색 약속(workflowStatusColor) + 라벨(workflowStatusText) 재사용.
@@ -169,8 +189,8 @@ private struct WorkflowRunRowView: View {
 // MARK: - 트리거 라벨/아이콘 (file-scope)
 
 /// 트리거 종류 라벨 — manual=수동 / cron=예약 / github=GitHub(브랜드, 비번역). 각 분기가 Text literal
-/// 이라 카탈로그 자동 추출 경로를 탄다(GitHub 만 verbatim).
-private func workflowTriggerText(_ kind: String?) -> Text {
+/// 이라 카탈로그 자동 추출 경로를 탄다(GitHub 만 verbatim). 미해결 배너(WorkflowListView)도 재사용.
+func workflowTriggerText(_ kind: String?) -> Text {
     switch kind {
     case "cron": return Text("예약")
     case "github": return Text(verbatim: "GitHub")
@@ -178,7 +198,7 @@ private func workflowTriggerText(_ kind: String?) -> Text {
     }
 }
 
-private func workflowTriggerIcon(_ kind: String?) -> String {
+func workflowTriggerIcon(_ kind: String?) -> String {
     switch kind {
     case "cron": return "clock"
     case "github": return "arrow.triangle.branch"

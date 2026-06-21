@@ -43,6 +43,14 @@ export default function Hero() {
         {brand.name}
       </a>
 
+      {/* 정체성 레이어 — 능력 타이틀 «위» 1줄. 보라 그라데이션 위라 본문은 onAccent
+          (밝은 ink)로 대비 확보, 강조는 위치/타이포로. status색(노랑/주황) 차용 금지.
+          NOTE: 폰트 크기에 `text-base` 금지 — 이 프로젝트는 `--color-base` 를 정의해
+          Tailwind v4 가 `text-base` 를 «색»(거의 검정)으로 컴파일한다. 크기는 임의값으로. */}
+      <p className="mx-auto mb-3 max-w-[40ch] text-sm font-semibold text-ink/90 sm:text-[1rem]">
+        {hero.eyebrow}
+      </p>
+
       <h1 className="mx-auto max-w-[12ch] text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl">
         {hero.title}
       </h1>

@@ -29,18 +29,21 @@ struct FileViewer: View {
             case .text:
                 TextContentView(content: content, onAddLineRange: onAddLineRange)
             case .undecodableSVG:
-                FileViewerEmptyState(
+                EmptyStateView(
                     title: "SVG 디코드 실패",
+                    systemImage: "photo.badge.exclamationmark",
                     message: "응답 본문이 base64 / utf8 둘 다로 풀리지 않는다.",
                 )
             case .undecodableImage:
-                FileViewerEmptyState(
+                EmptyStateView(
                     title: "이미지 디코드 실패",
+                    systemImage: "photo.badge.exclamationmark",
                     message: "응답이 손상됐거나 지원하지 않는 포맷이다.",
                 )
             case .unsupported:
-                FileViewerEmptyState(
+                EmptyStateView(
                     title: "미리 보기 미지원",
+                    systemImage: "eye.slash",
                     message: "이 파일 형식은 모바일 뷰어가 다루지 않는다.",
                 )
             }
@@ -797,27 +800,5 @@ private func computeFindMatches(query: String, lines: [String]) -> [FindMatch] {
     return result
 }
 
-// MARK: - Empty state
-
-/// FileViewer 내부 «미리 보기 미지원» / 디코드 실패 안내. iOS 17 ContentUnavailableView 호환.
-/// `FileBrowserSheet` / `DiffSheet` 의 EmptyStateView 와 모양 일치.
-private struct FileViewerEmptyState: View {
-    let title: LocalizedStringKey
-    let message: LocalizedStringKey
-
-    var body: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "photo.badge.exclamationmark")
-                .font(.system(size: Theme.IconSize.l))
-                .foregroundStyle(.secondary)
-            Text(title)
-                .font(.headline)
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
+// «미리 보기 미지원»/디코드 실패 안내는 공용 `EmptyStateView`(DesignSystem/StateViews.swift) 로
+// 통합됐다 — 위 case 들이 종류별 아이콘만 바꿔 그 공용 컴포넌트를 쓴다.

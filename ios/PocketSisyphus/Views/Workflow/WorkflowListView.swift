@@ -15,6 +15,7 @@ struct WorkflowListView: View {
 
     private var supportsDesign: Bool { capabilities.contains("workflow_design_v1") }
     private var supportsTemplates: Bool { capabilities.contains("workflow_templates_v1") }
+    private var supportsAttention: Bool { capabilities.contains("workflow_attention_v1") }
 
     @EnvironmentObject var lifecycle: AppLifecycle
     /// `pocketsisyphus://workflow/<runId>` 딥링크 (po_gate «머지 승인 대기» 알림) 소비 —
@@ -42,9 +43,48 @@ struct WorkflowListView: View {
     @State private var sessionsTarget: WorkflowSummary?
     /// 백그라운드로 도는 AI 초안 설계들 — 목록 상단 카드로 진행/완료/실패를 보여준다.
     @State private var pendingDesigns: [PendingDesign] = []
+    /// 미해결 무인 실행 집계 (workflow_attention_v1) — 상단 배너의 원천.
+    @State private var attention: WorkflowAttentionResponse?
 
     var body: some View {
         List {
+            // «미해결» 무인 실행 배너 (workflow_attention_v1) — 예약(cron)/GitHub 트리거 실행이 실패하거나
+            // «진짜 결과 없이»(합성본·빈 결과) 끝났는데 정상 «완료» 로 보이던 막다른 길을 맨 위에 표면화한다.
+            // 실행 기록 시트를 안 열어도 인지하게. 행을 탭하면 그 run 캔버스로 가며 확인 처리(ack)돼 사라진다.
+            if supportsAttention, let att = attention, !att.items.isEmpty {
+                Section {
+                    ForEach(att.items) { item in
+                        Button {
+                            Task { await openAttentionRun(item) }
+                        } label: {
+                            AttentionRow(item: item)
+                        }
+                        .buttonStyle(.plain)
+                        .swipeActions(edge: .trailing) {
+                            Button {
+                                Task { await ackAttention(item.run_id) }
+                            } label: {
+                                Label("확인", systemImage: "checkmark")
+                            }
+                            .tint(Theme.success)
+                        }
+                    }
+                } header: {
+                    Label {
+                        Text("미해결 예약 실행 \(att.total)건")
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                    }
+                    .foregroundStyle(att.items.contains { $0.attention_kind == "failed" } ? Theme.danger : Theme.warning)
+                } footer: {
+                    Button {
+                        Task { await ackAllAttention() }
+                    } label: {
+                        Text("모두 확인 처리")
+                    }
+                    .font(.caption)
+                }
+            }
             // AI 초안 설계는 백그라운드라 진행/완료를 목록 카드로 보여준다 — 사용자는 그동안
             // 앱을 자유롭게 쓰고, 「준비됨」 카드를 탭하면 그 초안으로 캔버스 편집기에 진입한다.
             if !pendingDesigns.isEmpty {
@@ -131,10 +171,11 @@ struct WorkflowListView: View {
         .overlay {
             if loading && workflows.isEmpty { ProgressView() }
         }
-        .refreshable { await reload() }
+        .refreshable { await reload(); await reloadAttention() }
         .task { await reload() }
+        .task { await reloadAttention() }
         .task { await consumeRunDeepLink() }
-        .onChange(of: lifecycle.reawakeToken) { _ in Task { await reload() } }
+        .onChange(of: lifecycle.reawakeToken) { _ in Task { await reload(); await reloadAttention() } }
         .onChange(of: deepLink.pendingWorkflowRunId) { _ in Task { await consumeRunDeepLink() } }
         // 딥링크 착지 — runId 가 해석되면 그 run 의 캔버스로 push.
         .navigationDestination(item: $runLanding) { ref in
@@ -274,6 +315,44 @@ struct WorkflowListView: View {
         }
     }
 
+    /// 미해결 무인 실행 집계를 새로 고친다 (workflow_attention_v1). capability 없으면 no-op(배너 숨김).
+    /// 일시 실패는 조용히 무시 — 배너는 보조 신호라 에러 알럿까지 띄우지 않는다(기존 표시 유지).
+    @MainActor
+    private func reloadAttention() async {
+        guard supportsAttention else { return }
+        let api = ApiClient(auth: auth, conn: conn, tracker: inflight)
+        if let att = try? await api.workflowAttention() {
+            attention = att
+        }
+    }
+
+    /// 배너 행 탭 — 그 run 캔버스로 진입하면서 확인 처리(ack)해 배너에서 제거한다 (한 번 보면 사라짐).
+    @MainActor
+    private func openAttentionRun(_ item: WorkflowAttentionItem) async {
+        await ackAttention(item.run_id)
+        runLanding = WorkflowRunRef(workflowId: item.workflow_id, runId: item.run_id)
+    }
+
+    /// 한 건 확인 처리 — 로컬에서 즉시 제거(낙관적)한 뒤 daemon 에 ack 를 보낸다.
+    @MainActor
+    private func ackAttention(_ runId: String) async {
+        attention = attention.map { att in
+            let items = att.items.filter { $0.run_id != runId }
+            return WorkflowAttentionResponse(total: items.count, items: items, byWorkflow: att.byWorkflow)
+        }
+        let api = ApiClient(auth: auth, conn: conn, tracker: inflight)
+        try? await api.ackWorkflowRunAttention(runId: runId)
+    }
+
+    /// 모두 확인 처리 — 현재 배너의 모든 run 을 ack 한다.
+    @MainActor
+    private func ackAllAttention() async {
+        let ids = attention?.items.map { $0.run_id } ?? []
+        attention = WorkflowAttentionResponse(total: 0, items: [], byWorkflow: [:])
+        let api = ApiClient(auth: auth, conn: conn, tracker: inflight)
+        for rid in ids { try? await api.ackWorkflowRunAttention(runId: rid) }
+    }
+
     @MainActor
     private func delete(_ wf: WorkflowSummary) async {
         let api = ApiClient(auth: auth, conn: conn, tracker: inflight)
@@ -370,6 +449,59 @@ private struct WorkflowRunRef: Identifiable, Hashable {
     let workflowId: String
     let runId: String
     var id: String { runId }
+}
+
+/// 미해결 배너의 한 행 — 워크플로우 이름 + «무엇이 잘못됐는지»(실패/빈 결과/합성본) 칩 + 트리거·상대시각.
+/// 상태색은 의미 토큰: 실패=danger(빨강), 합성본·빈 결과(«확인 필요»)=warning(노랑). pro(주황) 금지.
+private struct AttentionRow: View {
+    let item: WorkflowAttentionItem
+
+    private var color: Color { item.attention_kind == "failed" ? Theme.danger : Theme.warning }
+    private var kindText: Text {
+        switch item.attention_kind {
+        case "failed": return Text("실패")
+        case "empty": return Text("빈 결과")
+        default: return Text("합성본 — 확인 필요")   // synthetic
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.m) {
+            Image(systemName: item.attention_kind == "failed" ? "xmark.octagon.fill" : "exclamationmark.triangle.fill")
+                .foregroundStyle(color)
+            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                Text(item.workflow_title ?? String(localized: "(제목 없음)"))
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(1)
+                HStack(spacing: Theme.Spacing.s) {
+                    kindText
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(color)
+                        .padding(.horizontal, Theme.Spacing.s)
+                        .padding(.vertical, Theme.Spacing.xxs)
+                        .background(color.opacity(Theme.Opacity.fill), in: Capsule())
+                    Label {
+                        workflowTriggerText(item.trigger_kind)
+                    } icon: {
+                        Image(systemName: workflowTriggerIcon(item.trigger_kind))
+                    }
+                    .labelStyle(.titleAndIcon)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.vertical, Theme.Spacing.xxs)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            Text(item.workflow_title ?? String(localized: "(제목 없음)")) + Text(verbatim: ", ") + kindText
+        )
+    }
 }
 
 /// 목록의 한 행 — 제목 + 노드 수 + repo 꼬리.

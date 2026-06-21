@@ -36,12 +36,14 @@ enum GuideSection {
         case pro        // 주황색 — 프로 기능 표시
 
         var color: Color {
+            // 의미-색 토큰(DesignTokens.swift) 경유 — raw hue 대신 «의미» 를 적는다.
+            // 값은 iOS SSOT 와 1:1 이라 화면이 1px 도 안 바뀐다(pixel-invariant).
             switch self {
-            case .info:   return .blue  // design-lint: allow — CalloutTint.info = 파랑(정보) 의도, Mac 은 Theme.info 토큰 부재
-            case .warn:   return .yellow
-            case .danger: return .red
-            case .accent: return .accentColor
-            case .pro:    return .orange
+            case .info:   return Theme.info
+            case .warn:   return Theme.warning
+            case .danger: return Theme.danger
+            case .accent: return Theme.accent
+            case .pro:    return Theme.pro
             }
         }
     }

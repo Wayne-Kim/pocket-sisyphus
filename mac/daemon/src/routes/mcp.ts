@@ -26,6 +26,8 @@ import {
   deleteServer,
 } from "../mcp/store.js";
 import { registerNative, unregisterNative } from "../mcp/native.js";
+import { classifyCatalogEntry, isCappedClass } from "../mcp/policy.js";
+import { repoHasUnattendedAutomation } from "../mcp/unattended.js";
 import { healthOf, probeServer } from "../mcp/health.js";
 import type { McpHealth } from "../mcp/health.js";
 import type { McpServerConfig } from "../config.js";
@@ -119,6 +121,15 @@ mcp.post("/", async (c) => {
   }
 
   const writeEnabled = body.writeEnabled === true;
+
+  // 무인 trifecta 정적 거부(capability_caps C1/M3) — 이 repo 에 무인 자동화(cron·워크플로우
+  // 트리거·주기 PO 수집)가 이미 있으면, 그 위에 EGRESS·SOURCE_WRITE(또는 정체불명 custom) MCP
+  // 를 «새로 붙이는» 것 자체를 막는다. 무인 단위에서 개인-데이터+외부통신이 동시 성립하는 경로를
+  // 설정 단계에서 차단(읽기 전용 메일/캘린더는 EGRESS 가 아니라 통과). iOS 가 코드로 로컬라이즈.
+  if (isCappedClass(classifyCatalogEntry(catalogId, writeEnabled)) && repoHasUnattendedAutomation(dir.path)) {
+    return c.json({ error: "unattended_trifecta_denied" }, 409);
+  }
+
   // 최소권한: custom 은 body.scopes 를 그대로(없으면 빈), 그 외는 카탈로그 read(+opt-in write).
   const scopes =
     catalogId === "custom"

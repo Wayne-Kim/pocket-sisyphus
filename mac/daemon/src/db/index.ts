@@ -76,6 +76,10 @@ function applyMigrations(d: Database.Database): void {
   // "보관됨" 플래그 (session_archive_v1) — 1 이면 기본 세션 목록에서 숨긴다. status 와 직교
   // (완료/오류/활성 무엇이든 보관 가능). 기존 row 는 0(미보관) 으로 채워져 회귀 0.
   ensureColumn("sessions", "archived", "INTEGER NOT NULL DEFAULT 0");
+  // 외부-콘텐츠 오염 표식 (capability_caps T1) — 1 이면 이 세션이 개인/외부 데이터를 적재해
+  // «오염» 됐고, EGRESS 가 기본 deny 된다(taint.ts). 단조(해제 없음)·continue/노드/worktree 로
+  // 전파. 기존 row 는 0(비오염)으로 채워져 회귀 0. SQLite BOOLEAN 없어 INTEGER.
+  ensureColumn("sessions", "external_content_tainted", "INTEGER NOT NULL DEFAULT 0");
   // 예약 작업 종류 — 'agent'(에이전트 프롬프트) | 'terminal'(쉘 스크립트 파일). 기존 row 는
   // 모두 에이전트였으므로 DEFAULT 'agent' 가 호환을 잡는다. CHECK 제약은 schema.sql 에만
   // 박혀 있고 ALTER 로 강화 못 하므로 기존 DB 엔 안 붙는다 (mode 컬럼과 같은 정책).
@@ -151,6 +155,18 @@ function applyMigrations(d: Database.Database): void {
   // run(트리거·수동)은 worktree 없이 돌아 둘 다 NULL → 회귀 0.
   ensureColumn("workflow_runs", "worktree_path", "TEXT");
   ensureColumn("workflow_runs", "worktree_branch", "TEXT");
+  // fail 루프 가시성 (workflow_retry_visibility_v1) — 재시도 중인 노드가 «왜 되돌아갔는지»(한 줄)와
+  // «재시도 한도(MAX_ITERATIONS) 도달로 멈췄는지»를 캔버스에 드러낸다. loopback_reason 은 직전 fail
+  // 판정의 verdict.json summary, limit_reached 는 0/1. 옛 row 는 NULL/0 으로 채워져 회귀 0.
+  ensureColumn("workflow_node_runs", "loopback_reason", "TEXT");
+  ensureColumn("workflow_node_runs", "limit_reached", "INTEGER NOT NULL DEFAULT 0");
+  // 합성본 표식 + 예약 실패 표면화 (workflow_attention_v1) — 노드 결과가 «에이전트가 직접 남긴 것»
+  // (agent)인지 «터미널 출력 자동 합성본»(synthetic)인지 «빈 결과»(empty)인지 구분하고, run 마감 시
+  // 그걸 종합해 «미해결» 신호(attention_kind)를 run 행에 새긴다. attention_ack=1 이면 사용자가 확인함.
+  // 옛 row 는 NULL/0 으로 채워져 회귀 0 (NULL = 정상, 표시 없음).
+  ensureColumn("workflow_node_runs", "result_kind", "TEXT");
+  ensureColumn("workflow_runs", "attention_kind", "TEXT");
+  ensureColumn("workflow_runs", "attention_ack", "INTEGER NOT NULL DEFAULT 0");
 }
 
 /**
@@ -274,6 +290,8 @@ export type SessionRow = {
   notify_muted: number;
   /** 1 이면 «보관됨» — 기본 세션 목록에서 숨긴다 (session_archive_v1). SQLite 가 BOOLEAN 없어 INTEGER. */
   archived: number;
+  /** 1 이면 외부-콘텐츠 «오염» 세션 (capability_caps T1) — EGRESS 기본 deny. 단조. SQLite INTEGER. */
+  external_content_tainted: number;
 };
 
 export type MessageRow = {
@@ -388,6 +406,10 @@ export type WorkflowRunRow = {
   worktree_path: string | null;
   /** 그 worktree 의 브랜치 (`po/<id8>`). NULL = 격리 없음. 추적·정리(reaper brief)용. */
   worktree_branch: string | null;
+  /** «미해결» 신호 (workflow_attention_v1) — run 마감 시 산출. NULL = 정상. 'failed'|'empty'|'synthetic'. */
+  attention_kind: "failed" | "empty" | "synthetic" | null;
+  /** 1 = 사용자가 확인/처리함 (배너에서 사라짐). */
+  attention_ack: number;
   started_at: number;
   ended_at: number | null;
 };
@@ -414,6 +436,12 @@ export type WorkflowNodeRunRow = {
     | "skipped";
   verdict: "pass" | "fail" | null;
   iteration: number;
+  /** 직전 fail 루프로 되돌아간 사유 한 줄 (verdict.json summary). 루프 밖이면 null. */
+  loopback_reason: string | null;
+  /** 1 = 재시도 한도(MAX_ITERATIONS) 도달로 루프가 멈췄음. */
+  limit_reached: number;
+  /** 결과물 출처 (workflow_attention_v1). NULL/'agent'(직접 작성)|'synthetic'(터미널 합성)|'empty'(빈 합성). */
+  result_kind: "agent" | "synthetic" | "empty" | null;
   x: number | null;
   y: number | null;
   created_at: number;

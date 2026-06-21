@@ -123,6 +123,9 @@ targets:
       # Shared/ 는 듀얼 채널 모델 전환 후 PairConfig 만 남는다 (IPC/SharedAuth 제거).
       - Shared
     dependencies:
+      # 「에이전트 함대」 Live Activity 위젯 확장 — 앱에 embed (Activity 는 앱이 시작/갱신, 위젯이 렌더).
+      - target: PocketSisyphusWidget
+        embed: true
       # 온디바이스 STT — WhisperKit 라이브러리 product 만 링크 (모노레포의 TTS/Speaker 등은 제외).
       - package: WhisperKit
         product: WhisperKit
@@ -178,6 +181,9 @@ targets:
         # 빌드 번호는 git commit count 로 자동 증가한다(메인테이너 배포 절차).
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # ActivityKit Live Activity 활성화 — 「에이전트 함대」 잠금화면/다이내믹 아일랜드.
+        # 이 키가 «앱» Info.plist 에 있어야 Activity.request 가 동작한다 (렌더는 위젯 확장).
+        NSSupportsLiveActivities: true
         UILaunchScreen:
           UIColorName: ""
         UIApplicationSceneManifest:
@@ -256,6 +262,56 @@ targets:
           PROVISIONING_PROFILE_SPECIFIER: "PocketSisyphus AppStore"
 
   # ──────────────────────────────────────────────────────────────────────────
+  # PocketSisyphusWidget — WidgetKit 확장 (현재는 「에이전트 함대」 Live Activity 전용).
+  #
+  # 앱이 `Activity.request/update/end` 로 함대 상태를 구동하고, 이 확장이 잠금화면 배너 +
+  # 다이내믹 아일랜드를 렌더한다. ActivityAttributes(`Shared/FleetActivityAttributes.swift`)는
+  # 앱·확장 «두 타겟» 에 함께 컴파일돼 ActivityKit 이 둘을 묶는다. 디자인 토큰(`DesignTokens.swift`)도
+  # 함께 컴파일해 색·간격 계약을 앱과 «동일» 하게 따른다.
+  #
+  # 갱신은 APNs 미사용(레포의 «외부 인프라 0» 원칙) — 앱이 살아 있는 동안 라이브 WS 로만 update.
+  # 잠금 장시간 백그라운드 갱신은 향후 APNs 도입 시의 후속.
+  #
+  # 의존성: SwiftUI / WidgetKit / ActivityKit (시스템) 만 — ApiClient/Tor/SSH/Pods 는 끌어오지 않는다.
+  # ──────────────────────────────────────────────────────────────────────────
+  PocketSisyphusWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    attributes:
+      DevelopmentTeam: AZ9NKP8D9G
+      ProvisioningStyle: Automatic
+    sources:
+      - PocketSisyphusWidget
+      # ActivityAttributes — 앱과 «같은» 타입을 공유해야 ActivityKit 이 묶는다 (개별 등록).
+      - path: Shared/FleetActivityAttributes.swift
+      # 디자인 토큰 — 색(accent/success/danger)·간격·코너 계약을 앱과 동일하게.
+      - path: PocketSisyphus/DesignSystem/DesignTokens.swift
+    info:
+      path: PocketSisyphusWidget/Info.plist
+      properties:
+        CFBundleDisplayName: Pocket Sisyphus
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: "1"
+        DEVELOPMENT_TEAM: AZ9NKP8D9G
+        CODE_SIGN_STYLE: Automatic
+        PRODUCT_BUNDLE_IDENTIFIER: pe.wayne.pocketsisyphus.widget
+      configs:
+        Debug:
+          CODE_SIGN_STYLE: Automatic
+          CODE_SIGN_IDENTITY: "Apple Development"
+        Release:
+          # 메인테이너 배포(Release archive) 절차에서 이 확장 전용 «PocketSisyphus Widget AppStore»
+          # 프로비저닝 프로파일을 만들고 Manual 서명으로 교체해야 한다 (메인 앱과 동일한 사유 —
+          # 두 Apple ID 가 같은 팀이라 automatic 이 development cert 를 잘못 고를 수 있음). dev/검증
+          # 빌드는 Debug(Automatic)로 동작하므로 여기선 Automatic 으로 둔다.
+          CODE_SIGN_STYLE: Automatic
+          CODE_SIGN_IDENTITY: "Apple Development"
+
+  # ──────────────────────────────────────────────────────────────────────────
   # PocketTunnel 익스텐션은 듀얼 채널 모델 전환과 함께 제거됨 (2026-05-27).
   # NetworkExtension entitlement / App Group / VPN 권한 동의 모두 사라짐 →
   # ASC 5.4 (VPN apps must be from organization account) 트리거 조건 해소.
@@ -294,9 +350,22 @@ targets:
       # 로직이라 host-less 번들에 안전하게 컴파일된다 (Tor/SSH/Keychain 의존 없음).
       - path: PocketSisyphus/Services/LanOnlyPolicy.swift
       - path: PocketSisyphus/Services/EndpointCache.swift
+      # WS 재연결 상태머신 정책(backoff+jitter·missed-pong·close-code 분류) — 순수 값 로직.
+      # URLSessionWebSocketTask.CloseCode(Foundation) 외 의존 없어 host-less 안전.
+      - path: PocketSisyphus/Services/WSReconnectPolicy.swift
+      # happy eyeballs 후보 정렬·필터 — 순수(EndpointEntry 만 의존). 첫성공/우선순위 회귀 고정.
+      - path: PocketSisyphus/Services/HappyEyeballsPolicy.swift
       # 워크플로우 공유 엣지 라우터 — 순수 기하(SwiftUI Path 만 의존, Tor/SSH 없음).
       # 곡선 베지어 + 중간 노드 자동 우회의 동작 계약을 회귀 차단으로 박는다.
       - path: PocketSisyphus/Views/Workflow/WorkflowEdgeRouter.swift
+      # 「에이전트 함대」 Live Activity 스냅샷 derivation — 순수(카운트·시급 세션 선정·빈 상태).
+      # FleetSessionLike 프로토콜로 SessionSummary 의존을 끊어 host-less 번들에서 검증한다.
+      - path: PocketSisyphus/Services/FleetActivityModel.swift
+      # Live Activity 의 «순수 SwiftUI 표현» + 그 토큰/attributes — ImageRenderer 로 PNG 스냅샷을
+      # 떠 레이아웃을 «눈으로» 회귀 검증한다(시뮬레이터 잠금화면 없이). WidgetKit 구성은 제외.
+      - path: PocketSisyphusWidget/FleetLiveActivityViews.swift
+      - path: Shared/FleetActivityAttributes.swift
+      - path: PocketSisyphus/DesignSystem/DesignTokens.swift
     settings:
       base:
         DEVELOPMENT_TEAM: AZ9NKP8D9G

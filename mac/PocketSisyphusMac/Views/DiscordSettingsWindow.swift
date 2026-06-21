@@ -38,9 +38,9 @@ struct DiscordSettingsView: View {
     /// daemon 이 알려주는 기본 브리지 URL — placeholder 표시용. 응답에 없으면 이 fallback.
     @State private var deepLinkDefaultBase = "https://pocketsisyphus.app/open"
 
-    // 직접 호스팅용 브리지 페이지 소스 (공개 레포 docs/open/index.html) — 복사해 쓰면 된다.
+    // 직접 호스팅용 브리지 페이지 소스 (공개 레포 web/public/open/index.html) — 복사해 쓰면 된다.
     private let bridgeSourceURL =
-        URL(string: "https://github.com/Wayne-Kim/pocket-sisyphus/blob/main/docs/open/index.html")!
+        URL(string: "https://github.com/Wayne-Kim/pocket-sisyphus/blob/main/web/public/open/index.html")!
 
     // 서버에서 읽은 현재 상태 (redact 된 미리보기).
     @State private var configuredPreview: String?
@@ -49,6 +49,17 @@ struct DiscordSettingsView: View {
     @State private var isWorking = false
     @State private var statusText: String?
     @State private var statusIsError = false
+
+    /// 딥링크 브리지 도달 가능성 점검 상태 — «죽은 주소» 경고를 띄울지 판단.
+    private enum DeepLinkHealthState: Equatable {
+        case idle          // 아직 검사 안 함 (또는 알림 꺼짐)
+        case checking      // 검사 중 (로딩)
+        case ok            // 정상 — 경고 없음
+        case warning       // 응답 없음/오류 — 경고 (도메인 사망 또는 4xx/5xx)
+        case inconclusive  // 오프라인/판단 불가 — 거짓 경고 방지로 경고 안 함(중립 안내만)
+    }
+    @State private var deepLinkHealth: DeepLinkHealthState = .idle
+    @State private var deepLinkHealthTask: Task<Void, Never>?
 
     var body: some View {
         ScrollView {
@@ -71,6 +82,7 @@ struct DiscordSettingsView: View {
         .frame(minWidth: 520, minHeight: 560)
         .onAppear { load() }
         .onChange(of: reloadToken) { _ in load() }
+        .onChange(of: enabled) { _ in checkDeepLinkHealth() }
     }
 
     private var header: some View {
@@ -196,10 +208,59 @@ struct DiscordSettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            deepLinkHealthNotice
             Link(destination: bridgeSourceURL) {
                 Label("브리지 페이지 소스 보기 (직접 호스팅용)", systemImage: "arrow.up.right.square")
                     .font(.caption)
             }
+        }
+    }
+
+    /// 딥링크 브리지 도달 가능성 상태 표시 — 검사 중(로딩)·정상(무표시)·실패(노랑 경고)·
+    /// 네트워크 불가(중립 안내)를 일관되게 구분한다. 색은 의미 토큰(Theme.warning)을 쓰고,
+    /// 본문은 적응색(.primary/.secondary). 경고가 아닌 상태는 거짓 경고를 피하려 노랑을 안 쓴다.
+    @ViewBuilder
+    private var deepLinkHealthNotice: some View {
+        switch deepLinkHealth {
+        case .idle, .ok:
+            EmptyView()
+        case .checking:
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("딥링크 주소가 동작하는지 확인 중…")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .combine)
+        case .inconclusive:
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "wifi.slash")
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                Text("지금은 딥링크 주소가 동작하는지 확인할 수 없어요 — 네트워크 연결을 확인해 주세요.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(Text("딥링크 주소의 도달 여부를 지금은 확인할 수 없어요"))
+        case .warning:
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(Theme.warning)
+                    .accessibilityHidden(true)
+                Text("이 딥링크 주소가 응답하지 않아요 — 알림의 「Open in app」 링크가 동작하지 않을 수 있어요. 주소를 확인하거나 칸을 비워 기본 페이지로 되돌리세요.")
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+            .background(Theme.warning.opacity(0.12))  // design-lint: allow — warning 틴트 채움(.12), Mac 은 Theme.Opacity 토큰 부재라 리터럴 정상(파일 내 기존 패턴과 동일)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(Text("경고: 딥링크 주소가 응답하지 않아 「Open in app」 링크가 동작하지 않을 수 있어요"))
         }
     }
 
@@ -263,6 +324,8 @@ struct DiscordSettingsView: View {
                 evError = cfg.events.error
                 deepLinkBaseUrl = cfg.deepLinkBaseUrl ?? ""  // 비밀 아님 — 평문 복원
                 if let def = cfg.deepLinkBaseUrlDefault { deepLinkDefaultBase = def }
+                // 설정 화면 진입 시 딥링크 브리지 도달 가능성을 비차단으로 점검 (수용 기준).
+                checkDeepLinkHealth()
             } catch {
                 // daemon 미실행이 가장 흔한 케이스 — 가이드는 그대로 보이게 두고 안내만.
                 setStatus(String(localized: "daemon 이 실행 중인지 확인하세요 (메뉴바 → 시작)"), isError: true)
@@ -306,6 +369,9 @@ struct DiscordSettingsView: View {
     private func test() async {
         isWorking = true
         defer { isWorking = false }
+        // 테스트 알림 시 딥링크 브리지 도달 가능성도 비차단으로 점검 (수용 기준). 점검은
+        // 백그라운드라 테스트 발송 자체를 지연시키지 않는다.
+        checkDeepLinkHealth()
         // 입력칸에 URL 이 있으면 저장 전 그 값으로 테스트, 없으면 저장된 설정으로.
         let trimmed = webhookURL.trimmingCharacters(in: .whitespaces)
         let trimmedBase = deepLinkBaseUrl.trimmingCharacters(in: .whitespaces)
@@ -341,5 +407,33 @@ struct DiscordSettingsView: View {
     private func setStatus(_ text: String, isError: Bool) {
         statusText = text
         statusIsError = isError
+    }
+
+    /// 딥링크 브리지 도달 가능성을 «비차단»으로 점검한다 — 알림 발송과 무관한 백그라운드 Task.
+    /// 알림이 꺼져 있으면 검사·경고를 생략한다. 입력칸 값이 있으면(저장 전) 그 값을, 없으면
+    /// 저장된 설정/기본 페이지를 점검한다. 점검 실패(daemon 미실행 등)는 거짓 경고를 피해
+    /// inconclusive 로 처리한다.
+    private func checkDeepLinkHealth() {
+        deepLinkHealthTask?.cancel()
+        guard enabled else {
+            deepLinkHealth = .idle
+            return
+        }
+        let base = deepLinkBaseUrl.trimmingCharacters(in: .whitespaces)
+        deepLinkHealth = .checking
+        deepLinkHealthTask = Task {
+            do {
+                let result = try await DaemonAPI.checkDeepLinkHealth(base: base.isEmpty ? nil : base)
+                if Task.isCancelled { return }
+                switch result.status {
+                case "ok": deepLinkHealth = .ok
+                case "unreachable", "http_error": deepLinkHealth = .warning
+                default: deepLinkHealth = .inconclusive  // "inconclusive" / 미지의 값
+                }
+            } catch {
+                if Task.isCancelled { return }
+                deepLinkHealth = .inconclusive
+            }
+        }
     }
 }

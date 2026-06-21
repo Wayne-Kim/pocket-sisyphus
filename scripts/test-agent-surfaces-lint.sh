@@ -5,7 +5,7 @@
 # 1) «정합 고정»: 현재 HEAD 의 실제 repo 에서 돌리면 4개 표면이 모두 픽커 SSOT 와 «정합»(0 종료).
 # 2) «드리프트 탐지»(합성 픽스처 repo): 표면별 누락=실패 / 순서=경고 / 표기불일치=실패 /
 #    고급도구 분류 오탐 없음 / SSOT 내부 드리프트=실패 / 종료코드 계약을 양성·음성으로 검증.
-# 3) «표면 집합 ↔ README SSOT 주석 일치»: --list-surfaces 의 4개 경로가 README 주석이 열거한
+# 3) «표면 집합 ↔ README SSOT 주석 일치»: --list-surfaces 의 5개 경로가 README 주석이 열거한
 #    표면과 일치(하나 빠지면 검사가 헛돈다는 수용 기준).
 #
 # 종료코드: 모든 검사 통과 0, 하나라도 실패 1.
@@ -79,15 +79,26 @@ export function registerBuiltinAgents(): void {
 TS
 
   cat > "$R/README.md" <<'MD'
-## 지원하는 코드 에이전트
+## Supported code agents
 
 - **Claude Code** (Anthropic)
 - **Google Antigravity** (Google)
 - **OpenAI Codex** (OpenAI)
 - **GitHub Copilot CLI** (GitHub)
 
-<!-- SSOT 표면: web/content/site.en.ts · ios/PocketSisyphus/Models/GuideContent.swift ·
+<!-- SSOT 표면: README.ko.md · web/content/site.en.ts · ios/PocketSisyphus/Models/GuideContent.swift ·
      mac/PocketSisyphusMac/GuideContent.swift -->
+
+모델 추론은 각 제공자로 직접.
+MD
+
+  cat > "$R/README.ko.md" <<'MD'
+## 지원하는 코드 에이전트
+
+- **Claude Code** (Anthropic)
+- **Google Antigravity** (Google)
+- **OpenAI Codex** (OpenAI)
+- **GitHub Copilot CLI** (GitHub)
 
 모델 추론은 각 제공자로 직접.
 MD
@@ -244,15 +255,15 @@ OUT="$(run "$D" 2>&1)"; rc=$?
 printf '%s\n' "$OUT" | grep -E "GuideContent\.swift — \[MISS/실패\].*표면 파일이 없음" >/dev/null && ok "표면 파일 누락 보고" || { bad "표면 파일 누락 미보고"; printf '%s\n' "$OUT" | sed 's/^/    /'; }
 
 # ── (9) 표면 집합 ↔ README SSOT 주석 일치 ────────────────────────────────────────────────
-echo "[9] --list-surfaces 4개 + 각 경로가 실제 README SSOT 주석에 열거됨"
+echo "[9] --list-surfaces 5개 + 각 경로가 실제 README SSOT 주석에 열거됨"
 LIST="$(cd "$REPO_ROOT" && "$LINT" --list-surfaces 2>&1)"
 ncnt="$(printf '%s\n' "$LIST" | grep -c $'\t')"
-[ "$ncnt" -eq 4 ] && ok "표면 4개" || bad "표면 개수 $ncnt (기대 4)"
+[ "$ncnt" -eq 5 ] && ok "표면 5개" || bad "표면 개수 $ncnt (기대 5)"
 README_TXT="$(cat "$REPO_ROOT/README.md")"
 miss=0
 while IFS=$'\t' read -r key path; do
   case "$key" in
-    README) continue ;;   # 주석 1번 항목 «이 README» 자기 자신
+    README|README.ko) continue ;;   # 주석 1번 항목 «이 README»(영어 원본 + 한국어 미러) 자기 자신
   esac
   if printf '%s' "$README_TXT" | grep -Fq "$path"; then :; else
     bad "README SSOT 주석에 표면 경로 미열거: $key ($path)"; miss=1

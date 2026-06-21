@@ -4,6 +4,8 @@ import {
   DEDUP_SIMILARITY_THRESHOLD,
   findSimilar,
   normalizeForDedup,
+  normalizeRef,
+  refsOverlap,
 } from "./similarity.js";
 
 describe("normalizeForDedup", () => {
@@ -92,5 +94,137 @@ describe("findSimilar", () => {
       near,
     );
     expect(hit?.item.id).toBe("b");
+  });
+
+  it("트라이그램으로 걸린 히트의 reason 은 'lexical'", () => {
+    const hit = findSimilar(
+      { title: "다크 모드 지원!", problem: "설정에서 다크 모드를 켤 수 있어야 한다." },
+      corpus,
+    );
+    expect(hit?.reason).toBe("lexical");
+  });
+});
+
+describe("normalizeRef", () => {
+  it("file:line / range 를 같은 경로+라인 구간으로 정규화(경로 소문자·구분자 정규화)", () => {
+    expect(normalizeRef("executor.ts:507")).toEqual({
+      kind: "file",
+      path: "executor.ts",
+      lo: 507,
+      hi: 507,
+    });
+    expect(normalizeRef("src/Foo.ts:10-20")).toEqual({
+      kind: "file",
+      path: "src/foo.ts",
+      lo: 10,
+      hi: 20,
+    });
+    // 역순 범위·역슬래시·선행 ./ 도 정규화.
+    expect(normalizeRef("./a\\b.ts:20-10")).toEqual({ kind: "file", path: "a/b.ts", lo: 10, hi: 20 });
+  });
+
+  it("issue #N / issue#N / owner/repo#N / issues URL 은 issue#N 으로 수렴", () => {
+    expect(normalizeRef("#123")).toEqual({ kind: "issue", id: "123" });
+    expect(normalizeRef("issue#123")).toEqual({ kind: "issue", id: "123" });
+    expect(normalizeRef("owner/repo#123")).toEqual({ kind: "issue", id: "123" });
+    expect(normalizeRef("https://github.com/o/r/issues/123")).toEqual({ kind: "issue", id: "123" });
+  });
+
+  it("URL 은 소문자화·꼬리 슬래시/프래그먼트 제거", () => {
+    expect(normalizeRef("https://Example.com/Docs/")).toEqual({
+      kind: "url",
+      url: "https://example.com/docs",
+    });
+    expect(normalizeRef("https://example.com/a#frag")).toEqual({
+      kind: "url",
+      url: "https://example.com/a",
+    });
+  });
+
+  it("라인 없는 맨 경로·자유 텍스트·빈 문자열은 null (트라이그램 폴백)", () => {
+    expect(normalizeRef("docs/todo.md")).toBeNull(); // 라인 없는 파일경로 → 너무 거칠어 신호 제외
+    expect(normalizeRef("라벨 요청 누적")).toBeNull(); // 자유 요약성 ref
+    expect(normalizeRef("r")).toBeNull();
+    expect(normalizeRef("   ")).toBeNull();
+  });
+});
+
+describe("refsOverlap", () => {
+  it("같은 file:line 은 겹침", () => {
+    expect(refsOverlap(["executor.ts:507"], ["executor.ts:507"])).toBe(true);
+  });
+
+  it("같은 파일 인접 라인(±폭 이내)은 겹침, 멀리 떨어지면 안 겹침", () => {
+    expect(refsOverlap(["a.ts:100"], ["a.ts:102"])).toBe(true); // 인접 (코드가 몇 줄 밀림)
+    expect(refsOverlap(["a.ts:100-110"], ["a.ts:108"])).toBe(true); // 범위가 겹침
+    expect(refsOverlap(["a.ts:100"], ["a.ts:500"])).toBe(false); // 같은 파일 다른 위치 = 다른 기회
+  });
+
+  it("다른 파일은 안 겹침", () => {
+    expect(refsOverlap(["a.ts:10"], ["b.ts:10"])).toBe(false);
+  });
+
+  it("같은 이슈/URL 은 겹침 (#N ↔ issues URL 포함)", () => {
+    expect(refsOverlap(["#42"], ["https://github.com/o/r/issues/42"])).toBe(true);
+    expect(refsOverlap(["https://x.io/a"], ["https://x.io/a/"])).toBe(true);
+  });
+
+  it("인식 못 한 ref(맨 경로/자유 텍스트)만 있거나 한쪽이 비면 안 겹침 → 폴백", () => {
+    expect(refsOverlap(["docs/todo.md"], ["docs/todo.md"])).toBe(false); // 둘 다 null → 폴백
+    expect(refsOverlap([], ["a.ts:1"])).toBe(false);
+    expect(refsOverlap(["a.ts:1"], [])).toBe(false);
+  });
+});
+
+describe("findSimilar — evidence ref 겹침 신호 (트라이그램과 OR)", () => {
+  // 결정적 회귀 고정 — 같은 입력 같은 결과.
+  const corpus = [
+    { id: "1", title: "다크 모드 지원", problem: "야간에 화면이 너무 밝다", refs: ["ui/theme.ts:42"] },
+  ];
+
+  it("같은 ref·다른 제목 = 중복 (트라이그램 미달이어도 ref 로 컷, reason='ref')", () => {
+    const hit = findSimilar(
+      { title: "어두운 테마 옵션", problem: "밤에 눈이 부셔서 쓰기 힘들다", refs: ["ui/theme.ts:43"] },
+      corpus,
+    );
+    expect(hit?.item.id).toBe("1");
+    expect(hit?.reason).toBe("ref");
+    // 제목·문제는 실제로 트라이그램 임계값 미만임을 함께 고정(ref 단독으로 걸린 것).
+    expect(briefSimilarity(corpus[0], { title: "어두운 테마 옵션", problem: "밤에 눈이 부셔서 쓰기 힘들다" })).toBeLessThan(
+      DEDUP_SIMILARITY_THRESHOLD,
+    );
+  });
+
+  it("다른 ref·비슷한 제목 = 기존 트라이그램 경로 (reason='lexical')", () => {
+    const hit = findSimilar(
+      { title: "다크 모드 지원!", problem: "야간에 화면이 너무 밝다.", refs: ["other/x.ts:99"] },
+      corpus,
+    );
+    expect(hit?.item.id).toBe("1");
+    expect(hit?.reason).toBe("lexical");
+  });
+
+  it("ref 없음 = 폴백 (트라이그램만; 안 닮으면 통과)", () => {
+    expect(
+      findSimilar({ title: "오프라인 동기화", problem: "지하철에서 끊기면 작업이 사라진다" }, corpus),
+    ).toBeNull();
+  });
+
+  it("다른 ref·다른 제목 = 통과 (둘 다 약함)", () => {
+    expect(
+      findSimilar(
+        { title: "전혀 다른 기회", problem: "관련 없는 문제 정의", refs: ["zzz/q.ts:1"] },
+        corpus,
+      ),
+    ).toBeNull();
+  });
+
+  it("인식 못 한 ref(맨 경로)는 ref 신호로 안 걸린다 — 제목도 다르면 통과", () => {
+    expect(
+      findSimilar(
+        { title: "전혀 다른 기회", problem: "관련 없는 문제 정의", refs: ["ui/theme.ts"] }, // 라인 없음
+        corpus,
+      ),
+    ).toBeNull();
   });
 });

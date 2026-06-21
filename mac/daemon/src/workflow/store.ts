@@ -90,7 +90,7 @@ export function deleteWorkflow(id: string): boolean {
 
 // ── 실행 (workflow_runs) ──────────────────────────────────────────────────────
 
-const RUN_COLS = `id, workflow_id, def_snapshot, status, trigger_kind, worktree_path, worktree_branch, started_at, ended_at`;
+const RUN_COLS = `id, workflow_id, def_snapshot, status, trigger_kind, worktree_path, worktree_branch, attention_kind, attention_ack, started_at, ended_at`;
 
 export function insertRun(
   workflowId: string,
@@ -155,10 +155,54 @@ export function setRunStatus(
     .run(status, endedAt, id);
 }
 
+/**
+ * run 의 «미해결» 신호 (workflow_attention_v1). run 마감 시 한 번 산출해 박는다 — NULL 이면 정상(표시
+ * 없음), 'failed'|'empty'|'synthetic' 이면 앱이 배너/칩으로 표면화한다. attention_ack 은 0 으로 둔다
+ * (새 신호는 미확인). 정상 run 엔 호출하지 않아 거짓 경보가 안 붙는다.
+ */
+export function setRunAttention(id: string, kind: "failed" | "empty" | "synthetic"): void {
+  db()
+    .prepare(`UPDATE workflow_runs SET attention_kind = ?, attention_ack = 0 WHERE id = ?`)
+    .run(kind, id);
+}
+
+/** 사용자가 미해결 신호를 확인/처리함 — 배너에서 사라진다 (멱등). */
+export function ackRunAttention(id: string): boolean {
+  return (
+    db()
+      .prepare(`UPDATE workflow_runs SET attention_ack = 1 WHERE id = ? AND attention_kind IS NOT NULL`)
+      .run(id).changes > 0
+  );
+}
+
+/**
+ * 모든 워크플로우에 걸친 «미해결 무인 실행» — attention_kind 가 있고 아직 확인 안 됐으며(ack=0)
+ * 무인 트리거(cron/github)인 run 들. 최근 N건 페이징 너머의 실패도 여기엔 집계되므로(AC5), 앱이
+ * «미해결이 N건 있다» 신호를 놓치지 않는다. 최신순. 표시할 만큼만 상한(50)으로 자른다.
+ */
+export function listUnackedAttentionRuns(): Array<
+  WorkflowRunRow & { workflow_title: string | null }
+> {
+  return db()
+    .prepare(
+      `SELECT wr.id, wr.workflow_id, wr.def_snapshot, wr.status, wr.trigger_kind,
+              wr.worktree_path, wr.worktree_branch, wr.attention_kind, wr.attention_ack,
+              wr.started_at, wr.ended_at, w.title AS workflow_title
+         FROM workflow_runs wr
+         JOIN workflows w ON w.id = wr.workflow_id
+        WHERE wr.attention_kind IS NOT NULL
+          AND wr.attention_ack = 0
+          AND wr.trigger_kind IN ('cron', 'github')
+        ORDER BY wr.ended_at DESC, wr.started_at DESC
+        LIMIT 50`,
+    )
+    .all() as Array<WorkflowRunRow & { workflow_title: string | null }>;
+}
+
 // ── 노드별 실행 (workflow_node_runs) ──────────────────────────────────────────
 
 const NODE_COLS = `id, run_id, def_node_id, node_type, parent_node_run_id, session_id,
-  title, agent, task_folder, status, verdict, iteration, x, y, created_at, ended_at`;
+  title, agent, task_folder, status, verdict, iteration, loopback_reason, limit_reached, result_kind, x, y, created_at, ended_at`;
 
 export type NodeRunInput = {
   runId: string;
@@ -215,6 +259,9 @@ export function updateNodeRun(
     status: WorkflowNodeRunRow["status"];
     verdict: "pass" | "fail" | null;
     iteration: number;
+    loopbackReason: string | null;
+    limitReached: boolean;
+    resultKind: "agent" | "synthetic" | "empty" | null;
     endedAt: number | null;
   }>,
 ): void {
@@ -239,6 +286,18 @@ export function updateNodeRun(
   if (patch.iteration !== undefined) {
     sets.push("iteration = ?");
     vals.push(patch.iteration);
+  }
+  if (patch.loopbackReason !== undefined) {
+    sets.push("loopback_reason = ?");
+    vals.push(patch.loopbackReason);
+  }
+  if (patch.limitReached !== undefined) {
+    sets.push("limit_reached = ?");
+    vals.push(patch.limitReached ? 1 : 0);
+  }
+  if (patch.resultKind !== undefined) {
+    sets.push("result_kind = ?");
+    vals.push(patch.resultKind);
   }
   if (patch.endedAt !== undefined) {
     sets.push("ended_at = ?");

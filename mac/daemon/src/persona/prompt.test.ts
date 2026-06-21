@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  aggregateCalibration,
   buildDesignContext,
   buildDesignerReviewPrompt,
   buildPoCollectPrompt,
@@ -10,6 +11,7 @@ import {
   normalizePoLocale,
   type PoDecisionRecord,
   type PoExistingBrief,
+  type PoOutcomeRecord,
 } from "./prompt.js";
 import { buildPoFallbackDef } from "./workflow-exec.js";
 import {
@@ -72,6 +74,222 @@ describe("buildPoCollectPrompt — 과거 결정 요약 주입 (점수 보정)",
     // note 없으면 « · 근거» 꼬리 없이 줄이 끝난다.
     expect(out).toContain("- [기각] I1/E5 · 옛 제안\n");
     expect(out).not.toContain("옛 제안 · ");
+  });
+
+  it("기각 행의 사유는 지역화 라벨로 한 줄에 붙고, 사유 없는·비-기각 행엔 안 붙는다 (po_decide_reason_v1)", () => {
+    // 사유 있는/없는 행 + 비-기각(승인·검증) 행이 섞인 이력 — 라벨 부착 정책을 회귀로 고정.
+    const history: PoDecisionRecord[] = [
+      { title: "범위 큰 제안", impact: 4, effort: 5, status: "rejected", reason: "scope_too_big" },
+      { title: "근거 약한 제안", impact: 3, effort: 2, status: "rejected", reason: "weak_evidence" },
+      { title: "사유 없는 기각", impact: 2, effort: 4, status: "rejected", reason: null },
+      { title: "옛 이상값 기각", impact: 1, effort: 1, status: "rejected", reason: "legacy_key" },
+      { title: "승인된 제안", impact: 5, effort: 1, status: "approved", reason: "priority_low" },
+      { title: "검증된 제안", impact: 4, effort: 2, status: "verified", note: "이슈 #9 닫힘" },
+    ];
+    const out = buildPoCollectPrompt({ ...base, decisionHistory: history });
+
+    // 기각 + 허용 enum 키 → « · 사유: {지역화 라벨}» 이 한 줄에 덧붙는다.
+    expect(out).toContain("- [기각] I4/E5 · 범위 큰 제안 · 사유: 범위 과대\n");
+    expect(out).toContain("- [기각] I3/E2 · 근거 약한 제안 · 사유: 근거 약함\n");
+    // 사유 NULL(미선택)인 기각 행은 라벨 없이 끝난다 (routes/po.ts «미선택은 NULL» 준수 — 회귀 0).
+    expect(out).toContain("- [기각] I2/E4 · 사유 없는 기각\n");
+    expect(out).not.toContain("사유 없는 기각 · 사유:");
+    // 알 수 없는 옛 키는 매핑이 없어 라벨을 안 붙인다 (graceful — 그 줄은 byte-identical).
+    expect(out).toContain("- [기각] I1/E1 · 옛 이상값 기각\n");
+    expect(out).not.toContain("옛 이상값 기각 · 사유:");
+    // 승인 행은 reason 값이 있어도 라벨을 안 붙인다 (사유 라벨은 «기각» 행 전용).
+    expect(out).toContain("- [승인] I5/E1 · 승인된 제안\n");
+    expect(out).not.toContain("승인된 제안 · 사유:");
+    // 검증 행은 verify_note(검증 근거)만 — 사유 라벨 대상 아님.
+    expect(out).toContain("- [검증됨] I4/E2 · 검증된 제안 · 이슈 #9 닫힘");
+    expect(out).not.toContain("검증된 제안 · 사유:");
+    // 보정 의도 — 같은 사유로 또 기각될 제안을 미리 피하라는 지침이 명시된다.
+    expect(out).toContain("같은 사유로 또 기각될 제안을 반복하지 마라");
+  });
+
+  it("이력 전체가 사유 없는·비-기각이면 사유 라벨이 전혀 없다 (byte-identical 폴백 — 회귀 0)", () => {
+    // 사유 0건이면 어느 줄에도 « · 사유:» 가 붙지 않아 기존 렌더와 동일하다.
+    const out = buildPoCollectPrompt({
+      ...base,
+      decisionHistory: [
+        { title: "A 기능", impact: 5, effort: 2, status: "verified", note: "관련 이슈 #12 닫힘" },
+        { title: "B 기능", impact: 2, effort: 4, status: "rejected" },
+        { title: "C 기능", impact: 4, effort: 1, status: "approved" },
+      ],
+    });
+    expect(out).not.toContain(" · 사유:");
+  });
+});
+
+describe("buildPoResearchPrompt — 과거 결정 요약 주입 (점수 보정, 수집과 동형)", () => {
+  const researchBase = {
+    repoPath: "/repo",
+    topic: "음성 메모",
+    reportFile: "/tmp/r.md",
+    briefsFile: "/tmp/b.json",
+    existingBriefs: [] as PoExistingBrief[],
+  };
+
+  it("이력이 0건/생략이면 블록을 빼서 기존 리서치 프롬프트와 byte-identical (회귀 0)", () => {
+    const without = buildPoResearchPrompt(researchBase);
+    const withEmpty = buildPoResearchPrompt({ ...researchBase, decisionHistory: [] });
+    expect(without).not.toContain("## 과거 결정 요약");
+    expect(without).not.toContain("보정 지침");
+    // 빈 배열·생략 두 경로 모두 기존 프롬프트와 «완전히» 동일해야 한다 (옛 동작 회귀 0).
+    expect(withEmpty).toBe(without);
+  });
+
+  it("이력이 있으면 수집과 «같은» 보정 블록을 주입하고 건당 1줄로 요약한다", () => {
+    const history: PoDecisionRecord[] = [
+      { title: "A 기능", impact: 5, effort: 2, status: "verified", note: "관련 이슈 #12 닫힘" },
+      { title: "B 기능", impact: 2, effort: 4, status: "rejected" },
+      { title: "C 기능", impact: 3, effort: 3, status: "missed", note: "같은 불만 신호 잔존" },
+      { title: "D 기능", impact: 4, effort: 1, status: "approved" },
+    ];
+    const out = buildPoResearchPrompt({ ...researchBase, decisionHistory: history });
+
+    // 수집과 같은 섹션 + 보정 지침(collect.history 재사용)이 들어간다.
+    expect(out).toContain("## 과거 결정 요약");
+    expect(out).toContain("보정 지침");
+    // 결정/결과 라벨 + 점수가 한 줄로 매핑된다 (수집과 동일 형식).
+    expect(out).toContain("[검증됨] I5/E2 · A 기능 · 관련 이슈 #12 닫힘");
+    expect(out).toContain("[기각] I2/E4 · B 기능");
+    expect(out).toContain("[빗나감] I3/E3 · C 기능 · 같은 불만 신호 잔존");
+    expect(out).toContain("[승인] I4/E1 · D 기능");
+    // 기각 회피 + 검증 성공 적극 제안 지침이 그대로 따라온다.
+    expect(out).toContain("«기각» 된 것과 비슷한 종류는 제안하지 마라");
+    expect(out).toContain("«검증됨» 으로 성공한 종류는 더 적극적으로 제안");
+    // 건당 정확히 1줄 — 이력 줄 수가 레코드 수와 같다 (프롬프트 비대화 방지).
+    const lines = out.split("\n").filter((l) => /^- \[(검증됨|기각|빗나감|승인)\]/.test(l));
+    expect(lines).toHaveLength(history.length);
+    // 블록은 조사 주제 «뒤», 디자인 제약·1단계 «앞» 에 온다 (수집의 history 위치와 동형).
+    const topicIdx = out.indexOf("음성 메모");
+    const historyIdx = out.indexOf("## 과거 결정 요약");
+    const designIdx = out.indexOf("## 디자인 제약");
+    const stageIdx = out.indexOf("## 1단계 — 조사");
+    expect(historyIdx).toBeGreaterThan(topicIdx);
+    expect(historyIdx).toBeLessThan(designIdx);
+    expect(designIdx).toBeLessThan(stageIdx);
+  });
+
+  it("사유(note) 누락 행은 제목+점수만으로 요약한다 (엣지 — 수집과 같은 정책)", () => {
+    const out = buildPoResearchPrompt({
+      ...researchBase,
+      decisionHistory: [{ title: "옛 제안", impact: 1, effort: 5, status: "rejected", note: null }],
+    });
+    expect(out).toContain("- [기각] I1/E5 · 옛 제안\n");
+    expect(out).not.toContain("옛 제안 · ");
+  });
+
+  it("같은 이력이면 수집·리서치가 «같은» 보정 블록 텍스트를 만든다 (collect.history 한 SSOT 공유)", () => {
+    const history: PoDecisionRecord[] = [
+      { title: "A 기능", impact: 5, effort: 2, status: "verified", note: "근거" },
+    ];
+    const collectOut = buildPoCollectPrompt({ ...base, decisionHistory: history });
+    const researchOut = buildPoResearchPrompt({ ...researchBase, decisionHistory: history });
+    // 두 빌더가 같은 한 줄 형식을 공유한다 (중복 정의 금지 — renderDecisionHistory 한 곳).
+    expect(collectOut).toContain("- [검증됨] I5/E2 · A 기능 · 근거");
+    expect(researchOut).toContain("- [검증됨] I5/E2 · A 기능 · 근거");
+  });
+
+  it("locale 비-ko 면 보정 블록도 그 언어 카탈로그로 들어간다 (po_locale_v2 — 추출만 하고 비우지 않음)", () => {
+    const history: PoDecisionRecord[] = [
+      { title: "Feature A", impact: 5, effort: 2, status: "verified", note: "issue #12 closed" },
+    ];
+    const out = buildPoResearchPrompt({ ...researchBase, decisionHistory: history, locale: "en" });
+    // 영어 카탈로그의 헤더·지침이 들어간다 (한국어 헤더가 아니다).
+    expect(out).toContain("## Past-decision summary");
+    expect(out).toContain("Calibration guidance:");
+    expect(out).not.toContain("## 과거 결정 요약");
+    // 한 줄 형식(라벨·점수)은 로케일 무관 — 라벨만 그 언어로.
+    expect(out).toContain("[Verified] I5/E2 · Feature A · issue #12 closed");
+  });
+});
+
+describe("buildPoCollectPrompt — 점수대별 과신 보정 주입 (결정적 집계)", () => {
+  // 고정 입력 — high/mid/low 세 점수대에 과신/양호/과소가 하나씩 나오게 손으로 짠다.
+  // high(I≥4): verified·missed·rejected → 적중 1/3=33%, 오차 ((1-1)+0.8+1)/3=+0.60 → 과신.
+  // mid(I=3): verified·missed → 적중 50%, 오차 ((0.6-1)+0.6)/2=+0.10(<0.15) → 보정 양호.
+  // low(I≤2): verified·verified → 적중 100%, 오차 ((0.2-1)+(0.4-1))/2=-0.70 → 과소평가.
+  const outcomes: PoOutcomeRecord[] = [
+    { impact: 5, status: "verified" },
+    { impact: 4, status: "missed" },
+    { impact: 5, status: "rejected" },
+    { impact: 3, status: "verified" },
+    { impact: 3, status: "missed" },
+    { impact: 1, status: "verified" },
+    { impact: 2, status: "verified" },
+  ];
+
+  it("결과 0건/생략이면 블록 없음 — 기존과 byte-identical (수용 기준 1, 회귀 0)", () => {
+    const without = buildPoCollectPrompt(base);
+    const withEmpty = buildPoCollectPrompt({ ...base, outcomeHistory: [] });
+    expect(without).not.toContain("### 점수대별 과신 보정");
+    // 빈 배열·생략 두 경로 모두 기존 프롬프트와 «완전히» 동일 (주입 없음).
+    expect(withEmpty).toBe(without);
+  });
+
+  it("결과가 있으면 점수대별 적중률·평균 오차·판정을 결정적으로 한 문단 주입한다", () => {
+    const out = buildPoCollectPrompt({ ...base, outcomeHistory: outcomes });
+    expect(out).toContain("### 점수대별 과신 보정");
+    expect(out).toContain(
+      "- 높은 영향도(I4–5): 결정 3건 · 적중률 33% · 평균 오차 +0.60 → 과신 — 보수적으로 점수 매겨라",
+    );
+    expect(out).toContain(
+      "- 중간 영향도(I3): 결정 2건 · 적중률 50% · 평균 오차 +0.10 → 보정 양호 — 현 수준 유지",
+    );
+    expect(out).toContain(
+      "- 낮은 영향도(I1–2): 결정 2건 · 적중률 100% · 평균 오차 -0.70 → 과소평가 — 점수를 더 후하게",
+    );
+  });
+
+  it("같은 입력은 «항상» 같은 요약을 낸다 (수용 기준 3 — 외부 서비스·임의성 없음)", () => {
+    const a = buildPoCollectPrompt({ ...base, outcomeHistory: outcomes });
+    const b = buildPoCollectPrompt({ ...base, outcomeHistory: [...outcomes].reverse() });
+    // 집계는 합이라 행 순서에 불변 — 역순 입력도 byte-identical 한 요약.
+    const block = (s: string) => s.slice(s.indexOf("### 점수대별 과신 보정"));
+    expect(block(a)).toBe(block(b));
+  });
+
+  it("순수 집계 함수는 빈 점수대를 제외하고 점수대 순서를 고정한다 (high→mid→low)", () => {
+    // mid·low 가 없는 입력 → high 버킷 하나만, 그 통계가 정확하다.
+    const buckets = aggregateCalibration([
+      { impact: 5, status: "verified" },
+      { impact: 4, status: "rejected" },
+    ]);
+    expect(buckets).toHaveLength(1);
+    expect(buckets[0]).toMatchObject({ labelId: "calibration.bandHigh", n: 2, hitRate: 50 });
+    // 오차 = ((1-1)+(0.8-0))/2 = 0.40.
+    expect(buckets[0].avgError).toBeCloseTo(0.4, 10);
+    // 결과 0건은 빈 배열 (블록 «주입 없음» 의 근거).
+    expect(aggregateCalibration([])).toEqual([]);
+    expect(aggregateCalibration(undefined)).toEqual([]);
+  });
+
+  it("결정 이력(decisionHistory)과 직교 — 결과만 있어도 보정은 주입된다", () => {
+    // decisionHistory 생략(=과거 결정 요약 블록 없음)이라도 결과가 있으면 보정 문단은 붙는다.
+    const out = buildPoCollectPrompt({ ...base, outcomeHistory: outcomes });
+    expect(out).toContain("### 점수대별 과신 보정");
+    expect(out).not.toContain("## 과거 결정 요약");
+  });
+
+  it("locale 비-ko 면 보정 문단도 그 언어 카탈로그로 들어간다 (수집·리서치 공통)", () => {
+    const collectOut = buildPoCollectPrompt({ ...base, outcomeHistory: outcomes, locale: "en" });
+    const researchOut = buildPoResearchPrompt({
+      repoPath: "/repo",
+      topic: "x",
+      reportFile: "/tmp/r.md",
+      briefsFile: "/tmp/b.json",
+      existingBriefs: [],
+      outcomeHistory: outcomes,
+      locale: "en",
+    });
+    expect(collectOut).toContain("### Per-score overconfidence calibration");
+    expect(collectOut).toContain("High impact (I4–5)");
+    expect(collectOut).toContain("overconfident — score conservatively");
+    expect(collectOut).not.toContain("### 점수대별 과신 보정");
+    // 리서치도 «같은» 보정 SSOT 를 공유한다.
+    expect(researchOut).toContain("### Per-score overconfidence calibration");
   });
 });
 
@@ -176,6 +394,86 @@ describe("buildPoCollectPrompt — 기존·과거 백로그 dedup 앵커 (의미
     const out = buildPoCollectPrompt({ ...base, existingBriefs: briefs });
     expect(out).not.toContain("출시됐으나 «빗나간» 기회");
     expect(out).not.toContain("**빗나감(missed) 재시도 규칙**");
+  });
+});
+
+describe("buildPoCollectPrompt — 제목·요약 가독성 작성 계약 (읽는 사람 = 30초 결재 PO)", () => {
+  it("제목 계약: 사용자/제품 결과 중심 + 코드 심볼·파일명·약어 단독 금지 + 80자/«—» 절 제한을 명시한다", () => {
+    const out = buildPoCollectPrompt(base);
+    // 계약 불릿 — 읽는 사람을 «30초 결재 PO» 로 못박고 사용자·제품 결과를 앞세우게 한다.
+    expect(out).toContain("제목·요약 작성 계약");
+    expect(out).toContain("«사용자·제품 관점 결과»");
+    // .ts/.swift 파일명·코드 심볼 단독 금지를 «예» 로 든다.
+    expect(out).toContain(".ts·.swift");
+    // 커널 심볼·CVE 같은 전부-대문자 약어를 «하지 말 것» 으로 박는다 (사용자 호소의 직접 사례).
+    expect(out).toContain("ESRCH·PR_SET_PDEATHSIG·CVE 번호");
+    // «—» 절 1개 이하 + 80자 이내(엄수) — 현 schema 규칙을 «강제 의도» 로 강화.
+    expect(out).toContain("«—» 로 잇는 절은 1개 이하");
+    expect(out).toContain("80자 이내(엄수)");
+    // 스키마 title 필드(:941)도 평이 규칙으로 강화됐다.
+    expect(out).toContain("문제/기회를 사용자·제품 결과로 평이하게 쓴 한 줄");
+    expect(out).toContain("파일명·코드 심볼·약어 단독 금지");
+  });
+
+  it("problem 첫 문장 = 비전문가도 이해할 한 줄 요약, 기술 디테일은 spec/evidence 로 내린다", () => {
+    const out = buildPoCollectPrompt(base);
+    // 계약 불릿.
+    expect(out).toContain("«비전문가도 이해할 한 줄 요약»");
+    // 스키마 problem 필드(:942)도 «첫 문장 평이 요약 → 디테일은 spec/evidence» 로 강화.
+    expect(out).toContain(
+      "첫 문장은 비전문가도 이해할 한 줄 요약(누가·언제·무엇이 불편한가, 전문용어 없이)",
+    );
+    expect(out).toContain("기술 디테일은 spec/evidence 로 내린다");
+  });
+
+  it("엣지 — 기술 주제(daemon 하드닝)여도 계약은 항상 적용, 불가피한 고유명은 풀어쓴다", () => {
+    const out = buildPoCollectPrompt(base);
+    expect(out).toContain("주제가 본질적으로 기술적이어도");
+    expect(out).toContain("고유명(Tor·SSH 등)은 허용하되 풀어 쓴다");
+  });
+
+  it("보정(이력) 앵커에 «밀도 모방 금지» 카운터웨이트가 붙는다 (드리프트 루프 차단)", () => {
+    // 이력의 빽빽한 제목은 점수·방향 보정에만 쓰고, 제목 «쓰는 법» 으로 모방하지 말라는 균형추.
+    const history: PoDecisionRecord[] = [
+      { title: "lifecycle.ts 부모 watchdog 행위 테스트 — reparent/ESRCH", impact: 3, effort: 3, status: "rejected" },
+    ];
+    const out = buildPoCollectPrompt({ ...base, decisionHistory: history });
+    expect(out).toContain("점수·방향 보정에만 쓰고 «모방하지 마라»");
+    // 이력 0건이면 history 섹션 자체가 없어 카운터웨이트도 안 들어간다 (회귀 0).
+    expect(buildPoCollectPrompt(base)).not.toContain("점수·방향 보정에만 쓰고");
+  });
+
+  it("dedup 코퍼스(백로그) 앵커에 «밀도 모방 금지» 카운터웨이트가 항상 붙는다 (0건이어도)", () => {
+    const cw = "위 항목이 빽빽하더라도 그 «제목 표현 스타일» 은 모방하지 마라";
+    // 코퍼스 0건(«(없음)»)이어도 항상-주입 — «위 항목이 빽빽하더라도» 식이라 자연스럽다.
+    expect(buildPoCollectPrompt(base)).toContain(cw);
+    // 코퍼스가 있어도 동일하게 붙는다 (파일명 제목이 섞여 들어오는 그 지점).
+    const withBriefs = buildPoCollectPrompt({
+      ...base,
+      existingBriefs: [{ title: "diagnostics.ts 로깅 정리", problem: "p", status: "proposed" }],
+    });
+    expect(withBriefs).toContain(cw);
+  });
+
+  it("비-ko 로케일(en)에도 같은 계약·카운터웨이트가 그 언어로 반영된다", () => {
+    const out = buildPoCollectPrompt({ ...base, locale: "en" });
+    // 계약 불릿 + problem 규칙이 영어로.
+    expect(out).toContain("Title·summary writing contract");
+    expect(out).toContain("a non-expert can understand");
+    // 스키마 title 영어 강화.
+    expect(out).toContain("at most one «—» clause");
+    // 백로그 카운터웨이트도 영어.
+    expect(out).toContain("do not imitate their «title style»");
+    // 한국어 계약 문구가 섞여 새지 않는다.
+    expect(out).not.toContain("제목·요약 작성 계약");
+  });
+
+  it("design 렌즈 수집에도 같은 계약이 반영된다 (디자인 부채 브리프도 평이한 제목)", () => {
+    const out = buildPoCollectPrompt({ ...base, lens: "design" });
+    expect(out).toContain("제목·요약 작성 계약");
+    expect(out).toContain("«사용자·제품 관점 결과»");
+    // design 스키마 title 도 평이 규칙으로 강화.
+    expect(out).toContain("디자인 부채를 사용자·제품 결과로 평이하게 쓴 한 줄");
   });
 });
 
@@ -433,6 +731,7 @@ describe("전문가 페르소나 (po_brief_lens_v1) — PO 가 아니라 각 전
     ["ops", "«운영(ops) 전문가»"],
     ["logic", "«로직(도메인·정합성) 전문가»"],
     ["ux", "«UX(사용성) 전문가»"],
+    ["readability", "«가독성·유지보수성 전문가»"],
   ];
 
   it("default 수집·리서치는 PO 정체성 유지 (회귀 0)", () => {
@@ -726,6 +1025,65 @@ describe("buildPoResearchPrompt — 전문가 관점 렌즈 (po_research_lens_v1
     const design = buildPoResearchPrompt({ ...researchBase, lens: "design", screens: true });
     expect(design).toBe(buildPoResearchPrompt({ ...researchBase, lens: "design" }));
     expect(design).not.toContain("## 화면 포함 — 렌더된 화면으로 휴리스틱 판정");
+  });
+
+  it("lens=\"readability\" 이면 코드 표면 legibility(명명·길이·구조·중첩·매직넘버·주석) 머리말을 주입 (po_research_lens_v10)", () => {
+    const out = buildPoResearchPrompt({ ...researchBase, lens: "readability" });
+    expect(out).toContain("## 조사 관점 — 가독성·유지보수성 전문가");
+    // 정체성도 그 전문가 (PO 아님).
+    expect(out).toContain("너는 이 저장소의 «가독성·유지보수성 전문가» 다");
+    expect(out).not.toContain("프로덕트 오너(PO)");
+    // 코드 «표면» legibility 차원 — 명명·파일/함수 길이·구조 분해·중첩·매개변수·매직넘버·주석.
+    expect(out).toContain("명명");
+    expect(out).toContain("함수 길이");
+    expect(out).toContain("구조 분해");
+    expect(out).toContain("중첩");
+    expect(out).toContain("매개변수");
+    expect(out).toContain("매직 넘버");
+    expect(out).toContain("주석 품질");
+    // 도메인 로직 정합·불변식은 logic 렌즈에 «명시적으로 위임» (중복 정의 금지).
+    expect(out).toContain("logic 렌즈");
+    expect(out).toContain("중복 정의 금지");
+    expect(out).toContain("«읽기 쉬운가»");
+    // 동작 보존 — 버그·정합성 신고가 아니라 «읽기 쉬운 형태» 제안. logic 의 «상태머신 맵» 은 빌려오지 않는다.
+    expect(out).toContain("동작 보존");
+    expect(out).not.toContain("상태머신 맵");
+    // 표면 문제 없으면 빈 배열도 정답.
+    expect(out).toContain("가독성 브리프 0건");
+    // logic·ux 머리말과는 섞이지 않는다 (직교 렌즈).
+    expect(out).not.toContain("## 조사 관점 — 로직(도메인·정합성) 전문가");
+    expect(out).not.toContain("## 조사 관점 — UX(사용성) 전문가");
+  });
+
+  it("lens=\"readability\" 머리말은 각 브리프 spec 에 4요건(현재 문제·더 읽기 쉬운 형태·동작 보존 검증·blast-radius)을 «빠짐없이» 강제한다", () => {
+    const out = buildPoResearchPrompt({ ...researchBase, lens: "readability" });
+    // spec 4요건 — 위치/왜 + 행동보존 형태 + 검증 + blast-radius.
+    expect(out).toContain("현재 가독성 문제(위치·왜 읽기 어려운지)");
+    expect(out).toContain("더 읽기 쉬운 형태(동작 보존)");
+    expect(out).toContain("동작 보존 검증 방법");
+    expect(out).toContain("blast-radius(영향 받는 파일·테스트)");
+    expect(out).toContain("«빠짐없이»");
+    expect(out).toContain("승인/보류/기각");
+    // evidence.ref = 파일:라인.
+    expect(out).toContain("파일:라인");
+    // 레이아웃 닿으면 눈검증 — 단 이 레포 전용 경로(/verify-ios)를 하드코딩하지 않는다(레포-무관).
+    expect(out).toContain("눈으로 확인");
+    expect(out).not.toContain("/verify-ios");
+    // 동작 보존을 검증 못 하면 브리프로 올리지 말라는 가드.
+    expect(out).toContain("동작 보존을 검증할 수 없는 «개선» 은 브리프로 올리지 마라");
+    // 레포-무관 — 특정 색을 박지 않는다.
+    expect(out).not.toContain("보라");
+  });
+
+  it("lens=\"readability\" 는 baseline 과 다르되 default·생략은 여전히 byte-identical (회귀 0)", () => {
+    const baseline = buildPoResearchPrompt(researchBase);
+    const readability = buildPoResearchPrompt({ ...researchBase, lens: "readability" });
+    // readability 는 머리말이 붙어 baseline 과 다르다.
+    expect(readability).not.toBe(baseline);
+    expect(readability).toContain("## 조사 관점 — 가독성·유지보수성 전문가");
+    // default·생략은 머리말 없는 전방위와 byte-identical (옛 클라이언트 회귀 0).
+    expect(buildPoResearchPrompt({ ...researchBase, lens: "default" })).toBe(baseline);
+    expect(baseline).not.toContain("## 조사 관점 —");
   });
 });
 

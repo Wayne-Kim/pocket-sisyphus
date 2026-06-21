@@ -95,6 +95,12 @@ struct ServerVersionInfo: Codable, Equatable {
     /// 옛 daemon 은 /api/mcp 가 404 라 보여주면 거짓 UI).
     var supportsMcpTools: Bool { capabilities.contains("mcp_tools_v1") }
 
+    /// daemon 이 서브시스템 «연결 진단» 스냅샷(GET /api/connection-diagnostics) 을 지원하는가. iOS 가
+    /// 설정에 「연결 진단」 진입점을 노출할지 분기 (없으면 숨김 — soft. 옛 daemon 은 이 라우트가 404
+    /// 라 보여주면 거짓 UI). expectedDaemonCapabilities 에는 넣지 않는다 («있으면 노출»). (별개의
+    /// supportsDiagnostics(diagnostics_v1) 는 «문제 신고/진단 번들».)
+    var supportsConnectionDiagnostics: Bool { capabilities.contains("connection_diagnostics_v1") }
+
     /// daemon 이 라이브 웹 미리보기를 지원하는가. iOS 가 ChatView 에 「결과(웹 미리보기)」
     /// 진입점을 노출할지 분기 (없으면 숨김 — soft, 옛 daemon 엔 경고 없이 그냥 안 보임).
     /// expectedDaemonCapabilities 에는 넣지 않는다 — «없으면 경고» 가 아니라 «있으면 노출».
@@ -135,6 +141,12 @@ struct ServerVersionInfo: Codable, Equatable {
     /// 전체 청크 replay 대신 «현재 화면+scrollback» 한 덩이를 받아 O(화면) 으로 즉시 복원한다.
     /// 없으면(옛 daemon, 404) iOS 가 session_history_v1 의 tail 캡 콜드 poll 로 폴백한다.
     var supportsPtySnapshot: Bool { capabilities.contains("pty_snapshot_v1") }
+
+    /// daemon 이 로컬 진단 번들(`GET /api/diagnostics`)을 지원하는가 — 서브시스템 스냅샷 +
+    /// 최근 crash 마커 + 마스킹된 unified.log tail. iOS 가 설정 「문제 신고/진단」 진입점을
+    /// 노출할지 분기 (없으면 숨김 — soft. 옛 daemon 은 /api/diagnostics 가 404 라 보여주면
+    /// 거짓 UI 가 된다).
+    var supportsDiagnostics: Bool { capabilities.contains("diagnostics_v1") }
 }
 
 /// `/api/version` 의 `lastUpdate` 디코드 타입. daemon `updateStatus.ts` 의 `UpdateStatus` 와 짝.

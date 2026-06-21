@@ -10,6 +10,9 @@ struct AppRoot: View {
     @EnvironmentObject var attest: AttestSession
     /// 딥링크 broker — 대기 알림 탭이 세션으로 라우팅하도록 AgentWaitNotifier 에 주입한다.
     @EnvironmentObject var deepLink: DeepLinkRouter
+    /// 함대 상태의 앱 전역 단일 source of truth — 대기 알림기의 fleet 신선도 + 「함대」 Live
+    /// Activity 컨트롤러가 같이 구독한다.
+    @EnvironmentObject var sessionCache: SessionListCache
 
     /// 연결 방식 최초 선택 여부 — Tor 부트스트랩 .task 의 게이트 토큰으로 쓴다. false→true 로
     /// 바뀌는 순간 `.task(id: modeChosen)` 가 재실행되며 보류해 둔 연결(또는 LAN 직결)을 시작한다.
@@ -37,6 +40,15 @@ struct AppRoot: View {
         } else if DevPairing.connModePreview {
             // 연결 방식 선택 화면 레이아웃 눈검증용 강제 프리뷰 (PS_DEV_CONNMODE=1).
             ConnectionModeView()
+        } else if DevPairing.statePreview {
+            // 공용 빈/로딩/에러 상태 뷰 갤러리 눈검증용 강제 프리뷰 (PS_DEV_STATEVIEWS=1).
+            StateViewsGallery()
+        } else if DevPairing.connDiagnosticsPreview {
+            // 연결 진단 화면 레이아웃 눈검증용 강제 프리뷰 (PS_DEV_CONNDIAG=1) — daemon 없이
+            // 대표 샘플(정상/주의/오류 혼합)을 NavigationStack 안에서 렌더한다.
+            NavigationStack {
+                ConnectionDiagnosticsView(devSeed: .sampleForPreview)
+            }
         } else {
             mainContent
         }
@@ -206,17 +218,22 @@ struct AppRoot: View {
                     await versionCompat.refresh(api: api)
                 }
             }
-            // 대기 알림기 주입/정리 — 페어되면 글로벌 WS 리스너 가동, 해제되면 정리.
+            // 대기 알림기 + 「함대」 Live Activity 주입/정리 — 페어되면 글로벌 WS 리스너 + Live
+            // Activity 구독 가동, 해제되면 정리(활성 Activity 종료).
             if newOnion != nil {
-                AgentWaitNotifier.shared.configure(auth: auth, conn: conn, deepLink: deepLink)
+                AgentWaitNotifier.shared.configure(auth: auth, conn: conn, deepLink: deepLink, sessionCache: sessionCache)
+                FleetLiveActivityController.shared.bind(sessionCache: sessionCache)
             } else {
                 AgentWaitNotifier.shared.teardown()
+                FleetLiveActivityController.shared.teardown()
             }
         }
         .task {
-            // 콜드 런치(이미 페어된 상태) — onChange 가 안 와도 한 번 주입해 글로벌 WS 를 띄운다.
+            // 콜드 런치(이미 페어된 상태) — onChange 가 안 와도 한 번 주입해 글로벌 WS + Live
+            // Activity 구독을 띄운다.
             if auth.config != nil {
-                AgentWaitNotifier.shared.configure(auth: auth, conn: conn, deepLink: deepLink)
+                AgentWaitNotifier.shared.configure(auth: auth, conn: conn, deepLink: deepLink, sessionCache: sessionCache)
+                FleetLiveActivityController.shared.bind(sessionCache: sessionCache)
             }
         }
     }

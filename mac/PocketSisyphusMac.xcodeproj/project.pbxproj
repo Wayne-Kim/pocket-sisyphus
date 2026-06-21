@@ -22,6 +22,7 @@
 		6C3192A579D8E39F234D0CB7 /* UpdaterBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D7754AD02988D2FC694DB7 /* UpdaterBridge.swift */; };
 		8421AE0C26ABD24A707B9AC6 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = D0557DDC85C0792B8795018F /* Sparkle */; };
 		8D49DCCD931C95C100B52C9A /* MenuContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 470271CEDD8BD111AEE81CAE /* MenuContent.swift */; };
+		95344FDD8778173335D2E7CC /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22F5AFAD618708819171F0AC /* DesignTokens.swift */; };
 		97C9D93608D0E315C435889E /* DaemonPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58A33206EA4C4B4F85D6B0F1 /* DaemonPaths.swift */; };
 		9902D9619FE61AAC718CDD13 /* THIRD-PARTY-NOTICES.txt in Resources */ = {isa = PBXBuildFile; fileRef = 89B81B2FD2269331540B5BD8 /* THIRD-PARTY-NOTICES.txt */; };
 		9E599A2FD0C929C71F9FD821 /* UnifiedLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C02C8839E978856322665489 /* UnifiedLog.swift */; };
@@ -45,6 +46,7 @@
 		13DE7FC8947A17486FAC4FBA /* PortSettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortSettingsWindow.swift; sourceTree = "<group>"; };
 		178C40D567D1533D9405CB2D /* RemoteControlPermissions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteControlPermissions.swift; sourceTree = "<group>"; };
 		2093FCB77147581EBDFA6078 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
+		22F5AFAD618708819171F0AC /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		29D7754AD02988D2FC694DB7 /* UpdaterBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdaterBridge.swift; sourceTree = "<group>"; };
 		3123DDAF78D81D7E76AD1575 /* PowerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerManager.swift; sourceTree = "<group>"; };
 		3B4721F04777A69D07411C12 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -97,6 +99,7 @@
 				9F5A5B0FA7C5DA7783DB5B75 /* DaemonManager.swift */,
 				58A33206EA4C4B4F85D6B0F1 /* DaemonPaths.swift */,
 				BA5C4EB7BAE0DD341B5749E5 /* DataMigration.swift */,
+				22F5AFAD618708819171F0AC /* DesignTokens.swift */,
 				4B90A1C9C3988A4EDAB32F9A /* FullDiskAccess.swift */,
 				8848FE086EBA060BA38E8F38 /* GuideContent.swift */,
 				0D4C7C9F009AF55D6E724380 /* Info.plist */,
@@ -365,6 +368,7 @@
 				3CA1049581CE29CC69CA4A0C /* DaemonManager.swift in Sources */,
 				97C9D93608D0E315C435889E /* DaemonPaths.swift in Sources */,
 				25CE92711D0D9CCD1A040B6B /* DataMigration.swift in Sources */,
+				95344FDD8778173335D2E7CC /* DesignTokens.swift in Sources */,
 				B8954891A2BD89A50089C549 /* DiscordSettingsWindow.swift in Sources */,
 				097B63BA3158DDD6A5F005E2 /* FullDiskAccess.swift in Sources */,
 				04A01CB4CBBD80BB1820E509 /* GuideContent.swift in Sources */,

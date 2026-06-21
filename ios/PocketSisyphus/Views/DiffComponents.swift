@@ -325,28 +325,8 @@ struct DiffHunkNavigator: View {
     }
 }
 
-/// iOS 17 의 ContentUnavailableView 호환 대체 — 16.4 타깃 유지 위해 직접 그림.
-struct DiffEmptyState: View {
-    let title: LocalizedStringKey
-    let systemImage: String
-    let message: LocalizedStringKey
-
-    var body: some View {
-        VStack(spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.system(size: Theme.IconSize.l))
-                .foregroundStyle(.secondary)
-            Text(title)
-                .font(.headline)
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
+// 빈 상태는 공용 `EmptyStateView`(DesignSystem/StateViews.swift) 로 통합됐다 — diff/커밋 화면도
+// 같은 컴포넌트를 쓴다(과거 DiffEmptyState/BranchEmptyState/FileViewerEmptyState 중복 제거).
 
 struct DiffBanner: View {
     let text: String

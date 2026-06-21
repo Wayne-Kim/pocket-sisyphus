@@ -37,6 +37,10 @@ struct SettingsSheet: View {
     // 일원화한다. GuideView 전체 카테고리(시작·세션·연결·보안 등)를 자체 NavigationStack 시트로 띄운다.
     @State private var showGuideSheet = false
 
+    // 문제 신고 · 진단 — daemon 의 로컬 진단 번들(서브시스템 스냅샷 + 최근 crash 마커 + 마스킹된
+    // unified.log tail)을 묶어 «사용자가 직접» 공유/내보내기 하는 시트. diagnostics_v1 가 있을 때만 노출.
+    @State private var showDiagnosticsSheet = false
+
     // Mac 앱 원격 업데이트 — 트리거 결과 alert + 사일런트 진행 플래그. SessionsView 에서 이관.
     @State private var updateTriggerResult: UpdateTriggerResult?
     @State private var updateInProgress = false
@@ -224,6 +228,17 @@ struct SettingsSheet: View {
                     } label: {
                         Label("보안 상태", systemImage: "lock.shield")
                     }
+                    // 연결 진단 — Tor·sshd·디스크·에이전트 CLI 등 서브시스템 상태를 읽기 전용으로.
+                    // connection_diagnostics_v1 지원 daemon 일 때만 노출(soft — 옛 daemon 은 404 라
+                    // 거짓 UI). 진단은 프리미엄이 아니라 기본 틴트(accent)를 따른다 — pro(주황) 아님.
+                    // (별개의 「문제 신고·진단」(diagnostics_v1)은 crash 번들 — 아래 별도 진입점.)
+                    if daemonCapabilities.contains("connection_diagnostics_v1") {
+                        NavigationLink {
+                            ConnectionDiagnosticsView()
+                        } label: {
+                            Label("연결 진단", systemImage: "stethoscope")
+                        }
+                    }
                 } header: {
                     Text("연결 · 보안")
                 } footer: {
@@ -376,6 +391,20 @@ struct SettingsSheet: View {
                         disclosureRow("버그 제보", systemImage: "ladybug")
                     }
                     .buttonStyle(.plain)
+
+                    // 문제 신고 · 진단 — daemon 의 로컬 진단(서브시스템 스냅샷 + 최근 crash 마커 +
+                    // 마스킹된 unified.log tail)을 묶어 직접 공유/내보내기. 자동 전송 없음(LAN 전용·
+                    // 무텔레메트리). diagnostics_v1 가 있을 때만 노출 — 없으면 옛 daemon 이라 404 가
+                    // 떠 거짓 UI 가 되므로 숨긴다(다른 capability 진입점들과 같은 soft 게이팅). 색은
+                    // 안내 톤(기본 accent) — 경고(노랑)/프로(주황) 아님.
+                    if daemonCapabilities.contains("diagnostics_v1") {
+                        Button {
+                            showDiagnosticsSheet = true
+                        } label: {
+                            disclosureRow("문제 신고 · 진단", systemImage: "stethoscope")
+                        }
+                        .buttonStyle(.plain)
+                    }
                 } header: {
                     Text("커뮤니티")
                 } footer: {
@@ -423,6 +452,11 @@ struct SettingsSheet: View {
             // NavigationStack 을 가진 독립 시트라 중첩 .sheet 로 그대로 재사용한다.
             .sheet(isPresented: $showGuideSheet) {
                 GuideView()
+            }
+            // 문제 신고 · 진단 — 자체 NavigationStack 을 가진 독립 시트. EnvironmentObject
+            // (auth/conn/inflight)는 시트로 자동 전파된다.
+            .sheet(isPresented: $showDiagnosticsSheet) {
+                DiagnosticsView()
             }
             // 버그 제보 진단 복사 안내 — 비차단 토스트. Safari 가 곧 덮으므로 그 «전» 잠깐 보인다.
             .overlay(alignment: .bottom) { diagnosticsToastBanner }

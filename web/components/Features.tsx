@@ -26,7 +26,10 @@ export default function Features() {
               {"pro" in feature && feature.pro && (
                 <span
                   data-block="pro-badge"
-                  className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-xs font-medium text-amber-400"
+                  // pro=주황(#FF9500) 약속색. amber-400(노랑 쪽)은 warning 과 혼동 →
+                  // pro 토큰(globals.css @theme --color-pro)으로 교정. CLAUDE.md 색 정책.
+                  // font-semibold 로 Differentiators 의 Pro 배지와 사이트 전역 통일.
+                  className="rounded-full border border-pro/30 bg-pro/10 px-2 py-0.5 text-xs font-semibold text-pro"
                 >
                   Pro
                 </span>

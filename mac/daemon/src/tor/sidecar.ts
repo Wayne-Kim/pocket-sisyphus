@@ -80,6 +80,12 @@ let lastTorOptions: Required<TorOptions> | null = null;
 let torBootstrapped = false;
 
 /**
+ * 마지막으로 관측한 Tor 부트스트랩 퍼센트 (0~100). stdout 의 "Bootstrapped XX%" 라인에서
+ * 갱신, spawn/exit 에서 0 으로 reset. 진단 스냅샷(/api/diagnostics)의 `torBootstrapPercent`.
+ */
+let torBootstrapPercent = 0;
+
+/**
  * 마지막 reconnect kick 시각 (epoch ms). 30s 쿨다운으로 rate limit — 사용자가 모뎀
  * 재부팅 등으로 path 이벤트를 폭주시켜도 회로 재빌드 폭주는 막는다.
  */
@@ -108,6 +114,22 @@ let pendingRestartTimer: NodeJS.Timeout | null = null;
 
 export function getActiveTorProcess(): ChildProcess | null {
   return activeTorProcess;
+}
+
+/**
+ * 마지막으로 관측한 부트스트랩 퍼센트 (0~100). 진단 스냅샷용 — 콜드부트에서 Tor 가 «몇 %에서
+ * 멈췄는지» 를 노출해 「준비 중」 과 「영영 막힘」 을 구분한다. 프로세스가 죽으면 0.
+ */
+export function getTorBootstrapPercent(): number {
+  return torBootstrapPercent;
+}
+
+/**
+ * 마지막 reconnect kick(SIGHUP) 시각 (epoch ms). 한 번도 없었으면 null. 진단 스냅샷의
+ * «마지막 재연결 시각» — WAN IP 변경 등으로 introduction point 재선정을 강제한 시점.
+ */
+export function getLastTorReconnectAt(): number | null {
+  return lastKickAt > 0 ? lastKickAt : null;
 }
 
 export type TorOptions = {
@@ -368,17 +390,22 @@ export async function startTor(opts: TorOptions): Promise<TorHandle> {
 
   // 새 spawn — bootstrap 게이트도 초기화.
   torBootstrapped = false;
+  torBootstrapPercent = 0;
   let bootstrapShown = false;
   proc.stdout?.on("data", (chunk: Buffer) => {
     const text = chunk.toString();
     // "Bootstrapped XX% (...)" 라인만 압축 출력
     const m = text.match(/Bootstrapped (\d+)%/);
-    if (m && !bootstrapShown) {
-      process.stdout.write(`[tor] bootstrap ${m[1]}%   \r`);
-      if (m[1] === "100") {
-        bootstrapShown = true;
-        torBootstrapped = true;
-        process.stdout.write("\n");
+    if (m) {
+      // 진단용 — 매 라인 퍼센트 추적 (게이트와 무관). 콜드부트에서 «몇 %에 멈췄는지» 노출.
+      torBootstrapPercent = Number(m[1]);
+      if (!bootstrapShown) {
+        process.stdout.write(`[tor] bootstrap ${m[1]}%   \r`);
+        if (m[1] === "100") {
+          bootstrapShown = true;
+          torBootstrapped = true;
+          process.stdout.write("\n");
+        }
       }
     }
   });
@@ -395,6 +422,7 @@ export async function startTor(opts: TorOptions): Promise<TorHandle> {
     if (activeTorProcess === proc) activeTorProcess = null;
     if (activeTorHandle && activeTorHandle.process === proc) activeTorHandle = null;
     torBootstrapped = false;
+    torBootstrapPercent = 0;
     stopTorLogTailer();
 
     // 의도된 종료 (handle.stop / rotatePairingKeys / daemon shutdown) 면 여기서 끝.

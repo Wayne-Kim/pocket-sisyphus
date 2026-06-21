@@ -16,6 +16,7 @@ import {
   awaitPtyExit,
 } from "../agent/pty-runner.js";
 import { createSession, resolveAndEnsureRepoDir } from "../routes/sessions.js";
+import { guardUnattendedRepo } from "../mcp/unattended.js";
 import { markCronSession, unmarkCronSession } from "../cron/registry.js";
 import { waitForSessionSettle } from "../cron/executor.js";
 import { dispatchPoNotification } from "../notify/index.js";
@@ -27,13 +28,16 @@ import {
   poLoc,
   type PoBriefDraft,
   type PoDecisionRecord,
+  type PoOutcomeRecord,
 } from "./prompt.js";
 import { t } from "./i18n/t.js";
 import { parseLens, type PoLens } from "./lens.js";
 import { fetchCustomerReviews } from "./asc.js";
 import { fetchCrashDigest } from "./crash.js";
-import { findSimilar } from "./similarity.js";
-import { readConfig } from "../config.js";
+import { findSimilar, evidenceRefs } from "./similarity.js";
+import { selectConsensusBriefs } from "./consensus.js";
+import { analyzeBriefReadability, formatReadabilitySignals } from "./readability.js";
+import { readConfig, resolvePoMultiPass } from "../config.js";
 import { type CollectSignals, type SignalSourceState, serializeSignals, classifyAscFailure } from "./signals.js";
 
 /**
@@ -95,8 +99,11 @@ function collectStamp(d: Date): string {
 /** dedup 코퍼스 상한 — 프롬프트 비대화 방지 + 백스톱 비교 비용 통제. */
 const MAX_DEDUP_CORPUS = 60;
 
-/** dedup 코퍼스 한 건 — 프롬프트 앵커(prompt.ts PoExistingBrief)이자 lexical 백스톱 비교 대상. */
-type DedupBrief = { id: string; title: string; problem: string; status: string };
+/**
+ * dedup 코퍼스 한 건 — 프롬프트 앵커(prompt.ts PoExistingBrief)이자 lexical 백스톱 비교 대상.
+ * evidence(JSON 원형)는 백스톱의 ref-겹침 신호 입력 — 프롬프트 앵커는 이 필드를 무시한다.
+ */
+type DedupBrief = { id: string; title: string; problem: string; evidence: string; status: string };
 
 /**
  * repo 의 «중복 방지 코퍼스» — 살아있는 제안(proposed/held/approved/running)뿐 아니라 닫힌
@@ -107,7 +114,7 @@ type DedupBrief = { id: string; title: string; problem: string; status: string }
 function dedupCorpus(repoPath: string): DedupBrief[] {
   return db()
     .prepare(
-      `SELECT id, title, problem, status FROM po_briefs
+      `SELECT id, title, problem, evidence, status FROM po_briefs
        WHERE repo_path = ?
          AND status IN ('proposed','held','approved','running','rejected','shipped','verified','missed')
        ORDER BY
@@ -130,7 +137,7 @@ const MAX_DECISION_HISTORY = 12;
 function decisionHistory(repoPath: string): PoDecisionRecord[] {
   const rows = db()
     .prepare(
-      `SELECT title, impact, effort, status, verify_note FROM po_briefs
+      `SELECT title, impact, effort, status, verify_note, decide_reason FROM po_briefs
        WHERE repo_path = ? AND status IN ('rejected','approved','running','shipped','verified','missed')
        ORDER BY COALESCE(decided_at, updated_at) DESC LIMIT ?`,
     )
@@ -140,6 +147,7 @@ function decisionHistory(repoPath: string): PoDecisionRecord[] {
     effort: number;
     status: string;
     verify_note: string | null;
+    decide_reason: string | null;
   }>;
   return rows.map((r) => {
     const status: PoDecisionRecord["status"] =
@@ -152,8 +160,122 @@ function decisionHistory(repoPath: string): PoDecisionRecord[] {
             : "approved"; // approved / running / shipped — 사람이 승인, 아직 검증 전
     // 근거 한 줄: 검증된 행만 verify_note 가 있다. 기각/승인·옛 레코드는 없음(엣지) → 생략.
     const note = status === "verified" || status === "missed" ? r.verify_note : null;
-    return { title: r.title, impact: r.impact, effort: r.effort, status, note };
+    // 결재 사유 enum 키 — «기각» 행만 의미 있다(approve/검증/빗나감엔 사유 피커가 없다). 렌더가
+    // 다시 status·키를 검증해 라벨을 붙이므로 여기선 기각 행의 원형을 그대로 싣는다(미선택은 NULL).
+    const reason = status === "rejected" ? r.decide_reason : null;
+    return { title: r.title, impact: r.impact, effort: r.effort, status, note, reason };
   });
+}
+
+/**
+ * 점수대별 «과신 보정» 입력 — 이 repo 의 «결과가 정해진» 브리프 전체 (po_briefs).
+ * decisionHistory 가 «최근 N건 한 줄 나열» 이라면 이건 «누적» 집계용이라 LIMIT 없이 결과 행
+ * (rejected/verified/missed)만 거둔다. approved/running/shipped(아직 검증 전)는 결과 미정이라 제외.
+ * repo_path 로 격리해 다른 레포 결과가 이 레포 새 제안을 오염시키지 않는다(수용 기준 2). 0건이면
+ * 빈 배열 → 빌더가 보정 블록을 통째로 빼 기존과 byte-identical (수용 기준 1, 회귀 0). impact 만 쓰니
+ * effort/title 은 안 읽는다(집계 무관). 정렬 불필요 — 집계는 합이라 행 순서에 불변(결정적).
+ */
+function outcomeHistory(repoPath: string): PoOutcomeRecord[] {
+  const rows = db()
+    .prepare(
+      `SELECT impact, status FROM po_briefs
+       WHERE repo_path = ? AND status IN ('rejected','verified','missed')`,
+    )
+    .all(repoPath) as Array<{ impact: number; status: PoOutcomeRecord["status"] }>;
+  return rows.map((r) => ({ impact: r.impact, status: r.status }));
+}
+
+// ─── 닫힌 결정 «지문» 누적 보존 (po_dedup_fingerprint_v1) ──────────────────────
+//
+// dedupCorpus 는 MAX_DEDUP_CORPUS(60) 윈도우라, 그 밖으로 밀려난 옛 기각/출시 결정이 ingest 의
+// 재제안 백스톱에서 사라진다(prompt.ts buildPoCleanupPrompt 주석이 인정하는 한계). po_dedup_fingerprints
+// 는 그 그물을 «윈도우와 무관하게» 복원한다 — 닫힌 결정의 dedup-relevant 필드(제목·문제·evidence ref)만
+// 추려 누적 보존하고, ingestBriefs 가 이 지문 집합도 «두 번째 코퍼스» 로 findSimilar 에 함께 건다.
+// 매칭 로직은 similarity.findSimilar 를 그대로 재사용한다 — 트라이그램 + evidence ref 겹침 OR. 프롬프트에
+// 박는 «재제안 금지» 목록은 비대화 방지를 위해 현행 윈도우 그대로 두고, 이 백스톱만 전체 닫힌 결정을 본다.
+
+/**
+ * 이 repo 의 닫힌 결정(rejected/shipped/verified/missed)을 po_dedup_fingerprints 로 동기화한다 —
+ * 매 ingest 직전 호출해 새로 닫힌 결정의 지문을 누적하고(멱등 upsert: brief_id PK), 이미 있는 건
+ * 텍스트/상태만 갱신한다. po_briefs 에서 파생하지만 «삭제는 하지 않아», 닫힌 결정이 윈도우 밖으로
+ * 밀리거나 옛 브리프가 정리돼도 지문은 살아남는다(= 누적 보존). reject 는 routes/po.ts 에서 일어나
+ * 이 동기화가 그것까지 (전이 위치와 무관하게) 모두 거둔다. ref 는 similarity 가 비교 시점에 구조를
+ * 인식하므로 evidenceRefs 의 원형 문자열을 그대로 저장한다. 절대 throw 하지 않는다 — 지문 동기화가
+ * ingest 본류를 죽이지 않게 (persistCollectSignals 와 동일 정책).
+ */
+function syncClosedFingerprints(repoPath: string): void {
+  try {
+    const rows = db()
+      .prepare(
+        `SELECT id, title, problem, evidence, status FROM po_briefs
+         WHERE repo_path = ? AND status IN ('rejected','shipped','verified','missed')`,
+      )
+      .all(repoPath) as Array<{
+      id: string;
+      title: string;
+      problem: string;
+      evidence: string;
+      status: string;
+    }>;
+    if (rows.length === 0) return;
+    const now = Date.now();
+    const upsert = db().prepare(
+      `INSERT INTO po_dedup_fingerprints (brief_id, repo_path, title, problem, refs, status, created_at, updated_at)
+       VALUES (@brief_id, @repo_path, @title, @problem, @refs, @status, @now, @now)
+       ON CONFLICT(brief_id) DO UPDATE SET
+         title = excluded.title, problem = excluded.problem, refs = excluded.refs,
+         status = excluded.status, updated_at = excluded.updated_at`,
+    );
+    // 한 트랜잭션으로 묶어 ingest 핫패스의 쓰기 락 경합을 줄인다 (created_at 은 INSERT 때만 박혀
+    // 보존, DO UPDATE 는 건드리지 않는다 — 최초 기록 시각 유지).
+    db().transaction((items: typeof rows) => {
+      for (const r of items) {
+        upsert.run({
+          brief_id: r.id,
+          repo_path: repoPath,
+          title: r.title,
+          problem: r.problem,
+          refs: JSON.stringify(evidenceRefs(r.evidence)),
+          status: r.status,
+          now,
+        });
+      }
+    })(rows);
+  } catch (e) {
+    console.warn(`[po] sync fingerprints failed repo=${repoPath}:`, (e as Error).message);
+  }
+}
+
+/**
+ * 재제안 백스톱이 조회할 닫힌 결정 지문 — findSimilar 가 바로 쓰는 {title, problem, refs} 형태로
+ * 돌려준다. missed 는 «제외» 한다(윈도우 코퍼스의 missed 제외 정책과 동형: missed 는 «미해결 갭/재시도
+ * 후보» 라 같은 주제의 «다른 접근» 을 하드 컷하면 안 된다). 지문 표 자체는 missed 도 보존하되 조회에서만
+ * 뺀다. 실패 시 [] — 백스톱이 죽어도 ingest 는 계속.
+ */
+function loadClosedFingerprints(
+  repoPath: string,
+): Array<{ title: string; problem: string; refs: string[] }> {
+  try {
+    const rows = db()
+      .prepare(
+        `SELECT title, problem, refs FROM po_dedup_fingerprints
+         WHERE repo_path = ? AND status != 'missed'`,
+      )
+      .all(repoPath) as Array<{ title: string; problem: string; refs: string }>;
+    return rows.map((r) => {
+      let refs: string[] = [];
+      try {
+        const parsed = JSON.parse(r.refs);
+        if (Array.isArray(parsed)) refs = parsed.filter((x): x is string => typeof x === "string");
+      } catch {
+        /* 깨진 refs — 빈 목록 (트라이그램 신호만 쓴다) */
+      }
+      return { title: r.title, problem: r.problem, refs };
+    });
+  } catch (e) {
+    console.warn(`[po] load fingerprints failed repo=${repoPath}:`, (e as Error).message);
+    return [];
+  }
 }
 
 /**
@@ -186,6 +308,10 @@ export function startPoCollection(
   if (!hasAgent(agentId)) {
     return { status: "error", error: `에이전트 없음: ${agentId}` };
   }
+  // 무인 trifecta(capability_caps C1/M3) — PO 수집은 skip_permissions 무인 세션이다. repo 에
+  // EGRESS·SOURCE_WRITE MCP 가 연결돼 있으면 시작 전 정적 거부(개인-데이터+외부통신 동시 불가).
+  const guard = guardUnattendedRepo(repoPath);
+  if (!guard.ok) return { status: "error", error: `${guard.code}: ${guard.capped.join(", ")}` };
 
   // 매 수집을 시각으로 구별 — 안 그러면 세션 목록이 죄다 "📋 PO 신호 수집" 한 이름이 된다.
   const sessionId = createSession(
@@ -233,6 +359,9 @@ export function startPoCollection(
     verdictFile,
     // 과거 결정 요약 — 점수·방향을 사람의 누적 평가에 맞춰 보정 (이 repo 이력만, N건 상한).
     decisionHistory: decisionHistory(repoPath),
+    // 점수대별 과신 보정 — 이 repo 결과(기각/적중/빗나감) 전체를 영향도 점수대로 결정적 집계.
+    // 0건이면 빌더가 블록을 빼 기존과 byte-identical. repo_path 격리 (다른 레포 오염 방지).
+    outcomeHistory: outcomeHistory(repoPath),
     // GitHub 피드백 repo — 있으면 GitHub 신호를 로컬 origin 이 아니라 이 repo 에서 읽는다.
     githubFeedbackRepo: profileRow?.github_feedback_repo ?? undefined,
     // 디자인 컨텍스트 선언 — 있으면 「디자인 제약」 섹션에 그대로, 없으면 자동 발견으로 폴백.
@@ -328,6 +457,39 @@ async function prepareStoreReviews(
   }
 }
 
+/**
+ * 한 생성 패스 — 완료 구독 → 프롬프트 발사 → 정착 대기 → PTY 회수. settle 상태를 돌려준다.
+ * cron finalizeRun 의 «단일 턴» 과 동형이며, 다중 패스는 같은 세션에서 이 함수를 순차로 N회
+ * 돌린다(매 패스가 PTY 를 새로 띄워 종료 → 직전 패스 맥락 없는 «독립» 생성). 항상 resolve.
+ */
+async function runCollectPass(
+  sessionId: string,
+  repoPath: string,
+  agentId: string,
+  prompt: string,
+): Promise<{ status: "ok" | "error" | "timeout"; error?: string }> {
+  const settle = waitForSessionSettle(sessionId);
+  void runUserMessagePty(
+    { sessionId, cwd: repoPath, adapter: getAgent(agentId) },
+    prompt,
+    { bypassPermissions: true },
+  ).catch((e) => {
+    console.warn(`[po] runUserMessagePty failed session=${sessionId}:`, (e as Error).message);
+  });
+  const result = await settle;
+  abortPtySession(sessionId);
+  await awaitPtyExit(sessionId, 4000);
+  return result;
+}
+
+/** 여러 패스 상태를 하나로 — 하나라도 ok 면 ok, 아니면 error 우선, 그다음 마지막(=timeout) 상태. */
+function combinePassStatuses(
+  statuses: ReadonlyArray<{ status: "ok" | "error" | "timeout"; error?: string }>,
+): { status: "ok" | "error" | "timeout"; error?: string } {
+  if (statuses.some((s) => s.status === "ok")) return { status: "ok" };
+  return statuses.find((s) => s.status === "error") ?? statuses[statuses.length - 1] ?? { status: "timeout" };
+}
+
 /** 프롬프트 발사 → settle → PTY 회수 → 브리프 ingest + 검증 판정 적용 → 알림. cron finalizeRun 과 동형. */
 async function finalizeCollection(
   sessionId: string,
@@ -343,6 +505,12 @@ async function finalizeCollection(
   collectingRepos.add(repoPath);
   const reviewsFile = path.join(os.tmpdir(), `ps-po-reviews-${sessionId}.json`);
   const crashFile = path.join(os.tmpdir(), `ps-po-crashes-${sessionId}.json`);
+  // 다중 패스 합치 채택 설정 — 미설정/passes===1 이면 기존 단일 패스 경로(회귀 0).
+  const { passes, minAgree } = resolvePoMultiPass(readConfig());
+  const lens = promptOpts.lens ?? "default";
+  // 패스별 산출 파일 — 단일 패스는 기존 outFile 그대로(회귀 0), 다중은 .pN 접미로 분리(서로 덮지 않게).
+  const passFiles =
+    passes === 1 ? [outFile] : Array.from({ length: passes }, (_, i) => `${outFile}.p${i + 1}`);
   try {
     // 프롬프트는 신호 fetch «후» 에 빌드 — 실패 시 섹션 자체가 없어 에이전트가 헛 경로를 안 읽는다.
     const [store, crash] = await Promise.all([
@@ -357,18 +525,25 @@ async function finalizeCollection(
       storeReviews: store.data,
       crashSignals: crash.data,
     });
-    const settle = waitForSessionSettle(sessionId);
-    void runUserMessagePty(
-      { sessionId, cwd: repoPath, adapter: getAgent(agentId) },
-      prompt,
-      { bypassPermissions: true },
-    ).catch((e) => {
-      console.warn(`[po] runUserMessagePty failed session=${sessionId}:`, (e as Error).message);
-    });
-    const result = await settle;
-
-    abortPtySession(sessionId);
-    await awaitPtyExit(sessionId, 4000);
+    // 단일 패스(passes===1)면 기존과 동일하게 한 번만 발사. 다중 패스면 패스별 산출 파일을 쓰도록
+    // outFile 만 바꿔 프롬프트를 다시 빌드해 N회 «독립» 발사한다(각 패스는 PTY 를 새로 띄움).
+    const statuses: Array<{ status: "ok" | "error" | "timeout"; error?: string }> = [];
+    for (let i = 0; i < passFiles.length; i++) {
+      const passPrompt =
+        passes === 1
+          ? prompt
+          : buildPoCollectPrompt({
+              ...promptOpts,
+              outFile: passFiles[i],
+              storeReviews: store.data,
+              crashSignals: crash.data,
+            });
+      if (passes > 1) {
+        console.log(`[po] collect pass ${i + 1}/${passes} session=${sessionId}`);
+      }
+      statuses.push(await runCollectPass(sessionId, repoPath, agentId, passPrompt));
+    }
+    const result = combinePassStatuses(statuses);
 
     const endedAt = Date.now();
     db()
@@ -381,13 +556,29 @@ async function finalizeCollection(
     // 브리프 0건» 을 만들었다 (산출 파일만 /tmp 에 잔존·미-ingest). xhigh effort 처럼 한 턴이 길어지는
     // 설정에선 settle 상한을 넘기기 쉬워 이 유실이 자주 난다. ingestBriefs/ingestVerdicts 는 파일 없음/
     // 깨진 JSON/부분 산출에 모두 안전([] / 0)이라 status 무관하게 거둬도 손해가 없다.
-    const insertedIds = ingestBriefs(
-      sessionId,
-      repoPath,
-      outFile,
-      undefined,
-      promptOpts.lens ?? "default",
-    );
+    let insertedIds: string[];
+    if (passes === 1) {
+      insertedIds = ingestBriefs(sessionId, repoPath, outFile, undefined, lens);
+    } else {
+      // 다중 패스 합치 채택 — 패스별 draft 를 모아, 의미상 같은 기회로 minAgree(실효) 패스 이상에
+      // 반복 등장한 것만 채택한 뒤 기존 dedup 게이트(ingestParsedDrafts)에 통과시킨다. 한 패스만
+      // 성공해도 graceful fallback(consensus 가 임계를 산출 있는 패스 수로 캡), 전부 실패면 빈 산출.
+      const passDrafts = passFiles.map((f) => parseBriefDrafts(f));
+      const consensus = selectConsensusBriefs(passDrafts, minAgree);
+      // 채택/탈락 사유 로그 — 디버깅용(수용 기준 4).
+      console.log(
+        `[po] consensus session=${sessionId} passes=${passes}(out:${consensus.passesWithOutput}) minAgree=${minAgree}(eff:${consensus.effectiveMinAgree}) adopted=${consensus.adopted.length} rejected=${consensus.rejected.length}`,
+      );
+      for (const r of consensus.rejected) {
+        console.log(
+          `[po] consensus reject (agree ${r.agree}/${consensus.effectiveMinAgree}): «${r.brief.title}»`,
+        );
+      }
+      for (const a of consensus.adopted) {
+        console.log(`[po] consensus adopt: «${a.title}»`);
+      }
+      insertedIds = ingestParsedDrafts(sessionId, repoPath, consensus.adopted, undefined, lens);
+    }
     const verdicts = ingestVerdicts(repoPath, verdictFile);
     console.log(
       `[po] collect done session=${sessionId} status=${result.status} briefs=${insertedIds.length} verdicts=${verdicts} signals=store:${signals.store.state}/crash:${signals.crash.state}`,
@@ -408,7 +599,7 @@ async function finalizeCollection(
     unmarkCronSession(sessionId);
     collectingRepos.delete(repoPath);
     // 산출 파일은 ingest 성공/실패와 무관하게 정리 (비밀 아님 — /tmp 잔존 방지).
-    for (const f of [outFile, verdictFile, reviewsFile, crashFile]) {
+    for (const f of [...passFiles, verdictFile, reviewsFile, crashFile]) {
       try {
         fs.rmSync(f, { force: true });
       } catch {
@@ -442,6 +633,10 @@ export function parseBriefDraft(item: unknown): {
   dedupRelation?: "new" | "refinement" | "duplicate";
 } | null {
   const b = item as Partial<PoBriefDraft>;
+  // title 의 200 은 «하드 안전 백스톱» 이다 — 비정상 거대 제목이 DB/UI 를 깨지 않게 자르는 cap 이지
+  // «선언» 이 아니다. 프롬프트(messages.collect 의 모든 로케일)가 선언하는 «권고 한계» 는 80 자
+  // (readability.TITLE_ADVISORY_MAX) 이고, 초과는 ingestBriefs 가 readability 로 «소프트 경고» 한다
+  // (자르지 않음 — 기존 cap 동작 보존). 둘은 목적이 달라 공존한다(80=선언/권고, 200=하드 백스톱).
   const title = str(b.title, 200);
   const problem = str(b.problem, 4000);
   const spec = str(b.spec, 16000);
@@ -478,16 +673,16 @@ export function parseBriefDraft(item: unknown): {
   };
 }
 
+/** parseBriefDraft 의 산출 — 검증·정규화된 브리프 1건. */
+export type ParsedBriefDraft = NonNullable<ReturnType<typeof parseBriefDraft>>;
+
 /** 산출 JSON 을 검증해 po_briefs 에 넣는다. 깨진 원소는 건너뛴다. 넣은 브리프 id 배열 반환. */
-export function ingestBriefs(
-  sessionId: string,
-  repoPath: string,
-  outFile: string,
-  researchId?: string,
-  // 이 배치를 «쓴 전문가» 렌즈 (po_brief_lens_v1) — 수집(collectLens)/리서치(research.lens)가 고른 값.
-  // 생략/전방위는 'default' → iOS 카드 배지 숨김(회귀 0). 호출부가 명시 전달한다.
-  lens: PoLens = "default",
-): string[] {
+/**
+ * 산출 JSON 파일 → 검증된 브리프 draft 목록. 파일 없음/깨진 JSON/비배열은 빈 목록(안전).
+ * 옛 ingestBriefs 의 «읽기·파싱·검증» 단계만 분리한 것 — MAX_BRIEFS_PER_RUN 상한·깨진 원소 스킵
+ * 동작 그대로(회귀 0). 다중 패스 생성은 패스별로 이 함수를 돌려 draft 배열을 모은 뒤 합치 채택한다.
+ */
+export function parseBriefDrafts(outFile: string): ParsedBriefDraft[] {
   let raw: string;
   try {
     raw = fs.readFileSync(outFile, "utf8");
@@ -503,21 +698,62 @@ export function ingestBriefs(
     return [];
   }
   if (!Array.isArray(parsed)) return [];
+  const drafts: ParsedBriefDraft[] = [];
+  for (const item of (parsed as unknown[]).slice(0, MAX_BRIEFS_PER_RUN)) {
+    const draft = parseBriefDraft(item);
+    if (draft) drafts.push(draft);
+  }
+  return drafts;
+}
 
+/** 산출 JSON 을 검증해 po_briefs 에 넣는다. 깨진 원소는 건너뛴다. 넣은 브리프 id 배열 반환. */
+export function ingestBriefs(
+  sessionId: string,
+  repoPath: string,
+  outFile: string,
+  researchId?: string,
+  // 이 배치를 «쓴 전문가» 렌즈 (po_brief_lens_v1) — 수집(collectLens)/리서치(research.lens)가 고른 값.
+  // 생략/전방위는 'default' → iOS 카드 배지 숨김(회귀 0). 호출부가 명시 전달한다.
+  lens: PoLens = "default",
+): string[] {
+  return ingestParsedDrafts(sessionId, repoPath, parseBriefDrafts(outFile), researchId, lens);
+}
+
+/**
+ * 검증된 draft 목록을 dedup 게이트(에이전트 자가분류 + lexical/ref 백스톱 + 닫힌 결정 지문)에
+ * 통과시켜 po_briefs 에 넣는다. 넣은 id 배열 반환. ingestBriefs(단일 패스)와 다중 패스 합치 채택이
+ * 공유하는 «삽입» 단계 — 파일 읽기/파싱만 호출부가 달리한다(여기 dedup 동작은 양쪽 동일).
+ */
+export function ingestParsedDrafts(
+  sessionId: string,
+  repoPath: string,
+  drafts: readonly ParsedBriefDraft[],
+  researchId?: string,
+  lens: PoLens = "default",
+): string[] {
   // 하이브리드 dedup — ① 에이전트 자가분류(dedupRelation==="duplicate" 면 컷) + ② 결정적
   // lexical 백스톱(findSimilar). 비교 코퍼스엔 닫힌 결정(기각/출시)·살아있는 제안은 넣어 재제안을
   // 막고, 이번 배치에 넣은 것도 누적해 배치-내 중복까지 거른다. 옛 «제목 완전일치» 는 lexical(완전일치
   // → score 1.0)이 포함하므로 제거.
+  // 백스톱은 «제목/문제 트라이그램» 과 «evidence ref 겹침» 을 OR 로 본다(similarity.findSimilar) —
+  // 제목·문구는 다르게 썼지만 같은 파일:라인/같은 이슈를 가리키는 의미-중복도 ref 신호로 잡는다.
+  // 그래서 코퍼스에 evidence 의 ref 목록도 함께 싣는다(인식 못 한 ref 는 트라이그램으로 폴백).
   // 단 «빗나감(missed)» 은 백스톱에서 «뺀다» — missed 는 닫힌 결정이 아니라 «미해결 갭/재시도 후보»라,
   // 같은 주제를 «다른 접근» 으로 다루는 새 브리프가 lexical 유사도로 하드 컷되면 안 된다(프롬프트가
   // missed 분기를 별도 안내해 «같은 접근 반복» 만 빼게 한다). 살아있는 동일 주제 제안은 여전히 코퍼스에
   // 남아 우선하므로 «살아있는 앵커 > missed 분기» 가 유지된다.
-  const corpus: Array<{ title: string; problem: string }> = dedupCorpus(repoPath)
+  const corpus: Array<{ title: string; problem: string; refs: string[] }> = dedupCorpus(repoPath)
     .filter((b) => b.status !== "missed")
     .map((b) => ({
       title: b.title,
       problem: b.problem,
+      refs: evidenceRefs(b.evidence),
     }));
+  // ③ 닫힌 결정 «지문» 백스톱 — dedupCorpus 는 N건(MAX_DEDUP_CORPUS) 윈도우라 그 밖으로 밀려난 옛
+  // 기각/출시 결정을 못 막는다. 매 ingest 직전 닫힌 결정을 지문으로 동기화한 뒤, «윈도우와 무관한»
+  // 전체 닫힌 결정을 두 번째 코퍼스로 findSimilar 에 함께 걸어 옛 재제안까지 컷한다(missed 제외).
+  syncClosedFingerprints(repoPath);
+  const closedFingerprints = loadClosedFingerprints(repoPath);
   const now = Date.now();
   const insertedIds: string[] = [];
   const insert = db().prepare(
@@ -525,21 +761,37 @@ export function ingestBriefs(
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'proposed', ?, ?, ?, ?, ?)`,
   );
 
-  for (const item of (parsed as unknown[]).slice(0, MAX_BRIEFS_PER_RUN)) {
-    const draft = parseBriefDraft(item);
-    if (!draft) continue;
+  for (const draft of drafts) {
     // ① 에이전트가 스스로 «기존과 같은 기회» 라고 분류한 건 신뢰하고 컷.
     if (draft.dedupRelation === "duplicate") {
       console.log(`[po] dedup skip (agent=duplicate): ${draft.title}`);
       continue;
     }
-    // ② lexical 백스톱 — 자가분류가 놓쳤어도 거의 같은 텍스트면 컷 (코퍼스 + 이번 배치 누적).
-    const hit = findSimilar({ title: draft.title, problem: draft.problem }, corpus);
+    // ② lexical 백스톱 — 자가분류가 놓쳤어도 ⓐ 거의 같은 텍스트거나 ⓑ 같은 evidence ref(파일:라인/
+    // 이슈)면 컷 (코퍼스 + 이번 배치 누적). reason 으로 어느 신호가 걸렸는지 로그에 남긴다.
+    const draftRefs = evidenceRefs(draft.evidence);
+    const hit = findSimilar({ title: draft.title, problem: draft.problem, refs: draftRefs }, corpus);
     if (hit) {
-      console.log(
-        `[po] dedup skip (lexical ${hit.score.toFixed(2)}): «${draft.title}» ≈ «${hit.item.title}»`,
-      );
+      const why = hit.reason === "ref" ? "ref" : `lexical ${hit.score.toFixed(2)}`;
+      console.log(`[po] dedup skip (${why}): «${draft.title}» ≈ «${hit.item.title}»`);
       continue;
+    }
+    // ③ 닫힌 결정 지문 백스톱 — 윈도우 밖 옛 기각/출시까지 (trigram 또는 evidence ref 겹침으로 컷).
+    const fpHit = findSimilar(
+      { title: draft.title, problem: draft.problem, refs: draftRefs },
+      closedFingerprints,
+    );
+    if (fpHit) {
+      const why = fpHit.reason === "ref" ? "ref" : `lexical ${fpHit.score.toFixed(2)}`;
+      console.log(`[po] dedup skip (closed ${why}): «${draft.title}» ≈ «${fpHit.item.title}»`);
+      continue;
+    }
+    // 가독성 «소프트» 게이트 — 차단/감점/재작성이 아니라 «표면화» 다. 통과한(INSERT 될) 브리프의
+    // 제목·problem 이 다시 빽빽해졌는지(80자 초과·파일경로/심볼·«—» 다중 절·코드로 시작) 결정적
+    // 휴리스틱으로 보고, 후보가 있으면 수집 세션 로그에 한 줄 남긴다. 기존 길이 cap·dedup 동작은 불변.
+    const readability = analyzeBriefReadability({ title: draft.title, problem: draft.problem });
+    if (readability.length > 0) {
+      console.warn(`[po] readability «${draft.title}»: ${formatReadabilitySignals(readability)}`);
     }
     const id = randomUUID();
     insert.run(
@@ -559,7 +811,7 @@ export function ingestBriefs(
       researchId ?? null,
       lens,
     );
-    corpus.push({ title: draft.title, problem: draft.problem });
+    corpus.push({ title: draft.title, problem: draft.problem, refs: draftRefs });
     insertedIds.push(id);
   }
   return insertedIds;
@@ -657,6 +909,9 @@ export function startPoResearch(
   const repoPath = dir.path;
   const agentId = agentIdRaw || "claude_code";
   if (!hasAgent(agentId)) return { status: "error", error: `에이전트 없음: ${agentId}` };
+  // 무인 trifecta(capability_caps C1/M3) — 리서치도 skip_permissions 무인 세션.
+  const rGuard = guardUnattendedRepo(repoPath);
+  if (!rGuard.ok) return { status: "error", error: `${rGuard.code}: ${rGuard.capped.join(", ")}` };
 
   const researchId = randomUUID();
   const sessionId = createSession(
@@ -680,6 +935,12 @@ export function startPoResearch(
     reportFile,
     briefsFile,
     existingBriefs: dedupCorpus(repoPath),
+    // 과거 결정 요약 — 수집과 «같은» decisionHistory(repoPath) 헬퍼로 이 repo 이력만(다른 레포
+    // 결정이 새 제안을 오염시키지 않게, repo_path 격리) 최근 N건을 채워 넘긴다. 리서치산 브리프도
+    // 수집산과 같은 백로그·같은 30초 결재를 받으니 점수를 사람의 누적 평가에 맞춰 보정한다.
+    decisionHistory: decisionHistory(repoPath),
+    // 점수대별 과신 보정 — 수집과 동형. 이 repo 결과 전체를 점수대로 결정적 집계 (repo_path 격리).
+    outcomeHistory: outcomeHistory(repoPath),
     designDirective: designDirective ?? undefined,
     lens,
     scope,
@@ -840,6 +1101,9 @@ export function startPoRevision(briefId: string, comment: string, locale?: strin
   const dir = resolveAndEnsureRepoDir(row.repo_path);
   if ("error" in dir) return { status: "error", error: dir.error };
   if (!hasAgent("claude_code")) return { status: "error", error: "에이전트 없음: claude_code" };
+  // 무인 trifecta(capability_caps C1/M3) — 브리프 수정 재종합도 skip_permissions 무인 세션.
+  const revGuard = guardUnattendedRepo(dir.path);
+  if (!revGuard.ok) return { status: "error", error: `${revGuard.code}: ${revGuard.capped.join(", ")}` };
 
   const sessionId = createSession(
     dir.path,
@@ -960,6 +1224,9 @@ export function startPoDesignBootstrap(
   const repoPath = dir.path;
   const agentId = agentIdRaw || "claude_code";
   if (!hasAgent(agentId)) return { status: "error", error: `에이전트 없음: ${agentId}` };
+  // 무인 trifecta(capability_caps C1/M3) — 디자인 부트스트랩도 skip_permissions 무인 세션.
+  const dbGuard = guardUnattendedRepo(repoPath);
+  if (!dbGuard.ok) return { status: "error", error: `${dbGuard.code}: ${dbGuard.capped.join(", ")}` };
 
   // 이미 «생성 중» 이면 막는다 — 두 번 누르면 새 세션이 옛 세션 id 를 덮어써 추적 불능이 된다.
   const running = (

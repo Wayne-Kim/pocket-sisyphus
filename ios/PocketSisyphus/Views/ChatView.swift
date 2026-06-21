@@ -299,6 +299,16 @@ struct ChatView: View {
                     .id(session.id)
             }
             .frame(maxHeight: .infinity)
+            // 「로딩 중 빈-상태 금지」 — 콜드 진입에서 첫 청크가 도착하기 전(특히 Tor 위 느린 첫
+            // 호출)까지 검은 빈 터미널만 보이면 «멈췄나/빈 세션인가» 인상을 준다. 내용이 한 번이라도
+            // 도착하면(vm.hasTerminalContent) 사라지는 1회성 로딩 안내를 얹는다. 터치는 통과시켜
+            // (allowsHitTesting=false) 로딩 중에도 터미널 제스처를 막지 않는다.
+            .overlay {
+                if !vm.hasTerminalContent {
+                    LoadingStateView(message: "대화를 불러오는 중…")
+                        .allowsHitTesting(false)
+                }
+            }
             // 와이드·수동 둘 다 고정 폭이라 가로 스크롤은 항상 켠다 (화면보다 넓으면 훑어서 본다).
             // 크롬 숨김 FAB — 설정에서 켜면 노출(세로/가로 무관). 헤더·입력바·상태바를 토글로
             // 숨겨 터미널을 크게 본다. 미러링 화면(RemoteScreenView)의 FAB 와 같은 모양·역할.
@@ -312,6 +322,9 @@ struct ChatView: View {
                 Divider()
                 // 입력 전송 실패/연결 끊김 표면화 — fire-and-forget 키 입력이 silent drop 됐을 때.
                 inputDeliveryBanner
+                // 재연결이 «비복구» 사유(페어링 만료 등)로 중단됐을 때의 안내 — 「설정 필요」 계열
+                // 이라 warning 톤(danger 아님). 사용자가 재페어링/업데이트로 직접 해소해야 한다.
+                connectionNonRecoverableBanner
                 // «에이전트가 나를 기다리는 중» 배너 — 딥링크/목록에서 들어왔을 때 스크롤백을
                 // 뒤지지 않아도 «지금 내 차례» 임을 즉시 알 수 있게. ChatVM 이 WS turn_complete
                 // (즉시) + 폴링 waiting_since (fallback) 로 켜고, 출력 재개/전송/exit 로 끈다.
@@ -340,6 +353,7 @@ struct ChatView: View {
         .overlay(alignment: .top) { recordingHUD }
         .animation(.easeInOut(duration: 0.2), value: speech.isRecording)
         .animation(.easeInOut(duration: 0.2), value: vm.ptyInputDelivery)
+        .animation(.easeInOut(duration: 0.2), value: vm.connectionNonRecoverable)
         .inFlightBanner()
         // 키보드 언어 변경 감지 — 사용자가 globe 키로 영문↔한글 토글 시 fire.
         // 활성 first responder 의 textInputMode 검사 → isAsciiKeyboard 갱신 → UI 자동 swap.
@@ -1070,6 +1084,29 @@ struct ChatView: View {
             .background(Color.secondary.opacity(0.10))
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text("다시 연결됐어요. 입력을 다시 시도해 주세요."))
+            .transition(.opacity)
+        }
+    }
+
+    /// 재연결 «비복구» 안내 — 자동 재연결 루프가 멈춘 상태(페어링 만료/인증 폐기 등).
+    /// 색은 의미 토큰: 「설정 필요」 = warning(노랑). 일시적 끊김(danger)·복구중(secondary)과
+    /// 구분된다. 사용자가 재페어링/업데이트로 해소해야 하는 «진짜 주의» 상태.
+    @ViewBuilder
+    private var connectionNonRecoverableBanner: some View {
+        if let message = vm.connectionNonRecoverable {
+            HStack(spacing: 6) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.caption2.weight(.semibold))
+                Text(message)
+                    .font(.caption)
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(Theme.warning)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .background(Theme.warning.opacity(Theme.Opacity.fill))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(message))
             .transition(.opacity)
         }
     }

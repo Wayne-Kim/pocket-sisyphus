@@ -14,6 +14,30 @@
 
 ---
 
+## Implementation status (daemon-layer, first scope)
+
+The **unattended-path invariants** are now enforced in code (`mac/daemon`), ahead of #1·#2, because the personal-data MCP
+plane already ships (`mcp/catalog.ts` exposes write Gmail/Calendar). Map of cap → module:
+
+- **M2 capability classes** (§2.2) — `mcp/policy.ts` classifies each catalog entry/server into READ/LOCAL/EGRESS/SOURCE-WRITE;
+  unclassified → EGRESS (conservative).
+- **C1/M3/M1 unattended hard-block** (§3c/§5) — `mcp/unattended.ts` + `mcp/native.ts`: an unattended unit may not have any
+  EGRESS/SOURCE-WRITE MCP connected. Shared-repo paths (cron tick · worktree-less workflow run · PO collect/research/revise/
+  design-bootstrap) are **statically refused** before launch; isolated worktrees (PO exec/workflow) have their `.mcp.json`
+  rewritten to READ/LOCAL-only (`materializeUnattendedMcpJson`). Config-phase rejection also blocks adding a capped MCP to a
+  repo that already has unattended automation, and creating/enabling a cron in a repo with a capped MCP (`unattended_trifecta_denied`).
+- **T1 taint marker** (§2.1) — `taint.ts` + `sessions.external_content_tainted`: monotonic (never cleared), propagated on
+  cron `continue`/next node/worktree, computed at session creation from connected personal-data MCP. Tainted sessions are
+  EGRESS-deny by default (`sessionEgressAllowed`/`guardTaintedEgress`).
+- **C3 notification consistency** — `notify/index.ts` drops the output preview for tainted sessions (meta signals only).
+- **(deferred)** the **T2 interactive (human-present) per-action confirmation gate** and its localized UI strings (§7) are a
+  separate follow-up — the daemon emits the stable machine code `unattended_trifecta_denied` for that UI to localize.
+
+Contract tests: `mcp/policy.test.ts`, `mcp/unattended.test.ts`, `taint.test.ts`, plus route-level rejection cases in
+`routes/mcp.test.ts` / `routes/cron.test.ts`.
+
+---
+
 ## 1. Why — the lethal trifecta
 
 When three capabilities converge «within a single session», zero-click data exfiltration (the EchoLeak / ShadowLeak family) becomes possible:

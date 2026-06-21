@@ -93,6 +93,7 @@ localLlm.post("/download", async (c) => {
   } catch (e) {
     const msg = (e as Error).message;
     if (msg === "insufficient_disk") return c.json({ error: "insufficient_disk" }, 400);
+    if (msg === "lan_only_mode") return c.json({ error: "lan_only_mode" }, 409);
     if (msg === "busy") return c.json({ error: "busy" }, 409);
     return c.json({ error: "download_failed", detail: msg }, 500);
   }

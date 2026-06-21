@@ -66,11 +66,12 @@ struct DaemonPathsBundleTests {
         #expect(DaemonPaths.torDataDir.hasSuffix("/daemon/share/tor"))
     }
 
-    @Test("daemonEntry 는 [tsx, src/index.ts] 형태 — daemon 부팅 명령이 이걸 그대로 사용")
+    @Test("daemonEntry 는 [--import, tsx, src/index.ts] 형태 — `node --import tsx <entry>` 단일 프로세스 부팅")
     func daemonEntryShape() {
         let entry = DaemonPaths.daemonEntry
-        #expect(entry.count == 2)
-        #expect(entry[0].hasSuffix("/node_modules/.bin/tsx"))
-        #expect(entry[1].hasSuffix("/src/index.ts"))
+        #expect(entry.count == 3)
+        #expect(entry[0] == "--import")
+        #expect(entry[1] == "tsx")
+        #expect(entry[2].hasSuffix("/src/index.ts"))
     }
 }

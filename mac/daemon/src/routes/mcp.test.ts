@@ -30,6 +30,7 @@ vi.mock("../auth.js", () => ({
 
 import fs from "node:fs";
 import path from "node:path";
+import { insertCronJob } from "../cron/store.js";
 
 let app: Hono;
 let writeConfig: typeof import("../config.js").writeConfig;
@@ -172,6 +173,54 @@ describe("OAuth 트리거 / 취소 / 삭제 라이프사이클", () => {
     expect((await req("DELETE", `/api/mcp/${id}`)).status).toBe(200);
     const list = (await (await req("GET", "/api/mcp")).json()) as { servers: unknown[] };
     expect(list.servers).toHaveLength(0);
+  });
+});
+
+describe("무인 trifecta 정적 거부 (capability_caps C1/M3)", () => {
+  it("repo 에 무인 cron 이 있으면 쓰기(SOURCE_WRITE) MCP 등록을 409 로 거부", async () => {
+    const repo = `${H.repoDir}/has-cron-write`;
+    fs.mkdirSync(repo, { recursive: true });
+    insertCronJob({
+      title: "t", kind: "agent", agent: "claude_code", repoPath: repo,
+      command: "x", shell: null, schedule: "0 9 * * *", timezone: null,
+      skipPermissions: true, sessionMode: "fresh", overlapPolicy: "skip",
+      catchUp: false, notify: false, enabled: true,
+    });
+    const res = await req("POST", "/api/mcp", {
+      catalogId: "gmail", agent: "claude_code", repoPath: repo, url: "https://g", writeEnabled: true,
+    });
+    expect(res.status).toBe(409);
+    expect((await res.json() as { error: string }).error).toBe("unattended_trifecta_denied");
+  });
+
+  it("custom(EGRESS) MCP 도 무인 cron repo 엔 거부", async () => {
+    const repo = `${H.repoDir}/has-cron-custom`;
+    fs.mkdirSync(repo, { recursive: true });
+    insertCronJob({
+      title: "t", kind: "agent", agent: "claude_code", repoPath: repo,
+      command: "x", shell: null, schedule: "0 9 * * *", timezone: null,
+      skipPermissions: true, sessionMode: "fresh", overlapPolicy: "skip",
+      catchUp: false, notify: false, enabled: true,
+    });
+    const res = await req("POST", "/api/mcp", {
+      catalogId: "custom", agent: "claude_code", repoPath: repo, url: "https://c",
+    });
+    expect(res.status).toBe(409);
+  });
+
+  it("읽기 전용 메일/캘린더는 무인 cron repo 라도 허용 (EGRESS leg 없음 → 201)", async () => {
+    const repo = `${H.repoDir}/has-cron-readonly`;
+    fs.mkdirSync(repo, { recursive: true });
+    insertCronJob({
+      title: "t", kind: "agent", agent: "claude_code", repoPath: repo,
+      command: "x", shell: null, schedule: "0 9 * * *", timezone: null,
+      skipPermissions: true, sessionMode: "fresh", overlapPolicy: "skip",
+      catchUp: false, notify: false, enabled: true,
+    });
+    const res = await req("POST", "/api/mcp", {
+      catalogId: "gmail", agent: "claude_code", repoPath: repo, url: "https://g", writeEnabled: false,
+    });
+    expect(res.status).toBe(201);
   });
 });
 

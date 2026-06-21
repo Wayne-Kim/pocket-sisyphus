@@ -29,6 +29,7 @@ import {
 import { getCronScheduler } from "../cron/scheduler.js";
 import { startCronJob } from "../cron/executor.js";
 import { resolveScriptFile, normalizeShell } from "../cron/terminal.js";
+import { guardUnattendedRepo } from "../mcp/unattended.js";
 
 export const cron = new Hono();
 cron.use("*", bearerAuth);
@@ -67,6 +68,14 @@ cron.post("/", async (c) => {
     const dir = resolveAndEnsureRepoDir(repoInput);
     if ("error" in dir) {
       return c.json({ error: "repo_dir_failed", message: dir.error }, 400);
+    }
+
+    // 무인 trifecta 정적 거부(capability_caps C1/M3) — 이 repo 에 EGRESS·SOURCE_WRITE MCP 가
+    // 연결돼 있으면 무인 cron 을 «아예 만들 수 없다»(개인-데이터+외부통신 동시 불가). iOS 가
+    // 코드로 로컬라이즈한다.
+    const guard = guardUnattendedRepo(dir.path);
+    if (!guard.ok) {
+      return c.json({ error: guard.code, capped: guard.capped }, 409);
     }
 
     // 종류별 실행 스펙: 에이전트면 agent+프롬프트, 터미널이면 shell+스크립트 파일.
@@ -234,6 +243,18 @@ cron.patch("/:id", async (c) => {
       const sched = validateSchedule(effSchedule, effTz);
       if (!sched.valid) {
         return c.json({ error: "invalid_schedule", message: sched.error }, 400);
+      }
+    }
+
+    // 무인 trifecta 정적 거부(capability_caps C1/M3) — 「합쳐진」 결과가 enabled 인데 그 repo 에
+    // EGRESS·SOURCE_WRITE MCP 가 연결돼 있으면 거부(disabled 토글·repo 변경 모두 커버). 이미
+    // disabled 로 끄는 패치는 막지 않는다(무인 실행이 아니므로).
+    const effEnabled = patch.enabled !== undefined ? patch.enabled : existing.enabled === 1;
+    if (effEnabled) {
+      const effRepo = patch.repoPath ?? existing.repo_path;
+      const guard = guardUnattendedRepo(effRepo);
+      if (!guard.ok) {
+        return c.json({ error: guard.code, capped: guard.capped }, 409);
       }
     }
 

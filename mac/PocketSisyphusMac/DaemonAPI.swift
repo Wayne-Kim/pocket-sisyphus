@@ -265,6 +265,39 @@ enum DaemonAPI {
         }
     }
 
+    /// 딥링크 브리지 도달 가능성 점검 결과 — 설정 화면이 «죽은 주소» 경고를 띄울지 판단한다.
+    /// status: "ok" | "http_error" | "unreachable" | "inconclusive".
+    struct DeepLinkHealth: Decodable {
+        let status: String
+        let base: String?
+        let custom: Bool?
+        let httpStatus: Int?
+    }
+
+    /// 딥링크 브리지 주소 도달 가능성을 점검한다. base 를 주면 저장 전 그 값으로(테스트/입력
+    /// 검증용), 없으면 저장된 설정 기준. 비차단 — 호출자가 백그라운드 Task 로 부른다.
+    static func checkDeepLinkHealth(base: String?) async throws -> DeepLinkHealth {
+        var path = "/api/notify/deeplink-health"
+        if let base, !base.isEmpty {
+            var comps = URLComponents()
+            comps.queryItems = [URLQueryItem(name: "base", value: base)]
+            if let q = comps.percentEncodedQuery, !q.isEmpty { path += "?\(q)" }
+        }
+        let req = try notifyRequest(path: path, method: "GET")
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse else {
+            throw Error.http(status: -1, body: "non-http response")
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            try throwAPIError(status: http.statusCode, data: data)
+        }
+        do {
+            return try JSONDecoder().decode(DeepLinkHealth.self, from: data)
+        } catch {
+            throw Error.decode("\(error)")
+        }
+    }
+
     /// webhook URL 갱신 방식 — 평문 URL 은 저장 후 화면에 안 남기므로(redact 정책)
     /// 「기존 URL 그대로 두고 나머지 설정만 바꾸는」 케이스가 필요하다.
     enum WebhookURLUpdate {

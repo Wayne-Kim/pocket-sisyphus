@@ -12,6 +12,30 @@
 
 ---
 
+## 구현 상태 (daemon 계층, 1차 범위)
+
+**무인 경로 불변식** 을 #1·#2 보다 «우선» 코드로 강제했다(`mac/daemon`) — 개인-데이터 MCP plane 이 이미 출하됐기
+때문이다(`mcp/catalog.ts` 가 쓰기 Gmail/Calendar 노출). 캡 → 모듈 대응:
+
+- **M2 능력 클래스**(§2.2) — `mcp/policy.ts` 가 카탈로그/서버를 READ/LOCAL/EGRESS/SOURCE-WRITE 로 분류; 분류 불명은
+  보수적으로 EGRESS.
+- **C1/M3/M1 무인 하드 차단**(§3c/§5) — `mcp/unattended.ts` + `mcp/native.ts`: 무인 단위엔 EGRESS·SOURCE-WRITE MCP 가
+  연결될 수 없다. 공유 repo 경로(cron tick · worktree 없는 워크플로우 run · PO 수집/리서치/수정/디자인 부트스트랩)는
+  실행 전 **정적 거부**; 격리 worktree(PO 구현/워크플로우)는 `.mcp.json` 을 READ/LOCAL 만 남게 다시 쓴다
+  (`materializeUnattendedMcpJson`). 설정 단계에서도 무인 자동화가 있는 repo 에 캡 대상 MCP 를 새로 붙이는 것과, 캡
+  대상 MCP 가 있는 repo 에 cron 생성/활성화를 거부한다(`unattended_trifecta_denied`).
+- **T1 오염 표식**(§2.1) — `taint.ts` + `sessions.external_content_tainted`: 단조(해제 없음), cron `continue`/다음 노드/
+  worktree 로 전파, 세션 생성 시 연결된 개인-데이터 MCP 로 초기 오염 판정. 오염 세션의 EGRESS 는 기본 deny
+  (`sessionEgressAllowed`/`guardTaintedEgress`).
+- **C3 알림 정합** — `notify/index.ts` 가 오염 세션의 출력 미리보기를 싣지 않는다(메타 신호만).
+- **(후속)** **T2 대화형(사람 있음) per-action 확인 게이트** 와 그 로케일 UI 문구(§7)는 별도 단계 — daemon 은 그 UI 가
+  로컬라이즈할 안정적 머신 코드 `unattended_trifecta_denied` 를 내보낸다.
+
+계약 테스트: `mcp/policy.test.ts`, `mcp/unattended.test.ts`, `taint.test.ts`, 그리고 `routes/mcp.test.ts`/
+`routes/cron.test.ts` 의 라우트 거부 케이스.
+
+---
+
 ## 1. 왜 — lethal trifecta
 
 세 능력이 «한 세션 안에» 동시에 모이면 제로클릭 데이터 유출(EchoLeak·ShadowLeak 류)이 성립한다:

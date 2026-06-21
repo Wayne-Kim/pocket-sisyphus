@@ -260,7 +260,11 @@ private struct McpServerRow: View {
             Button {
                 onConnect()
             } label: {
-                Text(server.statusValue == .expired ? "다시 연결" : "연결하기")
+                if server.statusValue == .expired {
+                    Text("다시 연결")
+                } else {
+                    Text("연결하기")
+                }
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)

@@ -34,6 +34,12 @@
  * ux 는 «플로우 마찰·이해(인식 vs 회상)·완수» 를 Nielsen 10 휴리스틱으로 본다(업계가 시각 디자인
  * 리뷰와 UX 휴리스틱 평가를 다른 방법론으로 구분하는 그대로). 같은 기계장치에 «사용성» 렌즈를 별개로
  * 채운 것이다 — design 이 «어떻게 보이나» 라면 ux 는 «어떻게 쓰이나».
+ * "readability"(가독성·유지보수성)는 logic(도메인·정합성)과 «다른» 렌즈 — logic 이 «도메인 규칙이
+ * 맞는가·일관적인가»(불변식·상태 전이의 정합성)를 본다면 readability 는 «코드 표면이 사람에게 읽기
+ * 쉬운가»(명명 명확성·일관성·파일/함수 길이·구조 분해·중첩 깊이·매개변수 수·매직 넘버·주석 품질)만
+ * 본다. design(시각)↔ux(사용성)를 직교 렌즈로 쪼갠 전례와 같은 식으로 logic(도메인 정합)↔readability
+ * (표면 legibility)도 직교한다 — 도메인 로직 정합·불변식은 명시적으로 logic 렌즈에 위임해 중복
+ * 정의하지 않는다. 동작은 보존하되 «읽기 쉬운 형태» 만 제안한다(버그·정합성 신고가 아니다).
  */
 import { type PoLocale } from "./i18n/locale.js";
 import { t, type MsgId } from "./i18n/t.js";
@@ -49,7 +55,8 @@ export type PoLens =
   | "analytics"
   | "ops"
   | "logic"
-  | "ux";
+  | "ux"
+  | "readability";
 
 /** 알려진 렌즈 id (UI 노출 집합 + 입구 검증의 SSOT). */
 export const PO_LENSES = [
@@ -64,6 +71,7 @@ export const PO_LENSES = [
   "ops",
   "logic",
   "ux",
+  "readability",
 ] as const;
 
 /**
@@ -80,7 +88,8 @@ export function parseLens(value: unknown): PoLens {
     value === "analytics" ||
     value === "ops" ||
     value === "logic" ||
-    value === "ux"
+    value === "ux" ||
+    value === "readability"
     ? value
     : "default";
 }
@@ -109,6 +118,7 @@ const PERSONA_ID: Record<PoLens, MsgId> = {
   ops: "persona.ops",
   logic: "persona.logic",
   ux: "persona.ux",
+  readability: "persona.readability",
 };
 
 export function lensPersona(lens: PoLens, loc?: PoLocale): string {
@@ -162,6 +172,7 @@ export function researchLensHeadmatter(
   if (lens === "analytics") return t("lens.research.analytics", loc);
   if (lens === "ops") return t("lens.research.ops", loc);
   if (lens === "logic") return t("lens.research.logic", loc);
+  if (lens === "readability") return t("lens.research.readability", loc);
   if (lens === "ux") {
     const base = t("lens.research.ux", loc);
     // «화면 포함» — 기본 ux 머리말 «뒤» 에 화면 캡처·판정 블록을 «추가» 만 한다. uxScreens 가
@@ -200,7 +211,10 @@ export function collectLensHeadmatter(lens: PoLens, loc: PoLocale): string {
       return t("lens.collect.logic", loc);
     case "ux":
       return t("lens.collect.ux", loc);
+    // "readability"(가독성) — 수집 머리말은 후속 단계. 지금은 default 로 떨어져 머리말 없는 일반 수집과
+    // byte-identical 이고, 추가 시 lens.collect.readability 를 만들어 위 렌즈들과 «같은 패턴»(우선 신호 +
+    // 종합 spec 요건)으로 case 를 더한다 — 리서치 readability 렌즈와 의미를 짝 맞춘다(중복 정의 금지).
     default:
-      return ""; // default(전방위)·design(전용 분기가 처리) — 머리말 없음, 일반 수집과 byte-identical
+      return ""; // default(전방위)·design(전용 분기가 처리)·readability(후속) — 머리말 없음, 일반 수집과 byte-identical
   }
 }

@@ -44,16 +44,33 @@
 #                  [O] 도 «자동 삭제 안 함» — 동적 조회(Text(LocalizedStringKey(변수)))는
 #                  정적으로 못 풀어 거짓 양성이 날 수 있다. 후보를 확인하고 «사람이» 지운다.
 #
+# CI 게이트 (--strict — 위 [T]·[O] 가 «옵트인이라 기본에서 빠지고 CI 강제가 없어 새 노출
+#   문자열이 번역 없이 머지되는» 회귀를 PR 에서 막는다):
+#   S. --strict 는 «A–D + [T] 를 차단» 으로, «[O] 를 비차단(후보 표면화)» 으로 묶은 CI 게이트
+#      모드다. [T] 를 항상 켜(--coverage 내장) 노출 문자열의 knownRegions 완역을 강제하고,
+#      [O] 는 끄지 않되 «거짓 양성 대비 사람 판정»(수용 기준 ③)이라 종료코드에 넣지 «않는다».
+#      기존 부채로 CI 가 처음부터 빨개지지 않도록 «baseline»(아래)에 등재된 차단 후보는
+#      게이트에서 «차감» 한다 — 레포의 «이 diff 가 새로 들인 후보에 집중» 모델(=래칫)이다.
+#      baseline 에 없는 «새» 차단 후보가 1건이라도 있으면 비-0 종료해 PR 을 막는다.
+#   baseline 파일: 차단 후보의 «fingerprint»(TAB 구분 `코드\t레포상대경로\t식별자`) 목록.
+#      «#» 주석·빈 줄 허용. 기본 경로 scripts/i18n-lint-baseline.tsv (있으면 자동 사용),
+#      --baseline=PATH 또는 환경변수 I18N_LINT_BASELINE 로 교체. 게이트가 막으면 그 fingerprint 를
+#      «### BASELINE-PASTE-BEGIN..END» 블록으로 찍어 준다 — 의도된 부채면 그대로 baseline 에 붙인다.
+#
 # 사용법:
 #   ./scripts/i18n-lint.sh                 # 기본: iOS·Mac 소스 A–D 스캔, 후보 있으면 비-0 종료
 #   ./scripts/i18n-lint.sh --orphans       # 위에 더해 카탈로그 orphan([O]) 점검을 «추가»(유지보수 스윕)
 #   ./scripts/i18n-lint.sh --coverage      # 위에 더해 완역 커버리지([T]) 점검을 «추가»(미완역 게이트)
+#   ./scripts/i18n-lint.sh --strict        # CI 게이트: A–D+[T] 차단 · [O] 비차단 · baseline 차감
+#   ./scripts/i18n-lint.sh --strict --orphans  # 위에 더해 [O] 전체 목록까지(여전히 비차단)
+#   ./scripts/i18n-lint.sh --baseline=PATH # baseline 파일 교체(기본 scripts/i18n-lint-baseline.tsv)
 #   ./scripts/i18n-lint.sh PATH...         # 지정한 디렉터리/파일만 스캔(회귀 테스트가 사용)
 #   ./scripts/i18n-lint.sh --soft          # «리포트만» — 후보가 있어도 항상 0 종료(게이트 끔)
 #   ./scripts/i18n-lint.sh --quiet         # 안내/가이드 헤더 생략(기계 소비용)
 #
 # 종료코드: 후보 0 → 0, 1건 이상 → 1 (호출자가 게이트로 쓸 수 있게). --soft 면 항상 0.
 #           («후보» 는 A–D + (옵트인 시) [O] + (옵트인 시) [T] 합산. 기본 실행은 [O]·[T] 미포함.)
+#           --strict 면 «새(=baseline 미등재) A–D+[T]» 만 종료코드에 센다 — [O] 는 비차단.
 #
 set -euo pipefail
 
@@ -63,23 +80,38 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SOFT=0
 QUIET=0
 ORPHANS=0
+ORPHANS_EXPLICIT=0
 COVERAGE=0
+STRICT=0
+BASELINE="${I18N_LINT_BASELINE:-}"
 PATHS=()
 
 for arg in "$@"; do
   case "$arg" in
     --soft|--no-fail) SOFT=1 ;;
     --quiet|-q)       QUIET=1 ;;
-    --orphans)        ORPHANS=1 ;;
+    --orphans)        ORPHANS=1; ORPHANS_EXPLICIT=1 ;;
     --coverage)       COVERAGE=1 ;;
+    --strict)         STRICT=1 ;;
+    --baseline=*)     BASELINE="${arg#*=}" ;;
     -h|--help)
-      sed -n '2,57p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+      sed -n '2,73p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     --*) echo "i18n-lint: 알 수 없는 옵션: $arg" >&2; exit 2 ;;
     *)   PATHS+=("$arg") ;;
   esac
 done
+
+# --strict(CI 게이트)는 [T](--coverage)·[O](--orphans) 분석을 «항상» 켠다 — [T] 는 차단,
+# [O] 는 비차단으로 합산한다(아래 파이썬). baseline 미지정이면 표준 경로를 자동 사용한다.
+if [ "$STRICT" -eq 1 ]; then
+  COVERAGE=1
+  ORPHANS=1
+  if [ -z "$BASELINE" ] && [ -f "$SCRIPT_DIR/i18n-lint-baseline.tsv" ]; then
+    BASELINE="$SCRIPT_DIR/i18n-lint-baseline.tsv"
+  fi
+fi
 
 # 인자로 경로가 없으면 두 앱의 소스 루트를 스캔 (ios/build 는 자연히 제외됨).
 if [ ${#PATHS[@]} -eq 0 ]; then
@@ -89,14 +121,50 @@ fi
 # 모든 휴리스틱은 파이썬에 둔다 — 유니코드(한글)·문자열/주석 렉싱·파일 내 상관(변수 추적)이
 # BSD grep/sed 보다 안정적이다. 따옴표 친 heredoc('PYEOF') 라 셸 확장이 없어 정규식의
 # 역슬래시/달러가 그대로 전달된다.
-SOFT="$SOFT" QUIET="$QUIET" ORPHANS="$ORPHANS" COVERAGE="$COVERAGE" python3 - "${PATHS[@]}" <<'PYEOF'
+SOFT="$SOFT" QUIET="$QUIET" ORPHANS="$ORPHANS" ORPHANS_EXPLICIT="$ORPHANS_EXPLICIT" \
+  COVERAGE="$COVERAGE" STRICT="$STRICT" BASELINE="$BASELINE" REPO_ROOT="$REPO_ROOT" \
+  python3 - "${PATHS[@]}" <<'PYEOF'
 import os, re, sys, json
 
 SOFT     = os.environ.get("SOFT", "0") == "1"
 QUIET    = os.environ.get("QUIET", "0") == "1"
 ORPHANS  = os.environ.get("ORPHANS", "0") == "1"
+ORPHANS_EXPLICIT = os.environ.get("ORPHANS_EXPLICIT", "0") == "1"
 COVERAGE = os.environ.get("COVERAGE", "0") == "1"
+STRICT   = os.environ.get("STRICT", "0") == "1"
+BASELINE_PATH = os.environ.get("BASELINE", "") or ""
+REPO_ROOT = os.environ.get("REPO_ROOT") or os.getcwd()
 paths = sys.argv[1:]
+
+# ── baseline(차단 후보 fingerprint) 로드 ─────────────────────────────────────────
+# fingerprint = `코드\t레포상대경로\t식별자` (TAB 구분). «#» 주석·빈 줄은 무시.
+# --strict 가 «기존/의도된 부채» 를 게이트에서 차감하는 래칫의 SSOT.
+def load_baseline(p):
+    s = set()
+    if not p:
+        return s
+    try:
+        with open(p, encoding='utf-8') as f:
+            for ln in f:
+                ln = ln.rstrip('\r\n')
+                if not ln.strip() or ln.lstrip().startswith('#'):
+                    continue
+                s.add(ln)
+    except OSError:
+        pass
+    return s
+BASELINE = load_baseline(BASELINE_PATH)
+
+def relroot(p):
+    """fingerprint 용 «레포 루트 상대» 경로 — 머신/CI 간 안정적(cwd 비의존)."""
+    try:
+        return os.path.relpath(os.path.abspath(p), REPO_ROOT)
+    except ValueError:
+        return os.path.abspath(p)
+def fp_src(code, path, ident):  # A–D fingerprint (라인번호 비포함 — 텍스트가 곧 정체성)
+    return "%s\t%s\t%s" % (code, relroot(path), ident)
+def fp_cov(cat_path, key):      # [T] fingerprint
+    return "T\t%s\t%s" % (relroot(cat_path), key)
 
 # ── 한글 탐지 (음절 + 자모) ──────────────────────────────────────────────────
 HANGUL = re.compile(r'[가-힣ᄀ-ᇿ㄰-㆏]')
@@ -395,9 +463,12 @@ META = {
           'localizations 가 «통째로 빈» 키는 추출만 되고 안 채워진 것 — 죽은 키일 수도 있어 --orphans 도 확인'),
 }
 
-findings = []   # (path, lineno, code, excerpt)
-def add(path, lineno, code, orig):
-    findings.append((path, lineno, code, excerpt(orig)))
+findings = []   # (path, lineno, code, excerpt, ident)
+def add(path, lineno, code, orig, ident=None):
+    # ident = baseline fingerprint 의 «정체성» 조각. 기본은 excerpt(orig) 와 동일하되,
+    #   [B] 처럼 발췌에 라인번호 주석(@L..)이 붙는 경우만 호출부에서 안정적인 ident 를 넘긴다.
+    e = excerpt(orig)
+    findings.append((path, lineno, code, e, e if ident is None else ident))
 
 for fp in swift_files(paths):
     try:
@@ -441,8 +512,11 @@ for fp in swift_files(paths):
             for m in RE_STRVAR_USE.finditer(code):
                 nm = m.group('name')
                 if nm in strvars and strvars[nm] != idx:
+                    # 발췌엔 정의 라인번호(@L..)를 붙이되, baseline fingerprint(ident)는
+                    #   라인번호 비포함 — 정의가 위아래로 움직여도 같은 부채로 본다.
                     add(fp, idx, 'B',
-                        line.rstrip() + '   ← 변수 `%s` 한글 리터럴 정의 @L%d' % (nm, strvars[nm]))
+                        line.rstrip() + '   ← 변수 `%s` 한글 리터럴 정의 @L%d' % (nm, strvars[nm]),
+                        ident=excerpt(line))
                     break
 
         # ── D: 중첩 보간 String(localized:) ──────────────────────────
@@ -608,6 +682,134 @@ def relp(p):
     except ValueError:
         return p
 
+# ── --strict (CI 게이트): A–D+[T] 차단 · [O] 비차단 · baseline 차감 ────────────────────
+# 옵트인이라 기본에서 빠지고 CI 강제가 없던 [T]·[O] 를 PR 에서 «강제» 하는 모드. 차단 집합은
+#   A–D(소스 안티패턴) + [T](미완역)이고, baseline 에 등재된 fingerprint 는 «기존/의도된 부채»
+#   로 보고 게이트에서 «차감» 한다(=래칫: 새 후보만 막는다). [O] 는 «거짓 양성 대비 사람 판정»
+#   (수용 기준 ③)이라 표면화하되 종료코드엔 «안» 넣는다.
+if STRICT:
+    src_new, src_base = [], []   # A–D: baseline 미등재(=차단) / 등재(=차감)
+    for path, lineno, code, exc, ident in findings:
+        f = fp_src(code, path, ident)
+        (src_base if f in BASELINE else src_new).append((path, lineno, code, exc, f))
+    cov_new, cov_base = [], []   # [T]: 동일
+    for cat_path, key, missing in coverage_findings:
+        f = fp_cov(cat_path, key)
+        (cov_base if f in BASELINE else cov_new).append((cat_path, key, missing, f))
+    n_gate   = len(src_new) + len(cov_new)   # «차단» = 종료코드에 세는 새 후보
+    n_base   = len(src_base) + len(cov_base)  # baseline 으로 차감된 기존 부채
+    n_orphan = len(orphan_findings)           # [O] = 비차단
+
+    if not QUIET:
+        bl = relp(BASELINE_PATH) if BASELINE_PATH else "(없음)"
+        print("%si18n-lint --strict%s — CI 게이트 (A–D+[T] 차단 · [O] 비차단 · baseline 차감)" % (BOLD, RST))
+        print("%s스캔 대상: %s%s" % (DIM, ', '.join(relp(p) for p in paths), RST))
+        print("%sbaseline: %s   게이트(새 차단)=%d · baseline 차감=%d · [O] 비차단=%d%s"
+              % (DIM, bl, n_gate, n_base, n_orphan, RST))
+        print()
+
+    _order = {'A': 0, 'B': 1, 'C': 2, 'D': 3}
+    def _print_src(items):
+        items = sorted(items, key=lambda x: (_order[x[2]], x[0], x[1]))
+        cnt = {}
+        for _, _, c, _, _ in items:
+            cnt[c] = cnt.get(c, 0) + 1
+        last = None
+        for path, lineno, code, exc, f in items:
+            if code != last:
+                name, conf, fix = META[code]
+                print("%s■ [%s] %s — 신뢰도 %s (%d건)%s" % (BOLD, code, name, conf, cnt[code], RST))
+                print("%s   고치는 법: %s%s" % (DIM, fix, RST))
+                last = code
+            print("%s:%d — [%s] %s — %s" % (relp(path), lineno, code, META[code][0], exc))
+    def _print_cov(items):
+        name, conf, fix = META['T']
+        print("%s■ [T] %s — 신뢰도 %s (%d건)%s" % (BOLD, name, conf, len(items), RST))
+        print("%s   고치는 법: %s%s" % (DIM, fix, RST))
+        items = sorted(items, key=lambda x: (relp(x[0]), -len(x[2]), x[1]))
+        last = None
+        for cat_path, key, missing, f in items:
+            rc = relp(cat_path)
+            if rc != last:
+                print("%s   ─ %s%s" % (DIM, rc, RST))
+                last = rc
+            print("%s — [T] 미완역(누락 %d: %s) — %s" % (rc, len(missing), ','.join(missing), excerpt(key)))
+
+    # 차단(새) 후보 — 게이트가 막는 대상.
+    if n_gate:
+        if src_new:
+            _print_src(src_new)
+            print()
+        if cov_new:
+            _print_cov(cov_new)
+            print()
+
+    # [O] orphan — 비차단(후보 표면화). --orphans 를 함께 주면 전체 목록, 아니면 요약 한 줄.
+    if n_orphan and not QUIET:
+        if ORPHANS_EXPLICIT:
+            name, conf, fix = META['O']
+            print("%s■ [O] %s — 비차단(informational) (%d건)%s" % (BOLD, name, n_orphan, RST))
+            print("%s   고치는 법: %s%s" % (DIM, fix, RST))
+            for cat_path, key, n_tr, n_locales in sorted(
+                    orphan_findings, key=lambda x: (relp(x[0]), -x[2], -len(x[1]), x[1])):
+                print("%s — [O] orphan(번역 %d/%d) — %s" % (relp(cat_path), n_tr, n_locales, excerpt(key)))
+            print()
+        else:
+            print("%sℹ [O] orphan 후보 %d건 — 비차단(사람 판정). 전체 목록: ./scripts/i18n-lint.sh --orphans%s"
+                  % (DIM, n_orphan, RST))
+            print()
+
+    # 게이트가 막았으면 fingerprint 를 «붙여넣기» 블록으로 — 의도된 부채면 baseline 에 추가.
+    if n_gate:
+        if not QUIET:
+            print("%s새 차단 후보 %d건이 PR 을 막았습니다.%s" % (BOLD, n_gate, RST))
+            print("  · [T] 는 누락 로케일에 번역을 채우고, A–D 는 카탈로그 우회를 고치세요.")
+            print("  · 이미 알려진/의도된 부채면 아래 fingerprint 를 baseline(%s)에 그대로 추가하세요:"
+                  % (relp(BASELINE_PATH) if BASELINE_PATH else "scripts/i18n-lint-baseline.tsv"))
+        # 기계 소비용 — QUIET 여도 항상 찍는다(테스트/자동화가 파싱).
+        print("### BASELINE-PASTE-BEGIN")
+        for path, lineno, code, exc, f in sorted(src_new, key=lambda x: x[4]):
+            print(f)
+        for cat_path, key, missing, f in sorted(cov_new, key=lambda x: x[3]):
+            print(f)
+        print("### BASELINE-PASTE-END")
+
+    # ── down-ratchet: 더는 매칭 안 되는 «stale» baseline 등재 표면화(비차단) + burn-down ──────────
+    # baseline 에 등재됐지만 이번 스캔의 어떤 fingerprint 와도 안 맞는 줄 = 이미 고쳐졌거나 코드가
+    # 이동한 «죽은» 부채. 차단(비-0 종료)하지 않고 — [O] 와 같은 «후보 표면화, 사람 판정» 톤 — 표면화만
+    # 하고, 사람이 검토 후 baseline 에서 지운다(자동 삭제·재기록 안 함). 같은 fingerprint 가 여러 줄
+    # (N:1)이면 set 로 접혀 «한 번이라도 매칭되면 살아있음». 주석·빈 줄은 load_baseline 에서 이미 제외.
+    # baseline 이 없거나(빈 집합) strict 가 아니면 미실행(기존대로). burn-down 한 줄은 진척 가시화.
+    if BASELINE:
+        seen_fp = {fp_src(code, path, ident) for path, lineno, code, exc, ident in findings}
+        seen_fp |= {fp_cov(cat_path, key) for cat_path, key, missing in coverage_findings}
+        stale = sorted(BASELINE - seen_fp)
+        n_stale = len(stale)        # 고친(=매칭 안 되는) 부채 후보
+        n_live  = len(BASELINE) - n_stale   # 남은(=여전히 매칭되는) 부채
+        if n_stale:
+            if not QUIET:
+                print("%sℹ baseline stale 후보 %d건%s — 비차단(사람 판정). 등재됐지만 이번 스캔에서 한 번도"
+                      % (DIM, n_stale, RST))
+                print("%s   매칭 안 됨(고쳐졌거나 코드 이동). 검토 후 baseline(%s)에서 아래 줄을 «지우»세요(자동 삭제 안 함):%s"
+                      % (DIM, relp(BASELINE_PATH) if BASELINE_PATH else "scripts/i18n-lint-baseline.tsv", RST))
+            # 기계 소비용 — QUIET 여도 항상(테스트/자동화가 파싱).
+            print("### BASELINE-STALE-BEGIN")
+            for f in stale:
+                print(f)
+            print("### BASELINE-STALE-END")
+        if not QUIET:
+            print("%sbaseline burn-down: 고친 부채 %d건 · 남은 부채 %d건 (등재 %d)%s"
+                  % (BOLD, n_stale, n_live, len(BASELINE), RST))
+
+    if not QUIET:
+        print()
+        if n_gate == 0:
+            print("✅ 게이트 통과 — 새 차단 후보 0건 (baseline 차감 %d · [O] %d 비차단)." % (n_base, n_orphan))
+        print("%s합계(strict): 게이트=%d · baseline=%d · [O]=%d (차단=게이트만)%s"
+              % (BOLD, n_gate, n_base, n_orphan, RST))
+
+    sys.exit(0 if (SOFT or n_gate == 0) else 1)
+
 if not QUIET:
     title = "카탈로그 우회 안티패턴 후보 스캔"
     if ORPHANS:
@@ -639,11 +841,11 @@ order = {'A': 0, 'B': 1, 'C': 2, 'D': 3}
 findings.sort(key=lambda x: (order[x[2]], x[0], x[1]))
 
 counts = {'A': 0, 'B': 0, 'C': 0, 'D': 0}
-for _, _, code, _ in findings:
+for _, _, code, _, _ in findings:
     counts[code] += 1
 
 last_code = None
-for path, lineno, code, exc in findings:
+for path, lineno, code, exc, _ident in findings:
     if code != last_code:
         name, conf, fix = META[code]
         print("%s■ [%s] %s — 신뢰도 %s (%d건)%s" % (BOLD, code, name, conf, counts[code], RST))

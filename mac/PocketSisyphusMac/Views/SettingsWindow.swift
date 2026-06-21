@@ -167,11 +167,12 @@ private struct PowerSettingsView: View {
                 .background(Color.secondary.opacity(0.06))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
 
-                // 클램쉘 ON = 시스템 전체가 안 자는 상태 → footgun 경고.
+                // 클램쉘 ON = 시스템 전체가 안 자는 상태 → footgun 경고. 진짜 «주의» 이므로
+                // warning(노랑). 주황(.orange)은 pro 전용이라 경고·에러에 쓰지 않는다.
                 if power.clamshellEnabled {
                     HStack(alignment: .top, spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(.yellow)
                         Text("지금 Mac이 잠들지 않도록 설정돼 있어요. 다 쓰면 꺼 주세요.")
                             .font(.callout)
                             .fixedSize(horizontal: false, vertical: true)
@@ -179,7 +180,7 @@ private struct PowerSettingsView: View {
                     }
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.orange.opacity(0.12))
+                    .background(Color.yellow.opacity(0.12))
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
 
@@ -1221,7 +1222,7 @@ private struct LocalLlmSettingsView: View {
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.orange.opacity(0.10))
+                .background(Color.yellow.opacity(0.12))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             }
 
@@ -1286,8 +1287,9 @@ private struct LocalLlmSettingsView: View {
                 .fixedSize(horizontal: false, vertical: true)
             if ctxRestartNeeded {
                 HStack(spacing: 8) {
+                    // 실행 중 서버 ctx 불일치 = «설정 필요» 알림 → warning(노랑). 주황(pro) 아님.
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(.yellow)
                     Text("실행 중인 서버는 아직 이전 크기로 떠 있어요 — 정지하면 다음 사용 때 새 크기로 시작해요.")
                         .font(.caption)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1300,7 +1302,7 @@ private struct LocalLlmSettingsView: View {
                     .controlSize(.small)
                 }
                 .padding(8)
-                .background(Color.orange.opacity(0.10))
+                .background(Color.yellow.opacity(0.12))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
@@ -1364,14 +1366,16 @@ private struct LocalLlmSettingsView: View {
 
     private func runtimeStatusRow(label: Text, detail: String, ok: Bool) -> some View {
         HStack(spacing: 8) {
+            // 미설치 = «설정 필요» → warning(노랑), 설치됨 = success(초록). 주황(pro)은 안 쓴다.
+            // 색 외 신호: 아이콘 모양(원형 체크 ↔ 삼각 느낌표) + 「설치됨/미설치」 텍스트.
             Image(systemName: ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                .foregroundStyle(ok ? Color.green : Color.orange)
+                .foregroundStyle(ok ? Color.green : Color.yellow)
             label.font(.callout)
             Text(verbatim: detail).font(.caption).foregroundStyle(.secondary)
             Spacer()
             (ok ? Text("설치됨") : Text("미설치"))
                 .font(.caption.weight(.medium))
-                .foregroundStyle(ok ? Color.green : Color.orange)
+                .foregroundStyle(ok ? Color.green : Color.yellow)
         }
     }
 
@@ -1462,8 +1466,9 @@ private struct LocalLlmSettingsView: View {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.green)
                     Text("설치 완료").foregroundStyle(Color.green)
                 } else {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Color.orange)
-                    Text("설치 실패").foregroundStyle(Color.orange)
+                    // 설치 실패 = 에러 → danger(빨강). 위 success(초록) 표시와 대칭. 주황(pro) 아님.
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Color.red)
+                    Text("설치 실패").foregroundStyle(Color.red)
                 }
             }
             .font(.caption)
@@ -1479,14 +1484,15 @@ private struct LocalLlmSettingsView: View {
             if p.state == "error" {
                 Text("자동 설치에 실패했어요. 위 명령을 터미널에서 직접 실행한 뒤 다시 시도하세요.")
                     .font(.caption2)
-                    .foregroundStyle(Color.orange)
+                    // 본문 안내는 중립(.secondary) — 실패 신호는 위 「설치 실패」 빨강 표시가 전달.
+                    .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 // brew 자체가 없어 실패한 경우만 (daemon 의 homebrew_missing 코드) — 정확한
                 // Homebrew 설치 안내로 분기. 빌드 오류 등 다른 실패엔 띄우지 않아 오해를 막는다.
                 if p.error == "homebrew_missing" {
                     Text("Homebrew 가 없으면 llama.cpp 를 설치할 수 없어요. brew.sh 에서 Homebrew 를 설치한 뒤 다시 시도하세요.")
                         .font(.caption2)
-                        .foregroundStyle(Color.orange)
+                        .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 // npm/node 자체가 없어 실패한 경우 (daemon 의 node_missing 코드) — 정확한 Node.js
@@ -1494,7 +1500,7 @@ private struct LocalLlmSettingsView: View {
                 if p.error == "node_missing" {
                     Text("Node.js(npm) 가 없으면 이 도구를 설치할 수 없어요. nodejs.org 의 Node.js 를 설치한 뒤 다시 시도하세요.")
                         .font(.caption2)
-                        .foregroundStyle(Color.orange)
+                        .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }

@@ -41,7 +41,8 @@ You pick which code-agent CLI to use per session from a picker (the daemon spawn
      When you add/remove a code agent in the picker, update «every surface that exposes the
      agent list» together to keep them consistent (fixing only one place causes drift, where a
      new user reads «is my agent supported» differently on each surface):
-       1. The "Supported code agents" list above in this README.
+       1. The "Supported code agents" list above in this README, and its Korean mirror
+          `README.ko.md` (kept in sync as a doc pair).
        2. Web landing `web/content/site.en.ts` — the `agents.items` structured list + body copy
           (`meta.description`, `hero.tagline`, the «Agent usage (…)» in pricing). It is a single
           English landing page, so it is intentionally not localized.
@@ -56,7 +57,7 @@ You pick which code-agent CLI to use per session from a picker (the daemon spawn
      OpenCode). The special / non-exposed (not code agents) shell=Terminal and local_llm=Qwen Code
      are classified as «advanced tools» and are not in the "Supported code agents" list (they
      appear only under the guide's «Pro features» group).
-     `scripts/agent-surfaces-lint.sh` checks these 4 surfaces against the picker SSOT. -->
+     `scripts/agent-surfaces-lint.sh` checks these 5 surfaces against the picker SSOT. -->
 
 Model inference itself is sent by each agent CLI directly to its own provider's API — Pocket Sisyphus does not relay that traffic.
 
@@ -66,8 +67,10 @@ Model inference itself is sent by each agent CLI directly to its own provider's 
 > plane of those two apps (phone ↔ your Mac) never passes through any maintainer infrastructure.
 > The **web** (`web/`) in this repository is just a static intro page (landing) — it ships only as
 > a GitHub Pages build with no backend/DB — so it is not subject to the principles above. There is
-> no separate community feature; (as is common for competing products) community runs on
-> **Discord**. For scope, see [Project boundaries](#project-boundaries) below.
+> no separate community feature — questions, sharing, and bug reports all run on the public repo's
+> **[GitHub Discussions](https://github.com/Wayne-Kim/pocket-sisyphus/discussions)** (the same
+> destination the iOS in-app «Community» and the web footer point to). For scope, see
+> [Project boundaries](#project-boundaries) below.
 
 - 🎯 **A «one-person legion» tool — for solo developers & founders**: drive code agents «solo or as a legion» right from your phone, and build and run a service alone — no team, server, or outsourcing. The «zero external infra · zero cost · 100% OSS stack» below is the very foundation of this «self-sufficiency» — the user must be able to keep running it to the end even if the maintainer disappears (so the principles below do not conflict with this goal; rather, they exist *for* it).
 - ⛔ **Zero external server dependency**: no maintainer infrastructure. Uses only the Tor distributed network + public-IP echo (ipify, etc.).
@@ -90,7 +93,18 @@ This repository contains **three projects**, and the scope of the «zero externa
 | **Mac app** (`mac/`) | ⛔ 0 | The user's host/daemon. Self-sufficient with bundled `tor`+`sshd` — no external infra needed. |
 | **Web** (`web/`) | Static hosting only | Just a static **intro page (landing)**. Ships only as a GitHub Pages build, no dynamic backend/DB — a lightweight marketing page, separate from the apps' «zero infra» principle. |
 
-The community feature was **deliberately not built** — as is common for competing products, **Discord** stands in for it (an external platform outside the repo, unrelated to «zero infra»).
+The community feature was **deliberately not built** — the public repo's **[GitHub Discussions](https://github.com/Wayne-Kim/pocket-sisyphus/discussions)** stands in for it (an external platform outside the repo, unrelated to «zero infra»).
+
+<!-- Community = «one destination» SSOT. Every surface exposing a «Community / Discussions» entry
+     points to the public repo's GitHub Discussions, and its label matches that destination (say
+     «Discussions», never «Discord» — Discord here is only the optional session-notification
+     webhook, a separate feature):
+       1. Root README — README.md (here + the Core-principles note + the Cost note) + README.ko.md.
+       2. Web footer — `web/content/site.en.ts` `URLS.discussions` (the URL SSOT) → `footer.links`.
+       3. iOS Settings «Community» — `ios/PocketSisyphus/Views/SettingsSheet.swift`
+          `CommunityLinks.discussions` (reused by the bug-report prefill + `StuckHelpLink`).
+     A single surface drifting means a user following the funnel meets two different «community»
+     promises — when the destination changes, change every platform's SSOT above together. -->
 
 In short, «zero external infra» is a principle that protects the private data path of *the two apps the user runs*, not one that also binds the *public intro site* — because an intro page inherently presumes external access.
 
@@ -188,7 +202,7 @@ The apps are free to use. Only advanced features are gated behind an optional Pr
 | Pro — workflows · scheduling · terminal/local LLM · live preview · monitor mirroring | Optional · subscription or lifetime license (App Store) |
 | Code-agent CLI usage fees | Billed directly by each provider (Anthropic / Google / OpenAI) — does not pass through us |
 
-> The maintainer «infrastructure» cost is $0/yr for the two apps (→ [Core principles](#core-principles)). The web (intro site) uses external hosting and the community runs on Discord, so they are separate — see [Project boundaries](#project-boundaries).
+> The maintainer «infrastructure» cost is $0/yr for the two apps (→ [Core principles](#core-principles)). The web (intro site) uses external hosting and the community runs on GitHub Discussions, so they are separate — see [Project boundaries](#project-boundaries).
 
 ## License · Contributing
 
@@ -198,5 +212,6 @@ The apps are free to use. Only advanced features are gated behind an optional Pr
 - ⛔ **Redistribution to third parties** of the source/builds, or **commercial use/sale** in any form.
 - The rights to use, distribute, and sell commercially are **reserved exclusively** to the copyright holder (Wayne Kim). Official builds are provided only through the App Store / Mac distribution channels.
 - **Contributing requires agreeing to [`CLA.md`](CLA.md)** — you assign the economic copyright in your contribution to the copyright holder (falling back to an exclusive license in jurisdictions where assignment is not permitted). This is what makes «commercial rights belong solely to the copyright holder» hold airtight, even through contributor code.
+- **New contributor?** [`CONTRIBUTING.md`](CONTRIBUTING.md) is the one place that covers how to build each project, the checks your PR must pass, the SSOT contracts to respect, and the CLA.
 
 > The «100% OSS stack» (in [Core principles](#core-principles) above) means it is *built with* bundled dependencies/components (BSD/Apache/MIT), not that the project «itself» is open source. The code in this repository is governed by the EULA above.

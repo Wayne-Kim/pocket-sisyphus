@@ -548,7 +548,7 @@ function insertMessage(
  * 즉 retain ≫ 모든 reader 윈도우라 «화면/스크롤백 복원» 에 손실이 없다. user/exit/result
  * 메시지는 건드리지 않는다(개수가 적고 의미가 큼).
  */
-const PTY_CHUNK_RETAIN = 8000;
+export const PTY_CHUNK_RETAIN = 8000;
 
 /**
  * 세션의 pty_chunk 를 최신 `retain` 개만 남기고 정리. created_at DESC 로 retain 번째 경계를

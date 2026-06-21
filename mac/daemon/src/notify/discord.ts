@@ -178,6 +178,108 @@ export function normalizeDeepLinkBaseUrl(raw: string): string {
 }
 
 /**
+ * 딥링크 브리지(«Open in app» 가 거치는 https 페이지) 도달 가능성 점검 결과.
+ *
+ * - "ok"           : 브리지가 정상 응답(<400) — 경고 불필요.
+ * - "http_error"   : 서버가 4xx/5xx 로 응답 — 페이지가 깨졌을 수 있음(경고 대상).
+ * - "unreachable"  : 인터넷은 되는데 이 도메인만 응답 없음 — «도메인 사망»(경고 대상).
+ * - "inconclusive" : 우리가 오프라인이거나 LAN-only 라 판단 불가 — «거짓 경고» 방지로 경고 안 함.
+ */
+export type DeepLinkBridgeHealth = {
+  /** 실제로 점검한 base URL (정규화됨). */
+  base: string;
+  /** 사용자 지정 주소면 true, 기본 페이지면 false. */
+  custom: boolean;
+  status: "ok" | "http_error" | "unreachable" | "inconclusive";
+  /** HTTP 응답이 있었던 경우의 상태코드. */
+  httpStatus?: number;
+  /** 진단용 짧은 사유 (offline / lan-only / 에러 메시지). */
+  detail?: string;
+};
+
+type ProbeOutcome =
+  | { kind: "response"; status: number }
+  | { kind: "error"; detail: string };
+
+/** 단발 HEAD/GET 프로브 — 절대 throw 하지 않고 결과를 분류해 돌려준다. */
+async function probeUrl(
+  url: string,
+  method: "HEAD" | "GET",
+  timeoutMs: number,
+): Promise<ProbeOutcome> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { method, redirect: "follow", signal: controller.signal });
+    return { kind: "response", status: res.status };
+  } catch (e) {
+    return { kind: "error", detail: (e as Error).message };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * 브리지 주소 프로브 — HEAD 우선(가벼움)이되, 정적 호스트가 HEAD 를 막아 4xx/5xx 를 주면
+ * GET 으로 재확인한다. 네트워크 오류는 일시적 blip 대비 한 번 더 시도(디바운스).
+ */
+async function probeBridge(url: string): Promise<ProbeOutcome> {
+  let last: ProbeOutcome = { kind: "error", detail: "not attempted" };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const head = await probeUrl(url, "HEAD", 6000);
+    if (head.kind === "response") {
+      if (head.status < 400) return head;
+      // HEAD 미지원(405/403 등)일 수 있어 GET 으로 한 번 더 확인 후 그 결과를 채택.
+      return probeUrl(url, "GET", 6000);
+    }
+    last = head;
+  }
+  return last;
+}
+
+/**
+ * 인터넷 자체가 되는지 — 브리지 실패가 «도메인 사망» 인지 «우리 오프라인» 인지 가르는 control.
+ * 알림이 실제로 거치는 discord.com 을 control 로 쓴다: 이게 되면 «알림은 가는데 딥링크만 죽은»
+ * 바로 그 사고이므로 경고가 유효하고, 이것도 안 되면 오프라인이라 경고를 보류한다(거짓 경고 방지).
+ */
+async function probeOnline(): Promise<boolean> {
+  const r = await probeUrl("https://discord.com", "HEAD", 5000);
+  return r.kind === "response";
+}
+
+/**
+ * 딥링크 브리지 도달 가능성 점검. baseUrl(사용자 지정)이 비면 기본 페이지를 점검한다.
+ * 비차단 — 호출자(라우트)가 알림 발송과 무관하게 부르고, 결과만 설정 UI 에 전달한다.
+ */
+export async function checkDeepLinkBridgeHealth(
+  baseUrl?: string | null,
+): Promise<DeepLinkBridgeHealth> {
+  const custom = !!(baseUrl && baseUrl.trim() !== "");
+  const base = custom
+    ? normalizeDeepLinkBaseUrl(baseUrl as string)
+    : DEFAULT_DEEP_LINK_BRIDGE_BASE;
+
+  // LAN 전용 모드 — 비-LAN outbound 차단이라 판단 불가. 경고 보류.
+  if (guardNonLanEgress("deep-link bridge health")) {
+    return { base, custom, status: "inconclusive", detail: "lan-only" };
+  }
+
+  const probe = await probeBridge(base);
+  if (probe.kind === "response") {
+    return probe.status < 400
+      ? { base, custom, status: "ok", httpStatus: probe.status }
+      : { base, custom, status: "http_error", httpStatus: probe.status };
+  }
+
+  // 브리지가 네트워크 레벨에서 응답 없음 — 오프라인인지 도메인 사망인지 control 로 구분.
+  const online = await probeOnline();
+  if (!online) {
+    return { base, custom, status: "inconclusive", detail: "offline" };
+  }
+  return { base, custom, status: "unreachable", detail: probe.detail };
+}
+
+/**
  * fragment → https 브리지 링크. id/경로는 fragment 로 실어 네트워크에 안 흘린다.
  * fragment 는 bare 세션 id(하위호환) 또는 «route 경로» ("backlog", "backlog/<id>") —
  * 브리지 페이지가 route prefix 를 해석해 `pocketsisyphus://<경로>` 로 핸드오프한다.

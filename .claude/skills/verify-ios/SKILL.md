@@ -86,6 +86,7 @@ changes that touch strings/translations, also check at the **code level**:
 ./scripts/i18n-lint.sh            # two-armed Korean ternary · Text(String variable) · raw Korean return · nested-interpolation candidates
 ./scripts/i18n-lint.sh --orphans  # above + catalog orphan ([O]) check (below) — dead-key maintenance sweep
 ./scripts/i18n-lint.sh --coverage # above + full-translation coverage ([T]) check (below) — is each knownRegions locale «actually» filled
+./scripts/i18n-lint.sh --strict   # CI gate (below): blocks A–D + [T], surfaces [O] non-blocking, subtracts baseline (enforced in PR)
 ./scripts/design-lint.sh          # literal color (.orange/.yellow/.blue) bypass · black/white hardcode · global .tint() bleed · icon-button a11y label omission candidates
 ./scripts/po-agent-lint.sh        # candidates for agent passthrough omission at PO session spawn (collect/research/decide/cleanup/restart) entry points (ARCHITECTURE §14.4)
 ```
@@ -137,6 +138,23 @@ confirm «all 10 locales are filled». The cure is «filling translations» (a h
 patch script), not auto-generation — for non-translation intent, make it explicit with
 `Text(verbatim:)`·`shouldTranslate:false`·all-locales=source and it's excluded. The exit-code
 convention is the same (candidates≥1→non-0, `--soft`→always 0, `--quiet` supported).
+
+### CI gate — `--strict` (enforced in PR)
+
+`--coverage`/`--orphans` being opt-in meant they were skipped in the default run and there
+was no CI enforcement, so new exposed strings could be merged untranslated. `--strict` is
+the gate that closes that hole: it bundles **A–D + [T] as blocking** and **[O] as non-
+blocking** (orphans are surfaced as candidates for human judgment — false-positive prone via
+dynamic lookup — so they never fail the gate). Locales come from `knownRegions` (SSOT), never
+hardcoded. To avoid CI being born red on pre-existing debt, blocking candidates listed in the
+**baseline** (`scripts/i18n-lint-baseline.tsv`, override with `--baseline=PATH` or
+`I18N_LINT_BASELINE`) are **subtracted** from the gate — only «new» (non-baselined) blocking
+candidates fail the PR (the repo's «focus on what the diff newly introduced» ratchet). When
+the gate blocks, it prints the candidates' fingerprints in a `### BASELINE-PASTE-BEGIN..END`
+block — if it's known/intended debt, paste those lines straight into the baseline; if it's a
+real omission, fill the translation (or fix the catalog bypass) instead. CI runs
+`./scripts/i18n-lint.sh --strict` + `./scripts/test-i18n-lint.sh` (the detection-logic self-
+test) on every PR via `.github/workflows/i18n.yml`.
 
 A screenshot only sees «visible» colors — color-policy violations in screens/states you
 can't see (the drift CLAUDE.md's «Color Token Policy» calls out as having «an incident

@@ -23,8 +23,49 @@ import { DAEMON_VERSION } from "../version.js";
 export const LOGS_DIR = path.join(CONFIG_DIR, "logs");
 export const UNIFIED_LOG_FILE = path.join(LOGS_DIR, "unified.log");
 
-/** 매 daemon spawn 마다 새 6자 — PID 재활용 위험 없는 인스턴스 식별자. */
-const INSTANCE_ID = crypto.randomBytes(3).toString("hex");
+/**
+ * 매 daemon spawn 마다 새 6자 — PID 재활용 위험 없는 인스턴스 식별자.
+ * 크래시 핸들러·진단 번들이 «어느 daemon 인스턴스의 라인인가» 를 식별하는 데도 쓰므로 export.
+ */
+export const INSTANCE_ID = crypto.randomBytes(3).toString("hex");
+
+/**
+ * 마지막으로 emit 된 채널 이벤트의 가벼운 스냅샷. 크래시 핸들러가 «죽기 직전 무슨 일을
+ * 하고 있었나» 의 단서로 쓴다 (uncaughtException 스택만으로는 비동기 경계 너머의 맥락이
+ * 끊기므로). 본문(message)·민감 fields 는 담지 않는다 — 채널/레벨/action/시각만.
+ */
+export interface LastChannelEvent {
+  /** log.logger 채널명 (daemon / tor / ws / …). */
+  channel: string;
+  /** 6단계 레벨 라벨. */
+  level: string;
+  /** 이 이벤트의 `event.action` (있을 때만) — 메시지 본문은 일부러 제외. */
+  action?: string;
+  /** ISO 8601 UTC. */
+  at: string;
+}
+
+let _lastChannelEvent: LastChannelEvent | null = null;
+
+/** 마지막 채널 이벤트 스냅샷 (없으면 null). 크래시 핸들러·진단 번들이 읽는다. */
+export function getLastChannelEvent(): LastChannelEvent | null {
+  return _lastChannelEvent;
+}
+
+/** 매 emit 시 «마지막 채널 이벤트» 를 갱신. 본문/민감 fields 는 일부러 보관하지 않는다. */
+function recordChannelEvent(
+  channel: string,
+  level: string,
+  fields?: Record<string, unknown>,
+): void {
+  const action = fields?.["event.action"];
+  _lastChannelEvent = {
+    channel,
+    level,
+    action: typeof action === "string" ? action : undefined,
+    at: new Date().toISOString(),
+  };
+}
 
 /** 한 줄 atomic-append 보장 한도. 초과하면 message 끝을 잘라 들어가게 한다. */
 const MAX_LINE_BYTES = 4096;
@@ -146,12 +187,12 @@ export interface Logger {
 export function makeLogger(channel: LogChannel): Logger {
   const child = baseLogger.child({ "log.logger": channel });
   return {
-    trace: (m, f) => child.trace(f ?? {}, m),
-    debug: (m, f) => child.debug(f ?? {}, m),
-    info: (m, f) => child.info(f ?? {}, m),
-    warn: (m, f) => child.warn(f ?? {}, m),
-    error: (m, f) => child.error(f ?? {}, m),
-    fatal: (m, f) => child.fatal(f ?? {}, m),
+    trace: (m, f) => { recordChannelEvent(channel, "trace", f); child.trace(f ?? {}, m); },
+    debug: (m, f) => { recordChannelEvent(channel, "debug", f); child.debug(f ?? {}, m); },
+    info: (m, f) => { recordChannelEvent(channel, "info", f); child.info(f ?? {}, m); },
+    warn: (m, f) => { recordChannelEvent(channel, "warn", f); child.warn(f ?? {}, m); },
+    error: (m, f) => { recordChannelEvent(channel, "error", f); child.error(f ?? {}, m); },
+    fatal: (m, f) => { recordChannelEvent(channel, "fatal", f); child.fatal(f ?? {}, m); },
   };
 }
 
@@ -204,6 +245,9 @@ export function bridgeConsoleToUnifiedLog(): void {
     } else {
       message = args.map(stringifyArg).join(" ");
     }
+    // bridge 경로도 «마지막 채널 이벤트» 에 반영 — console.* 만으로 죽기 직전 맥락이
+    // 끊기지 않게. action 은 없다(평문 console 엔 event.action 이 없으므로).
+    recordChannelEvent(channel, level);
     getChannel(channel)[level](message);
   }
 

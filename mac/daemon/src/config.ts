@@ -176,6 +176,35 @@ export type AscConfig = {
   privateKeyPem: string;
 };
 
+/**
+ * PO 제안 생성의 «다중 패스 합치 채택» 설정. **기본 미설정 = 1패스(끔)** — 켜지 않으면 기존과
+ * 완전히 동일하게 한 번 생성한 결과를 그대로 ingest 한다(회귀 0).
+ *
+ * 배경: 한 회차의 단일 생성은 모델 임의성 때문에 제안의 질·점수가 들쭉날쭉하다. 같은 기회를
+ * 여러 «독립» 패스에서 반복해 내놓은 것만 채택하면 그 변동을 줄일 수 있다. 비용(토큰/시간)은
+ * 패스 수에 비례해 늘므로 패스 수와 채택 기준(minAgree)을 둘 다 사용자가 조절한다.
+ */
+export type PoMultiPassConfig = {
+  /**
+   * 독립 생성 패스 수. 1(기본/미설정) = 다중 패스 끔(기존 동작). 2..PO_MAX_GENERATION_PASSES =
+   * 합치 채택. 범위 밖 값은 resolvePoMultiPass 가 클램프한다.
+   */
+  passes?: number;
+  /**
+   * 채택 최소 합치 수 — 이 수 «이상» 의 패스에 의미상 반복 등장한 제안만 채택. 미설정이면
+   * 다중 패스가 켜졌을 때 2(과반 합의의 최소), 1패스면 1. passes 보다 클 수 없다(클램프).
+   */
+  minAgree?: number;
+};
+
+/** PO(제안 생성) 관련 daemon 설정. 현재는 다중 패스 합치 채택만. */
+export type PoConfig = {
+  multiPass?: PoMultiPassConfig;
+};
+
+/** 한 수집 사이클이 돌릴 수 있는 생성 패스 수의 «절대» 상한 — 비용 폭주 방지. */
+export const PO_MAX_GENERATION_PASSES = 5;
+
 export type DaemonConfig = {
   port: number;
   /** sshd 가 listen 할 포트. 미지정이면 22022. 환경에 따라 22022 가 점유될 수 있어 사용자가
@@ -237,6 +266,8 @@ export type DaemonConfig = {
    * 1↔MAX_DEVICE_SLOTS 슬롯으로 해석한다(이진 토글 모델 — off=1·on=최대).
    */
   extraDeviceSlotAllowed?: boolean;
+  /** PO 제안 생성 설정 — 다중 패스 합치 채택 등. 미설정이면 1패스(기존 동작). */
+  po?: PoConfig;
 };
 
 /** 페어링된 폰 1대의 Secure Enclave 등록 정보 (`attestDevices` 의 원소). */
@@ -290,4 +321,30 @@ export function readConfig(): DaemonConfig | null {
 export function writeConfig(cfg: DaemonConfig): void {
   ensureConfigDir();
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), { mode: 0o600 });
+}
+
+/** 유한 정수로 강제 + [lo,hi] 클램프. 비숫자/비유한은 fallback. */
+function clampInt(v: unknown, lo: number, hi: number, fallback: number): number {
+  const n = typeof v === "number" && Number.isFinite(v) ? Math.round(v) : NaN;
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(hi, Math.max(lo, n));
+}
+
+/**
+ * PO 다중 패스 설정을 «실행 가능한» 값으로 정규화 — 미설정/이상값을 안전한 기본으로 해석한다.
+ *  - passes: [1, PO_MAX_GENERATION_PASSES] 로 클램프. 미설정/이상값 → 1(끔).
+ *  - minAgree: [1, passes] 로 클램프. 미설정이면 passes>1 일 때 2, 1패스면 1.
+ *
+ * passes===1 이면 minAgree 도 항상 1 로 떨어져 «모든 패스에 등장 = 그 한 패스» → 합치 채택이
+ * 사실상 통과(no-op)가 된다. 호출부는 passes===1 을 «다중 패스 끔(기존 경로)» 으로 분기한다.
+ */
+export function resolvePoMultiPass(cfg: DaemonConfig | null | undefined): {
+  passes: number;
+  minAgree: number;
+} {
+  const raw = cfg?.po?.multiPass;
+  const passes = clampInt(raw?.passes, 1, PO_MAX_GENERATION_PASSES, 1);
+  const defaultMinAgree = passes > 1 ? 2 : 1;
+  const minAgree = clampInt(raw?.minAgree, 1, passes, defaultMinAgree);
+  return { passes, minAgree };
 }

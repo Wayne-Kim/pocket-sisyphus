@@ -16,6 +16,7 @@ import { spawn as childSpawn, type ChildProcess } from "node:child_process";
 import { MODELS_DIR, modelFilePath } from "./paths.js";
 import { emitLocalLlmChange } from "./events.js";
 import { MODEL_CATALOG, type CatalogModel } from "./catalog.js";
+import { guardNonLanEgress } from "../egress.js";
 
 const GiB = 1024 ** 3;
 const DISK_HEADROOM_BYTES = 10 * GiB;
@@ -262,6 +263,13 @@ export async function startDownload(
     return;
   }
 
+  // LAN 전용 모드 — 모델 다운로드는 huggingface.co 로 나가는 «비-LAN outbound» 다(§5.11).
+  // 부작용(mkdirp·partial 파일·진행 상태)이 생기기 «전» 동기 throw 로 거부 → 라우트가 4xx 로 매핑,
+  // 부분 다운로드 방지. (위의 «이미 완성 → ready» 단락은 outbound 가 없으므로 막지 않는다.)
+  if (guardNonLanEgress("model download")) {
+    throw new Error("lan_only_mode");
+  }
+
   // 모델 디렉토리를 «먼저» 만든다 — 디스크 가드의 statfs 는 존재하는 경로만 잴 수 있다.
   // (fresh Mac: CONFIG_DIR/models 가 아직 없으면 statfsSync 가 ENOENT 로 throw → 첫 다운로드가
   //  download_failed 로 즉사하던 회귀를 차단. 같은 볼륨이라 디렉토리 생성 후 여유량은 동일.)
@@ -303,6 +311,12 @@ async function runDownload(
   offset: number,
   deps: DownloadDeps,
 ): Promise<void> {
+  // 단일 게이트 재확인(방어적) — aria2c spawn·fetch «직전». startDownload 가 이미 막지만,
+  // 별도 프로세스라 fetch 만 감싸선 못 막으므로 outbound 직전 한 번 더 거른다(서브프로세스가
+  // 떠버린 뒤엔 못 막음). runDownload 가 미래에 다른 경로로 불려도 누출 0 을 보장.
+  if (guardNonLanEgress("model download")) {
+    throw new Error("lan_only_mode");
+  }
   const url = hfUrl(model);
   const aria = deps.resolveAria2();
 

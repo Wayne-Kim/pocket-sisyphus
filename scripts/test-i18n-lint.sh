@@ -490,6 +490,165 @@ else
   bad "잔존 빈 키가 [T] 후보로 안 잡힘(수용 기준 #7 회귀 실패)"
 fi
 
+# ── (8) --strict (CI 게이트): A–D+[T] 차단 · [O] 비차단 · baseline 래칫 ──────────────────
+# 핵심(수용 기준 ①②③): 노출 문자열은 knownRegions «전부» 채워야 통과, orphan 은 비차단(후보),
+#   기존/의도된 부채는 baseline 으로 차감해 «새» 후보만 PR 을 막는다(레포의 diff-집중 래칫).
+echo "[8] strict: A–D+[T] 차단 · [O] 비차단 · baseline 래칫 + 옵트인/종료코드"
+STR="$TMP/strict"; mkdir -p "$STR"
+# knownRegions(SSOT): ko(source)·en·ja → 필수 검사 로케일 = en, ja (스크립트가 여기서 읽음).
+cat > "$STR/project.yml" <<'YML'
+name: Fixture
+options:
+  knownRegions: [ko, en, ja, Base]
+YML
+cat > "$STR/Localizable.xcstrings" <<'JSON'
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "스트릭트 미완역 키" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Partial" } }
+      }
+    },
+    "스트릭트 완역 키" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Done" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "完了" } }
+      }
+    },
+    "스트릭트 죽은 키" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dead" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "死" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}
+JSON
+cat > "$STR/StrictFixture.swift" <<'SWIFT'
+import SwiftUI
+struct StrictFixture: View {
+    var flag = false
+    var body: some View {
+        Text("스트릭트 미완역 키")    // 비-orphan, ja 누락 → [T] 차단
+        Text("스트릭트 완역 키")      // 비-orphan, en+ja 완역 → 통과
+        Text(flag ? "스트릭트 양갈래 한글하나" : "스트릭트 양갈래 한글둘")  // [A] 차단
+        // "스트릭트 죽은 키" 는 소스 미참조 → [O] orphan(비차단)
+    }
+}
+SWIFT
+
+# (8a) baseline 없음 → 새 차단 [A]+[T] = 2 건이 게이트로 잡혀 비-0 종료. [O] 는 비차단.
+STR_OUT="$(cd "$REPO_ROOT" && "$LINT" --strict --soft --quiet --baseline=/dev/null "$STR" 2>/dev/null)"
+if printf '%s\n' "$STR_OUT" | grep -F -- "[T] 미완역" | grep -Fq -- "스트릭트 미완역 키"; then
+  ok "[strict] 노출 문자열의 미완역(ja 누락)이 [T] 차단으로 잡힘(수용 기준 ①)"
+else bad "[strict] [T] 차단 누락: 스트릭트 미완역 키"; fi
+if printf '%s\n' "$STR_OUT" | grep -Fq -- '스트릭트 양갈래 한글하나'; then
+  ok "[strict] A–D(양갈래 한글 ternary)도 차단 집합에 포함"
+else bad "[strict] A–D 차단 누락"; fi
+if printf '%s\n' "$STR_OUT" | grep -F -- "[T] 미완역" | grep -Fq -- "스트릭트 완역 키"; then
+  bad "[strict] 오탐: 완역 키가 [T] 로 떴다"
+else ok "[strict] 완역 키(en+ja)는 차단 안 됨(음성)"; fi
+
+# 종료코드: baseline 없이 새 차단 있으면 비-0, --soft 면 0.
+(cd "$REPO_ROOT" && "$LINT" --strict --quiet --baseline=/dev/null "$STR" >/dev/null 2>&1); rc_str=$?
+[ "$rc_str" -ne 0 ] && ok "[strict] 새 차단 후보 있음 → 비-0($rc_str) (수용 기준: 실패 케이스)" \
+                    || bad "[strict] 새 차단 있는데 종료코드 0"
+(cd "$REPO_ROOT" && "$LINT" --strict --soft --quiet --baseline=/dev/null "$STR" >/dev/null 2>&1); rc_strs=$?
+[ "$rc_strs" -eq 0 ] && ok "[strict] --soft → 차단 있어도 0" || bad "[strict] --soft 인데 $rc_strs"
+
+# (8b) 래칫: 막을 때 찍는 «### BASELINE-PASTE» fingerprint 를 baseline 에 넣으면 통과(0).
+PASTE="$(printf '%s\n' "$STR_OUT" | sed -n '/BASELINE-PASTE-BEGIN/,/BASELINE-PASTE-END/p' \
+         | grep -v 'BASELINE-PASTE' | grep -Ev '^[[:space:]]*$')"
+PASTE_N="$(printf '%s\n' "$PASTE" | grep -c . )"
+[ "$PASTE_N" -eq 2 ] && ok "[strict] paste 블록에 새 차단 fingerprint 2건(A+T)" \
+                     || bad "[strict] paste 블록 fingerprint 수 이상($PASTE_N, 2 기대)"
+STR_BASE="$TMP/strict_base.tsv"
+printf '%s\n' "$PASTE" > "$STR_BASE"
+(cd "$REPO_ROOT" && "$LINT" --strict --quiet --baseline="$STR_BASE" "$STR" >/dev/null 2>&1); rc_ratchet=$?
+[ "$rc_ratchet" -eq 0 ] && ok "[strict] 래칫: baseline 등재 후 동일 후보는 통과(0) (수용 기준 ③ 사람 판정)" \
+                       || bad "[strict] 래칫 실패: baseline 등재했는데 $rc_ratchet"
+
+# (8c) [O] 비차단: orphan «만» 있고 차단(A–D·[T]) 없으면 strict 는 통과(0)여야 한다(수용 기준 ③).
+STRO="$TMP/strict_orphan"; mkdir -p "$STRO"
+cat > "$STRO/project.yml" <<'YML'
+name: Fixture
+options:
+  knownRegions: [ko, en, ja, Base]
+YML
+cat > "$STRO/Localizable.xcstrings" <<'JSON'
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "오펀온리 완역 키" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "OK" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "OK" } }
+      }
+    },
+    "오펀온리 죽은 키" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dead" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "死" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}
+JSON
+cat > "$STRO/OrphanOnly.swift" <<'SWIFT'
+import SwiftUI
+struct OrphanOnly: View {
+    var body: some View { Text("오펀온리 완역 키") }   // "오펀온리 죽은 키" 는 미참조 → [O] orphan
+}
+SWIFT
+(cd "$REPO_ROOT" && "$LINT" --strict --quiet --baseline=/dev/null "$STRO" >/dev/null 2>&1); rc_oonly=$?
+[ "$rc_oonly" -eq 0 ] && ok "[strict] orphan 만 있고 차단 없음 → 통과(0): [O] 비차단(수용 기준 ③)" \
+                      || bad "[strict] orphan 이 게이트를 막았다(비차단 위반): $rc_oonly"
+STRO_OUT="$(cd "$REPO_ROOT" && "$LINT" --strict --orphans --soft "$STRO" 2>/dev/null)"
+if printf '%s\n' "$STRO_OUT" | grep -F -- "[O]" | grep -Fq -- "비차단"; then
+  ok "[strict] [O] orphan 이 «비차단» 으로 표면화됨(후보)"
+else bad "[strict] [O] 비차단 표기 누락"; fi
+if printf '%s\n' "$STRO_OUT" | grep -F -- "[O] orphan" | grep -Fq -- "오펀온리 죽은 키"; then
+  ok "[strict] --orphans 동반 시 [O] 전체 목록(죽은 키) 표면화"
+else bad "[strict] --orphans 동반 [O] 목록 누락"; fi
+
+# (8d) 기본(비-strict)은 [T]·[O] 옵트아웃 유지: 같은 픽스처에서 [A] 만 잡고 [T] 는 안 잡는다.
+DEF_OUT="$(cd "$REPO_ROOT" && "$LINT" --soft --quiet "$STR" 2>/dev/null)"
+if printf '%s\n' "$DEF_OUT" | grep -Fq -- "[T]"; then
+  bad "[strict] 기본 실행이 [T] 를 켰다(옵트인 위반)"
+else ok "[strict] 기본 실행은 [T] 미포함(옵트인 유지) — strict 만 강제"; fi
+
+# (8e) knownRegions(SSOT) 미발견이면 strict 도 그 카탈로그 [T] 를 생략(로케일 하드코딩 금지).
+STRNOY="$TMP/strict_noyml"; mkdir -p "$STRNOY"
+cp "$STR/Localizable.xcstrings" "$STRNOY/Localizable.xcstrings"
+cp "$STR/StrictFixture.swift" "$STRNOY/StrictFixture.swift"
+STRNOY_OUT="$(cd "$REPO_ROOT" && "$LINT" --strict --soft --baseline=/dev/null "$STRNOY" 2>&1)"
+if printf '%s\n' "$STRNOY_OUT" | grep -Fq "knownRegions 미발견"; then
+  ok "[strict] knownRegions 없으면 [T] 생략(하드코딩 금지) — A–D 만 차단"
+else bad "[strict] project.yml 없는데 [T] 생략 안내 누락"; fi
+
+# (8f) down-ratchet: baseline 에 있지만 코드엔 없는 줄 → stale 로 표면화(비차단) + burn-down.
+# 죽은 등재(고쳐졌거나 코드 이동)를 «차단 아닌 surfacing» 으로 띄우고 «고친 N · 남은 M» 진척을 보인다.
+# 깨끗한 스캔 디렉터리 + 죽은 등재만으론 비-0 으로 막지 않는다(비차단).
+SSTALE="$TMP/strict_stale_dir"; mkdir -p "$SSTALE"
+cat > "$SSTALE/CleanFixture.swift" <<'SWIFT'
+import SwiftUI
+struct CleanFixture: View { var body: some View { Text("hello") } }
+SWIFT
+SSTALE_BASE="$TMP/strict_stale.tsv"
+printf '# c\nA\tios/PocketSisyphus/GoneNowhere.swift\t죽은식별자한글\n' > "$SSTALE_BASE"
+(cd "$REPO_ROOT" && "$LINT" --strict --quiet --baseline="$SSTALE_BASE" "$SSTALE" >/dev/null 2>&1); rc_st=$?
+[ "$rc_st" -eq 0 ] && ok "[strict] stale: 죽은 등재만으론 비차단(0 종료)" || bad "[strict] stale 가 막음(rc=$rc_st, 비차단 기대)"
+SSTALE_OUT="$(cd "$REPO_ROOT" && "$LINT" --strict --baseline="$SSTALE_BASE" "$SSTALE" 2>/dev/null)"
+if printf '%s\n' "$SSTALE_OUT" | sed -n '/BASELINE-STALE-BEGIN/,/BASELINE-STALE-END/p' | grep -Fq '죽은식별자한글'; then
+  ok "[strict] stale: 코드에 없는 baseline 줄이 BASELINE-STALE 로 표면화"
+else bad "[strict] stale 등재가 표면화 안 됨"; fi
+if printf '%s\n' "$SSTALE_OUT" | grep -q 'burn-down: 고친 부채 1건 · 남은 부채 0건'; then
+  ok "[strict] stale: burn-down «고친 1 · 남은 0» 진척 표기"
+else bad "[strict] burn-down 진척 라인 누락/오표기"; fi
+
 # ── 결과 ──────────────────────────────────────────────────────────────────────────────
 echo
 echo "─────────────────────────────────────────────"

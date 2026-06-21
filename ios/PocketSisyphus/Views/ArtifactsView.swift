@@ -80,11 +80,21 @@ struct ArtifactsBody: View {
     private var content: some View {
         switch state {
         case .loading:
-            ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            // 「로딩 중 빈-상태 금지」 — 데이터를 받는 중엔 «비어 있음» 대신 맥락 있는 로딩을 띄운다.
+            LoadingStateView(message: "산출물을 불러오는 중…")
         case .empty:
-            emptyState
+            EmptyStateView(
+                title: "아직 산출물이 없어요",
+                systemImage: "photo.on.rectangle.angled",
+                message: "세션이 이미지·PDF·문서 같은 파일을 만들면 여기에 모여요.",
+            )
         case .failed(let msg):
-            failedState(msg)
+            // 목록 조회 실패는 재시도(pull/버튼)로 대개 회복되는 «일시적» 실패 → warning(노랑).
+            ErrorStateView(
+                title: "산출물을 불러올 수 없어요",
+                message: msg,
+                tint: Theme.warning,
+            ) { Task { await load() } }
         case .loaded(let items):
             ScrollView {
                 if truncated {
@@ -174,40 +184,6 @@ struct ArtifactsBody: View {
         guard dir != currentDir else { return }
         currentDir = dir
         Task { await load() }
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: Theme.Spacing.l) {
-            Image(systemName: "photo.on.rectangle.angled")
-                .font(.largeTitle)
-                .foregroundStyle(.secondary)
-            Text("아직 산출물이 없어요")
-                .font(.headline)
-            Text("세션이 이미지·PDF·문서 같은 파일을 만들면 여기에 모여요.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding(Theme.Spacing.xl)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func failedState(_ msg: String) -> some View {
-        VStack(spacing: Theme.Spacing.l) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.largeTitle)
-                .foregroundStyle(Theme.warning)
-            Text("산출물을 불러올 수 없어요")
-                .font(.headline)
-            Text(msg)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            Button("다시 시도") { Task { await load() } }
-                .buttonStyle(.borderedProminent)
-        }
-        .padding(Theme.Spacing.xl)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @MainActor

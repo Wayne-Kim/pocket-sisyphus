@@ -36,7 +36,13 @@ CREATE TABLE IF NOT EXISTS sessions (
   -- 은 보관분만, ?archived=all 은 둘 다 반환한다. iOS 가 스와이프/일괄로 0↔1 을 토글하고
   -- (PATCH .../:id { archived } · POST .../bulk), «보관됨» 섹션에서 복구(unarchive)한다.
   -- 기존 row 는 마이그레이션에서 0(미보관)으로 채워져 회귀 0.
-  archived               INTEGER NOT NULL DEFAULT 0
+  archived               INTEGER NOT NULL DEFAULT 0,
+  -- 외부-콘텐츠 «오염» 표식 (capability_caps T1, docs/CAPABILITY_CAPS.md §2.1). 1 이면 이 세션이
+  -- 개인/외부 데이터(메일/캘린더 본문, 공격자 통제 콘텐츠)를 컨텍스트에 적재해 «오염» 됐고, 그
+  -- 세션의 EGRESS(외부 전송)는 기본 deny 된다 — 제로클릭 유출(EchoLeak/ShadowLeak) 차단. 단조:
+  -- 한 번 1 이 되면 해제하지 않고 continue/다음 노드/worktree 후속 세션으로 전파(src/taint.ts).
+  -- 기존 row 는 마이그레이션에서 0(비오염)으로 채워져 회귀 0.
+  external_content_tainted INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -221,6 +227,11 @@ CREATE TABLE IF NOT EXISTS workflow_runs (
   trigger_kind    TEXT NOT NULL,                      -- 'manual'|'cron'|'github'
   worktree_path   TEXT,                               -- per-run 격리 worktree 절대경로 (없으면 NULL = 공유 repo)
   worktree_branch TEXT,                               -- 그 worktree 의 브랜치 (`po/<id8>`). NULL = 격리 없음
+  -- «미해결» 신호 (workflow_attention_v1) — run 마감 시 산출. NULL = 정상(표시 없음).
+  -- 'failed'(하드 실패)|'empty'(빈 결과)|'synthetic'(터미널 출력 자동 합성본 소비). 무인(cron/github)
+  -- 실행이 «진짜 결과 없이» 끝났는데 정상 «완료» 로 보이는 막다른 길을, 앱이 배너로 표면화하는 원천.
+  attention_kind  TEXT,
+  attention_ack   INTEGER NOT NULL DEFAULT 0,         -- 1 = 사용자가 확인/처리함 (배너에서 사라짐, 거짓 경보 방지)
   started_at      INTEGER NOT NULL,
   ended_at        INTEGER
 );
@@ -243,6 +254,12 @@ CREATE TABLE IF NOT EXISTS workflow_node_runs (
   status             TEXT NOT NULL DEFAULT 'pending', -- pending|awaiting_approval|running|done|failed|needs_attention|skipped
   verdict            TEXT,                            -- 테스트 노드: 'pass'|'fail' (Phase 1+)
   iteration          INTEGER NOT NULL DEFAULT 0,      -- 루프 반복 횟수 (Phase 2)
+  loopback_reason    TEXT,                            -- 이번에 fail 루프로 되돌아간 사유 한 줄 (verdict.json summary)
+  limit_reached      INTEGER NOT NULL DEFAULT 0,      -- 1 = 재시도 한도(MAX_ITERATIONS) 도달로 루프 멈춤
+  -- 결과물 출처 (workflow_attention_v1) — NULL/'agent'(에이전트가 result.md 를 직접 남김)|
+  -- 'synthetic'(엔진이 터미널 출력으로 자동 합성)|'empty'(합성했으나 캡처 출력이 사실상 비어 있음).
+  -- 합성본/빈 결과는 «프롬프트 타이핑 화면» 이 결과로 둔갑한 것이라, 다음 노드가 헛돌지 않게 표식이 필요.
+  result_kind        TEXT,
   x                  REAL,
   y                  REAL,
   created_at         INTEGER NOT NULL,
@@ -356,6 +373,31 @@ CREATE TABLE IF NOT EXISTS po_research (
   created_at  INTEGER NOT NULL,
   updated_at  INTEGER NOT NULL
 );
+
+-- PO 루프 — 닫힌 결정(rejected/shipped/verified/missed)의 «압축 지문» 누적 보존 (po_dedup_fingerprint_v1).
+-- 배경: ingestBriefs 의 재제안 백스톱이 비교하는 dedupCorpus 는 MAX_DEDUP_CORPUS(60) «윈도우» 라,
+-- 그 밖으로 밀려난 옛 기각/출시 결정이 백스톱에서 사라져 «다르게 표현된» 재제안이 다시 새는 구멍이
+-- 있었다 (prompt.ts buildPoCleanupPrompt 주석이 이 한계를 직접 인정한다). 사람이 한 번 «하지 않기로»
+-- 한 일이 시간이 지나면 백로그에 되살아나 같은 결재를 또 강요한다 — 이 표가 그 그물을 «윈도우와
+-- 무관하게» 복원한다. po_briefs 에서 파생하지만 dedup-relevant 필드(제목+문제+evidence ref)만 추려
+-- 보존하고, executor 가 ingest 마다 닫힌 결정을 여기로 upsert 동기화하되 «삭제는 하지 않아», 윈도우
+-- 밖으로 밀리거나 옛 브리프가 정리(prune)돼도 지문은 살아남는다(= 진짜 누적 보존). 매칭은 두 번째
+-- 코퍼스로 similarity.findSimilar 에 그대로 걸어(트라이그램 + evidence ref 겹침 OR) 재사용한다. brief_id 가
+-- PK라 멱등. status 는 free text (CHECK 없음 — lens 컬럼과 동일 정책: ALTER 로 강화 못 하는 CHECK 의
+-- drift 회피). missed 도 보존하되 백스톱 «조회» 에서만 제외한다 (missed 는 «미해결 갭/재시도 후보» 라
+-- 같은 주제의 다른 접근을 하드 컷하면 안 된다 — ingestBriefs 의 missed 제외 정책과 동형).
+CREATE TABLE IF NOT EXISTS po_dedup_fingerprints (
+  brief_id   TEXT PRIMARY KEY,            -- 원 브리프 (po_briefs.id) — 멱등 upsert 키 + 역추적
+  repo_path  TEXT NOT NULL,               -- repo 격리 (다른 레포의 결정이 새 제안을 오염시키지 않게)
+  title      TEXT NOT NULL,               -- 제목 (trigram 유사도 비교용)
+  problem    TEXT NOT NULL,               -- 문제 정의 (trigram 유사도 비교용)
+  refs       TEXT NOT NULL,               -- JSON 배열 — evidence ref 원형 문자열. similarity 가 비교 시점에 구조(파일:라인/이슈/URL)를 인식한다.
+  status     TEXT NOT NULL,               -- 닫힌 시점 status (rejected/shipped/verified/missed)
+  created_at INTEGER NOT NULL,            -- 지문 최초 기록(닫힌 결정으로 처음 동기화) epoch ms
+  updated_at INTEGER NOT NULL             -- 마지막 동기화(상태/텍스트 갱신) epoch ms
+);
+
+CREATE INDEX IF NOT EXISTS idx_po_fingerprints_repo ON po_dedup_fingerprints(repo_path, status);
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 라이브 프리뷰 (preview_proxy_v1) — 사용자가 «세션별로 명시 허용» 한 로컬 dev 서버 포트.

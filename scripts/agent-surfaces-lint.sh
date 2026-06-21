@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# agent-surfaces-lint.sh — 에이전트 픽커 «SSOT» 와 «사용자에게 에이전트 목록을 노출하는 4개
+# agent-surfaces-lint.sh — 에이전트 픽커 «SSOT» 와 «사용자에게 에이전트 목록을 노출하는 5개
 # 다운스트림 표면» 의 정합을 정적으로 대조해, 표면이 뒤처졌을 때 «표면:라인 — 누락/표기불일치»
 # 를 표면화한다. design-lint.sh·i18n-lint.sh 와 같은 패밀리(휴리스틱·리포트·게이트 계약).
 #
-# 왜: README SSOT 주석이 «픽커가 SSOT 이고 4개 표면을 함께 갱신해야 드리프트가 안 난다» 고
+# 왜: README SSOT 주석이 «픽커가 SSOT 이고 모든 표면을 함께 갱신해야 드리프트가 안 난다» 고
 # 못박았는데도, 사람이 6곳을 수동으로 맞추는 한 또 어긋난다(OpenCode 가 픽커엔 있는데 README·
 # 가이드·웹·스토어·Discussions 엔 빠진 채로 carry-forward 된 이력). 이 스크립트가 픽커에
 # 에이전트를 추가/제거하면 어느 표면이 뒤처졌는지 자동으로 알려 그 수동 점검 토일을 없앤다.
@@ -19,11 +19,12 @@
 #     가이드에서 그 둘을 요구하지 않아 오탐을 막는다). 웹 agents.items 만 «선택 가능한 항목»
 #     이라 고급 도구까지 포함해 검사한다. unknown(raw) 는 표면 동기화 대상 아님.
 #
-# ── 검사하는 4개 표면 (README SSOT 주석이 열거한 집합과 «일치» — 하나 빠지면 검사가 헛돈다) ──
-#   1. README           README.md  「지원하는 코드 에이전트」 섹션         (코드)
-#   2. web              web/content/site.en.ts  `agents.items`            (코드+고급)
-#   3. iOS 가이드        ios/PocketSisyphus/Models/GuideContent.swift     (코드)
-#   4. Mac 가이드        mac/PocketSisyphusMac/GuideContent.swift          (코드)
+# ── 검사하는 5개 표면 (README SSOT 주석이 열거한 집합과 «일치» — 하나 빠지면 검사가 헛돈다) ──
+#   1. README           README.md  「Supported code agents」 섹션          (코드)
+#   2. README.ko        README.ko.md  「지원하는 코드 에이전트」 섹션       (코드)
+#   3. web              web/content/site.en.ts  `agents.items`            (코드+고급)
+#   4. iOS 가이드        ios/PocketSisyphus/Models/GuideContent.swift     (코드)
+#   5. Mac 가이드        mac/PocketSisyphusMac/GuideContent.swift          (코드)
 #
 # ── 판정 (수용 기준: 집합 누락 = «실패», 순서 불일치 = «경고») ─────────────────────────────
 #   · [MISS]  표면에 픽커 에이전트의 표시명이 «없음»(또는 표기불일치 — 예: 웹이 «Local LLM»
@@ -36,7 +37,7 @@
 #   · «후보 표면화» 가 목적이다(완전 파서 아님) — 거짓 양성이 있을 수 있고 최종 판정은 사람이.
 #
 # 사용법:
-#   ./scripts/agent-surfaces-lint.sh                 # 기본: repo 루트의 4개 표면 대조, 실패 있으면 비-0
+#   ./scripts/agent-surfaces-lint.sh                 # 기본: repo 루트의 5개 표면 대조, 실패 있으면 비-0
 #   ./scripts/agent-surfaces-lint.sh ROOT            # ROOT 를 repo 루트로 보고 대조(회귀 테스트가 사용)
 #   ./scripts/agent-surfaces-lint.sh --soft          # «리포트만» — 실패가 있어도 항상 0 종료(게이트 끔)
 #   ./scripts/agent-surfaces-lint.sh --quiet         # 안내/가이드 헤더 생략(기계 소비용)
@@ -186,6 +187,8 @@ ALL   = CODE + ADV
 SURFACES = [
     {'key': 'README',       'path': os.path.join(ROOT, 'README.md'),
      'kind': 'readme_section', 'category': 'code'},
+    {'key': 'README.ko',    'path': os.path.join(ROOT, 'README.ko.md'),
+     'kind': 'readme_section', 'category': 'code'},
     {'key': 'web',          'path': os.path.join(ROOT, 'web/content/site.en.ts'),
      'kind': 'web_items', 'category': 'all'},
     {'key': 'iOS 가이드',    'path': os.path.join(ROOT, 'ios/PocketSisyphus/Models/GuideContent.swift'),
@@ -222,11 +225,20 @@ def order_ok(required_in_reg_order, positions):
     return present == by_pos, present
 
 def extract_readme_section(text):
-    """README 「지원하는 코드 에이전트」 섹션 블록 + 시작 라인번호."""
+    """README 「지원하는 코드 에이전트」 섹션 블록 + 시작 라인번호.
+
+    영어 우선 구조(커밋 d042ab5) 이후 README.md 는 영어 제목('## Supported code agents'),
+    README.ko.md 는 한국어 제목('## 지원하는 코드 에이전트') 을 쓴다. 정확한 한 줄 매치 대신
+    «코드 에이전트 목록 섹션» 을 식별하는 견고한 기준(레벨-2 제목에 '코드 에이전트' 또는
+    'code agent(s)' 가 등장)으로 양쪽을 함께 인지한다(미래 문구 변화에도 덜 취약)."""
     lines = text.splitlines()
     start = None
     for i, ln in enumerate(lines):
-        if re.match(r'^##\s+지원하는 코드 에이전트', ln):
+        m = re.match(r'^##\s+(.*)$', ln)
+        if not m:
+            continue
+        title = m.group(1)
+        if re.search(r'코드\s*에이전트', title) or re.search(r'code\s+agents?', title, re.I):
             start = i; break
     if start is None:
         return None, None
@@ -339,7 +351,7 @@ n_fail = sum(1 for f in findings if f[3] == 'MISS') + len(ssot_errors)
 n_warn = sum(1 for f in findings if f[3] == 'WARN')
 
 if not QUIET:
-    print("%sagent-surfaces-lint%s — 픽커 SSOT ↔ 4개 노출 표면 정합 대조 (README SSOT 주석 기준)" % (BOLD, RST))
+    print("%sagent-surfaces-lint%s — 픽커 SSOT ↔ 5개 노출 표면 정합 대조 (README SSOT 주석 기준)" % (BOLD, RST))
     print("%sROOT: %s%s" % (DIM, relp(ROOT), RST))
     if CODE or ADV:
         print("%s픽커 SSOT(등록 순서):%s 코드 에이전트 = %s%s%s  ·  고급 도구 = %s%s%s" % (
@@ -355,7 +367,7 @@ if ssot_errors:
 
 if not findings and not ssot_errors:
     if not QUIET:
-        print("✅ 정합 OK — 4개 표면 모두 픽커 SSOT 의 에이전트 집합과 일치합니다.")
+        print("✅ 정합 OK — 5개 표면 모두 픽커 SSOT 의 에이전트 집합과 일치합니다.")
     sys.exit(0)
 
 # 표면 순서대로 그룹, 그 안은 (심각도 MISS 먼저) → 라인.

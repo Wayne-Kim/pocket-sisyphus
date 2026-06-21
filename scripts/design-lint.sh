@@ -12,9 +12,9 @@
 #
 # 탐지 패밀리 (CLAUDE.md 「색상 토큰 정책」 기준):
 #   L. 의미 토큰 우회 리터럴 색 — `.orange`/`.yellow`/`.blue` 가 Theme/토큰 정의 밖에서 직접 쓰임.
-#        iOS: 셋 다 후보 (Theme.pro/.warning/.info 를 쓰라).
-#        Mac: Theme 가 없어 .orange(pro)·.yellow(warning) 리터럴은 «정상» — `.blue` 만 후보
-#             (accent 누락 의심 → Color.accentColor; info=파랑이면 의도일 수 있음).
+#        iOS·Mac 모두 셋 다 후보(Mac 도 이제 DesignTokens.swift 에 Theme 색 미러가 있음 — raw hue 는
+#        의미를 숨겨 warning↔pro 혼동의 사각). 의미 토큰: orange→Theme.pro(경고면 Theme.warning) ·
+#        yellow→Theme.warning · blue→Theme.info (Mac 의 blue 는 보통 accent 누락 → Color.accentColor).
 #   W. 하드코딩 흑백 — `.foregroundColor/.foregroundStyle/.tint/.fill(... .white/.black ...)`.
 #        본문 텍스트/아이콘은 .primary/.secondary(자동 적응), 색 배경 위 텍스트면 Theme.onAccent.
 #   T. 콘텐츠/전역 .tint() 번짐 — 컨텐츠 컨테이너(TabView/WindowGroup/NavigationStack/Scene…)에
@@ -69,13 +69,30 @@
 #   페르소나/비전 비평에 남긴다. 이 도구는 «텍스트로 잡히는 후보 표면화» 가 목적 — 거짓 양성이
 #   있을 수 있으니 사람이 판정한다(i18n-lint.sh 와 같은 톤·계약).
 #
+# ── CI 게이트 (--strict — i18n-lint.sh --strict 와 동형의 «baseline 래칫») ───────────────────
+#   S. --strict 는 «후보를 baseline 으로 차감해 새(미등재) 후보만 차단» 하는 CI 게이트 모드다.
+#      이 점검은 기존 부채 후보가 수백 건이라 그대로 차단으로 켜면 통과할 수 없으므로(번역 점검의
+#      i18n-lint --strict 와 똑같은 문제), «이번 변경이 새로 들인» 후보만 막는 래칫이 필요하다.
+#      baseline 에 등재된 fingerprint 는 «기존/의도된 부채(또는 휴리스틱 거짓 양성)» 로 보고
+#      게이트(종료코드)에서 차감한다 — baseline 에 없는 «새» 후보가 1건이라도 있으면 비-0 종료해
+#      PR 을 막는다(레포의 «이 diff 가 새로 들인 후보에 집중» 모델 = 래칫).
+#   baseline 파일: 후보의 «fingerprint»(TAB 구분 `코드\t레포상대경로\t발췌`) 목록. «#» 주석·빈 줄
+#      허용. 기본 경로 scripts/design-lint-baseline.tsv (있으면 자동 사용), --baseline=PATH 또는
+#      환경변수 DESIGN_LINT_BASELINE 로 교체. 게이트가 막으면 그 fingerprint 를 «### BASELINE-PASTE-
+#      BEGIN..END» 블록으로 찍어 준다 — 의도된 부채/거짓 양성이면 그대로 baseline 에 붙인다(i18n-lint
+#      의 BASELINE-PASTE 블록과 동일한 재현 가능 갱신법). design-lint 는 iOS·Mac Swift 양쪽을 스캔하므로
+#      baseline 도 양 앱 경로(ios/PocketSisyphus·mac/PocketSisyphusMac)를 포괄한다.
+#
 # 사용법:
 #   ./scripts/design-lint.sh                 # 기본: iOS·Mac 소스 스캔, 후보 있으면 비-0 종료
 #   ./scripts/design-lint.sh PATH...         # 지정한 디렉터리/파일만 스캔(회귀 테스트가 사용)
 #   ./scripts/design-lint.sh --soft          # «리포트만» — 후보가 있어도 항상 0 종료(게이트 끔)
 #   ./scripts/design-lint.sh --quiet         # 안내/가이드 헤더 생략(기계 소비용)
+#   ./scripts/design-lint.sh --strict        # CI 게이트: baseline 차감 후 «새» 후보만 비-0 종료
+#   ./scripts/design-lint.sh --baseline=PATH # baseline 파일 교체(기본 scripts/design-lint-baseline.tsv)
 #
-# 종료코드: 후보 0 → 0, 1건 이상 → 1 (호출자가 게이트로 쓸 수 있게). --soft 면 항상 0.
+# 종료코드: (기본) 후보 0 → 0, 1건 이상 → 1. (--strict) baseline 차감 후 새 후보 0 → 0, 1건 이상 → 1.
+#   --soft 면 항상 0 (호출자가 게이트로 쓸 수 있게).
 #
 set -euo pipefail
 
@@ -84,20 +101,29 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 SOFT=0
 QUIET=0
+STRICT=0
+BASELINE="${DESIGN_LINT_BASELINE:-}"
 PATHS=()
 
 for arg in "$@"; do
   case "$arg" in
     --soft|--no-fail) SOFT=1 ;;
     --quiet|-q)       QUIET=1 ;;
+    --strict)         STRICT=1 ;;
+    --baseline=*)     BASELINE="${arg#*=}" ;;
     -h|--help)
-      sed -n '2,78p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+      sed -n '2,95p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     --*) echo "design-lint: 알 수 없는 옵션: $arg" >&2; exit 2 ;;
     *)   PATHS+=("$arg") ;;
   esac
 done
+
+# --strict(CI 게이트)는 baseline 미지정이면 표준 경로를 자동 사용한다(i18n-lint 와 동형).
+if [ "$STRICT" -eq 1 ] && [ -z "$BASELINE" ] && [ -f "$SCRIPT_DIR/design-lint-baseline.tsv" ]; then
+  BASELINE="$SCRIPT_DIR/design-lint-baseline.tsv"
+fi
 
 # 인자로 경로가 없으면 두 앱의 소스 루트를 스캔 (ios/build 는 자연히 제외됨).
 if [ ${#PATHS[@]} -eq 0 ]; then
@@ -107,13 +133,43 @@ fi
 # 모든 휴리스틱은 파이썬에 둔다 — 유니코드·문자열/주석 렉싱·중괄호 깊이 추적(컨테이너 .tint /
 # 버튼 영역)이 BSD grep/sed 보다 안정적이다. 따옴표 친 heredoc('PYEOF') 라 셸 확장이 없어
 # 정규식의 역슬래시/달러가 그대로 전달된다.
-SOFT="$SOFT" QUIET="$QUIET" REPO_ROOT="$REPO_ROOT" python3 - "${PATHS[@]}" <<'PYEOF'
+SOFT="$SOFT" QUIET="$QUIET" STRICT="$STRICT" BASELINE="$BASELINE" REPO_ROOT="$REPO_ROOT" python3 - "${PATHS[@]}" <<'PYEOF'
 import os, re, sys
 
 SOFT  = os.environ.get("SOFT", "0") == "1"
 QUIET = os.environ.get("QUIET", "0") == "1"
+STRICT = os.environ.get("STRICT", "0") == "1"
+BASELINE_PATH = os.environ.get("BASELINE", "") or ""
 REPO_ROOT = os.environ.get("REPO_ROOT", "")
 paths = sys.argv[1:]
+
+# ── baseline(후보 fingerprint) 로드 ─────────────────────────────────────────────
+# fingerprint = `코드\t레포상대경로\t발췌` (TAB 구분). «#» 주석·빈 줄은 무시.
+# --strict 가 «기존/의도된 부채·휴리스틱 거짓 양성» 을 게이트에서 차감하는 래칫의 SSOT.
+def load_baseline(p):
+    s = set()
+    if not p:
+        return s
+    try:
+        with open(p, encoding='utf-8') as f:
+            for ln in f:
+                ln = ln.rstrip('\r\n')
+                if not ln.strip() or ln.lstrip().startswith('#'):
+                    continue
+                s.add(ln)
+    except OSError:
+        pass
+    return s
+BASELINE = load_baseline(BASELINE_PATH)
+
+def relroot(p):
+    """fingerprint 용 «레포 루트 상대» 경로 — 머신/CI 간 안정적(cwd 비의존)."""
+    try:
+        return os.path.relpath(os.path.abspath(p), REPO_ROOT)
+    except ValueError:
+        return os.path.abspath(p)
+def fingerprint(code, path, exc):  # 후보 fingerprint (라인번호 비포함 — 코드·경로·발췌가 곧 정체성)
+    return "%s\t%s\t%s" % (code, relroot(path), exc)
 
 # ── 경로 분류: Mac 앱인가? (Theme 타입이 없어 리터럴 .orange/.yellow 가 «정상» 인 경로) ──────────
 def is_mac(path):
@@ -328,8 +384,9 @@ def tint_flaggable(arg):
 # 패턴 메타 (코드 → (이름, 신뢰도, 권장 토큰/고치는 법))
 META = {
     'L': ('의미 토큰 우회 리터럴 색', '중간',
-          '리터럴 대신 의미 토큰: orange→Theme.pro · yellow→Theme.warning · blue→Theme.info '
-          '(Mac 은 Theme 없음 → blue 는 Color.accentColor; info=파랑이면 의도일 수 있음)'),
+          '리터럴 대신 의미 토큰: orange→Theme.pro · yellow→Theme.warning · blue→Theme.info. '
+          'Mac 도 이제 DesignTokens.swift 에 Theme 색 미러가 있다 — raw hue 는 의미를 숨겨 후보 '
+          '(raw orange 는 pro↔warning 혼동을 숨김; Mac 의 blue 는 보통 accent 누락 → Color.accentColor)'),
     'W': ('하드코딩 흑백(.white/.black)', '중간',
           '.primary/.secondary(라이트·다크 자동 적응). 색 배경 위 텍스트면 Theme.onAccent. '
           '.white/.black 하드코딩은 반대 테마에서 안 보인다'),
@@ -417,13 +474,21 @@ for fp in swift_files(paths):
             continue
 
         # ── L: 리터럴 색 우회 ─────────────────────────────────────────────────────────────
+        # iOS·Mac 모두 raw `.orange`/`.yellow`/`.blue` 는 후보다. Mac 도 이제 DesignTokens.swift 에
+        # Theme 색 미러가 있어, raw hue 는 «의미» 를 숨긴다 — 특히 raw orange 가 pro(강조)인지
+        # warning(경고)인지 정적으로 판별 불가라, warning↔pro 혼동이 출시 후 디자이너 리뷰에서만
+        # 비결정적으로 잡히던 사각이었다. 토큰 정의 파일(DesignTokens.swift, 화이트리스트)과
+        # `// design-lint: allow` 만 제외 — 기존 EXCLUDE 계약 그대로.
         if not allow:
             L_REC = {'orange': 'Theme.pro', 'yellow': 'Theme.warning', 'blue': 'Theme.info'}
+            MAC_REC = {
+                'orange': 'Theme.pro(강조) — 단, 경고 의미면 Theme.warning. raw orange 는 warning↔pro 혼동을 숨긴다',
+                'yellow': 'Theme.warning(경고 전용) — 장식/강조면 정책 위반(강조는 Theme.pro)',
+                'blue':   'Color.accentColor (Mac; accent 누락 의심 · info=파랑이면 Theme.info)',
+            }
             for m in RE_LIT.finditer(code):
                 col = m.group('c')
-                if mac and col != 'blue':
-                    continue   # Mac: .orange(pro)·.yellow(warning) 리터럴은 정상
-                rec = 'Color.accentColor (Mac; info=파랑이면 의도)' if mac else L_REC[col]
+                rec = (MAC_REC if mac else L_REC)[col]
                 add(fp, idx, 'L', line, rec)
                 break
 
@@ -543,6 +608,89 @@ def relp(p):
     except ValueError:
         return p
 
+META_ORDER = {'L': 0, 'W': 1, 'T': 2, 'A': 3, 'S': 4, 'R': 5, 'O': 6, 'I': 7}
+
+# ── --strict (CI 게이트): baseline 차감 후 «새» 후보만 차단 ───────────────────────────────
+# i18n-lint.sh --strict 와 동형. 후보를 baseline 등재(=기존/의도된 부채·거짓 양성)/미등재(=새 차단)
+# 로 나눠, 새 후보가 1건이라도 있으면 비-0 종료해 PR 을 막는다(레포의 diff-집중 래칫). baseline 은
+# scripts/design-lint-baseline.tsv (iOS·Mac 양 경로 포괄), --baseline=PATH/DESIGN_LINT_BASELINE 로 교체.
+if STRICT:
+    new_f, base_f = [], []   # baseline 미등재(=차단) / 등재(=차감)
+    for path, lineno, code, exc, rec in findings:
+        f = fingerprint(code, path, exc)
+        (base_f if f in BASELINE else new_f).append((path, lineno, code, exc, rec, f))
+    n_gate = len(new_f)      # «차단» = 종료코드에 세는 새 후보
+    n_base = len(base_f)     # baseline 으로 차감된 기존 부채/거짓 양성
+
+    if not QUIET:
+        bl = relp(BASELINE_PATH) if BASELINE_PATH else "(없음)"
+        print("%sdesign-lint --strict%s — CI 게이트 (baseline 차감 후 «새» 후보만 차단)" % (BOLD, RST))
+        print("%s스캔 대상: %s%s" % (DIM, ', '.join(relp(p) for p in paths), RST))
+        print("%sbaseline: %s   게이트(새 차단)=%d · baseline 차감=%d%s" % (DIM, bl, n_gate, n_base, RST))
+        print()
+
+    if n_gate:
+        new_f.sort(key=lambda x: (META_ORDER[x[2]], x[0], x[1]))
+        cnt = {}
+        for _, _, c, _, _, _ in new_f:
+            cnt[c] = cnt.get(c, 0) + 1
+        last = None
+        for path, lineno, code, exc, rec, f in new_f:
+            if code != last:
+                name, conf, fix = META[code]
+                print("%s■ [%s] %s — 신뢰도 %s (%d건)%s" % (BOLD, code, name, conf, cnt[code], RST))
+                print("%s   권장: %s%s" % (DIM, fix, RST))
+                last = code
+            print("%s:%d  %s  ← [%s] %s · 권장: %s" % (relp(path), lineno, exc, code, META[code][0], rec))
+        print()
+
+    # 게이트가 막았으면 fingerprint 를 «붙여넣기» 블록으로 — 의도된 부채/거짓 양성이면 baseline 에 추가.
+    if n_gate:
+        if not QUIET:
+            print("%s새 후보 %d건이 PR 을 막았습니다.%s" % (BOLD, n_gate, RST))
+            print("  · 색-의미 규칙을 어긴 후보면 의미 토큰으로 고치세요(orange→Theme.pro 등).")
+            print("  · 이미 알려진/의도된 부채·휴리스틱 거짓 양성이면 아래 fingerprint 를 baseline(%s)에 그대로 추가하세요:"
+                  % (relp(BASELINE_PATH) if BASELINE_PATH else "scripts/design-lint-baseline.tsv"))
+        # 기계 소비용 — QUIET 여도 항상 찍는다(테스트/자동화가 파싱).
+        print("### BASELINE-PASTE-BEGIN")
+        for path, lineno, code, exc, rec, f in sorted(new_f, key=lambda x: x[5]):
+            print(f)
+        print("### BASELINE-PASTE-END")
+
+    # ── down-ratchet: 더는 매칭 안 되는 «stale» baseline 등재 표면화(비차단) + burn-down ──────────
+    # i18n-lint.sh --strict 와 동형(SSOT). baseline 에 등재됐지만 이번 스캔의 어떤 fingerprint 와도
+    # 안 맞는 줄 = 이미 고쳐졌거나 코드가 이동한 «죽은» 부채. 차단(비-0 종료)하지 않고 표면화만 하며,
+    # 사람이 검토 후 baseline 에서 지운다(자동 삭제·재기록 안 함). 같은 fingerprint 여러 줄(N:1)은
+    # set 로 접혀 «한 번이라도 매칭되면 살아있음». 주석·빈 줄은 load_baseline 에서 이미 제외.
+    # baseline 이 없거나(빈 집합) strict 가 아니면 미실행(기존대로). burn-down 한 줄로 진척 가시화.
+    if BASELINE:
+        seen_fp = {fingerprint(code, path, exc) for path, lineno, code, exc, rec in findings}
+        stale = sorted(BASELINE - seen_fp)
+        n_stale = len(stale)        # 고친(=매칭 안 되는) 부채 후보
+        n_live  = len(BASELINE) - n_stale   # 남은(=여전히 매칭되는) 부채
+        if n_stale:
+            if not QUIET:
+                print("%sℹ baseline stale 후보 %d건%s — 비차단(사람 판정). 등재됐지만 이번 스캔에서 한 번도"
+                      % (DIM, n_stale, RST))
+                print("%s   매칭 안 됨(고쳐졌거나 코드 이동). 검토 후 baseline(%s)에서 아래 줄을 «지우»세요(자동 삭제 안 함):%s"
+                      % (DIM, relp(BASELINE_PATH) if BASELINE_PATH else "scripts/design-lint-baseline.tsv", RST))
+            # 기계 소비용 — QUIET 여도 항상(테스트/자동화가 파싱).
+            print("### BASELINE-STALE-BEGIN")
+            for f in stale:
+                print(f)
+            print("### BASELINE-STALE-END")
+        if not QUIET:
+            print("%sbaseline burn-down: 고친 부채 %d건 · 남은 부채 %d건 (등재 %d)%s"
+                  % (BOLD, n_stale, n_live, len(BASELINE), RST))
+
+    if not QUIET:
+        print()
+        if n_gate == 0:
+            print("✅ 게이트 통과 — 새 후보 0건 (baseline 차감 %d)." % n_base)
+        print("%s합계(strict): 게이트=%d · baseline=%d (차단=게이트만)%s" % (BOLD, n_gate, n_base, RST))
+
+    sys.exit(0 if (SOFT or n_gate == 0) else 1)
+
 if not QUIET:
     print("%sdesign-lint%s — 색/토큰 정책 위반 «후보(candidate)» 스캔 (CLAUDE.md 「색상 토큰 정책」 + DesignTokens.swift 휴리스틱)" % (BOLD, RST))
     print("%s스캔 대상: %s%s" % (DIM, ', '.join(relp(p) for p in paths), RST))
@@ -582,7 +730,9 @@ if not QUIET:
     print()
     print("%s거짓 양성 처리법:%s" % (BOLD, RST))
     print("  · 의도적이면 해당 라인에 `// design-lint: allow` 주석을 달면 스캔에서 빠집니다.")
-    print("  · [L] Mac 은 Theme 가 없어 .orange/.yellow 리터럴이 정상 — blue 만 후보(accent 누락 의심).")
+    print("  · [L] orange→Theme.pro(경고면 Theme.warning) · yellow→Theme.warning · blue→Theme.info. Mac 도")
+    print("        이제 DesignTokens.swift 에 Theme 색 미러가 있어 raw .orange/.yellow/.blue 가 후보입니다")
+    print("        (raw orange 가 pro↔warning 혼동을 숨김; Mac 의 blue 는 보통 accent 누락 → Color.accentColor).")
     print("  · [T] 해제/취소 버튼·피커 값 텍스트는 per-element `.tint(Color.primary)` 가 정답입니다.")
     print("  · [A] 장식용 이미지면 `.accessibilityHidden(true)`, 라벨이 필요하면 `.accessibilityLabel(\"…\")`.")
     print("  · [S/R] 「Theme.X.<크기>」 권장은 «값이 정확히 같은» 토큰 — 그대로 바꾸면 1px 도 안 변합니다. ")

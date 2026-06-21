@@ -13,6 +13,7 @@
 //  - UPnP / NAT-PMP 포트 매핑 (nat/port-mapping.ts)
 //  - App Store Connect (po/asc.ts·po/crash.ts·po/asc-check.ts)
 //  - Discord webhook 알림 (notify/discord.ts)
+//  - 로컬-LLM 모델 다운로드 (local-llm/download.ts — HF fetch + aria2c spawn, spawn 전 게이트)
 //
 // 게이트 «대상이 아닌» 것: 폰↔Mac LAN 직결(127.0.0.1/sshd/endpoint) 같은 사적 데이터 plane,
 // 그리고 우리가 통제하지 못하는 OS 레벨 트래픽(DNS 해석·ARP·NTP 등) — 잔여 위험으로 수용한다

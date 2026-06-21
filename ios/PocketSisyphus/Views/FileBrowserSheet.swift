@@ -290,26 +290,5 @@ private func formatSize(_ bytes: Int64) -> String {
     return String(format: "%.1f %@", value, units[unit])
 }
 
-/// iOS 17 ContentUnavailableView 호환 — DiffSheet 의 것과 동일 모양.
-/// 같은 모듈 안에서 두 곳 모두 fileprivate 으로 두면 빌드는 되지만, 향후 한곳에 모으는 게 깔끔.
-private struct EmptyStateView: View {
-    let title: LocalizedStringKey
-    let systemImage: String
-    let message: LocalizedStringKey
-
-    var body: some View {
-        VStack(spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.system(size: Theme.IconSize.l))
-                .foregroundStyle(.secondary)
-            Text(title)
-                .font(.headline)
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
+// 빈 상태는 공용 `EmptyStateView`(DesignSystem/StateViews.swift) 로 통합됐다 — 이 파일의
+// 호출부(디렉터리 빈 폴더·불러오기 실패 등)는 그대로 그 공용 컴포넌트를 쓴다.

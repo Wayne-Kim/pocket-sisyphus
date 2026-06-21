@@ -272,6 +272,14 @@ struct WorkflowCanvasView: View {
         let center: CGPoint
         let status: String
         let sessionId: String?
+        /// 루프 반복 횟수 (0 = 첫 시도). >0 이면 재시도 중/했음.
+        var iteration: Int = 0
+        /// 이번에 되돌아간 사유 한 줄 (daemon). 없으면 nil.
+        var loopbackReason: String? = nil
+        /// 재시도 한도 도달로 멈춤.
+        var limitReached: Bool = false
+        /// 결과물 출처 (workflow_attention_v1) — nil/"agent"/"synthetic"/"empty".
+        var resultKind: String? = nil
     }
 
     /// 팬/줌 world — 편집기 world 와 동일한 구조. frame 은 모든 노드를 포함할 수 있게 충분히 크게.
@@ -299,6 +307,10 @@ struct WorkflowCanvasView: View {
                     title: node.title,
                     type: node.type,
                     status: node.status,
+                    iteration: node.iteration,
+                    loopbackReason: node.loopbackReason,
+                    limitReached: node.limitReached,
+                    resultKind: node.resultKind,
                     width: nodeW,
                     height: nodeH
                 )
@@ -386,7 +398,11 @@ struct WorkflowCanvasView: View {
                         type: nr.node_type,
                         center: c,
                         status: nr.status,
-                        sessionId: nr.session_id
+                        sessionId: nr.session_id,
+                        iteration: nr.iteration ?? 0,
+                        loopbackReason: nr.loopback_reason,
+                        limitReached: (nr.limit_reached ?? 0) != 0,
+                        resultKind: nr.result_kind
                     )
                 )
             }
@@ -474,6 +490,15 @@ struct WorkflowCanvasView: View {
             return v
         }()
         return (name, detail)
+    }
+
+    /// 재시도 한도(max_iterations)에 닿아 멈춘 노드 — 있으면 그 이름/사유를 run 레벨에서 분명히 드러낸다.
+    private var limitReachedNode: (name: String, reason: String?)? {
+        guard let runs = runState?.nodeRuns else { return nil }
+        guard let node = runs.first(where: { ($0.limit_reached ?? 0) != 0 }) else { return nil }
+        guard let name = node.title ?? node.def_node_id else { return nil }
+        let r = node.loopback_reason?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (name, (r?.isEmpty == false) ? r : nil)
     }
 
     @ViewBuilder
@@ -608,8 +633,34 @@ private struct WorkflowNodeCard: View {
     let title: String
     let type: String
     let status: String
+    var iteration: Int = 0
+    var loopbackReason: String? = nil
+    var limitReached: Bool = false
+    /// 결과물 출처 (workflow_attention_v1) — "synthetic"/"empty" 면 둘째 줄에 warning 표식.
+    var resultKind: String? = nil
     let width: CGFloat
     let height: CGFloat
+
+    /// 재시도 중/했음 — 반복 횟수가 1 이상이면 루프를 한 번 이상 돌았다는 뜻.
+    private var isRetrying: Bool { iteration > 0 }
+
+    /// 결과가 «합성본/빈 결과» 인지 — 정상 결과(agent)·미실행(nil)과 구분. 합성본은 «프롬프트 타이핑
+    /// 화면» 이 결과로 둔갑한 것이라, 다음 노드가 헛돌지 않게 시각적으로 분명히 표시한다.
+    private var synthetic: Bool { resultKind == "synthetic" || resultKind == "empty" }
+    private var resultMarkerText: Text? {
+        switch resultKind {
+        case "synthetic": return Text("합성본")
+        case "empty": return Text("빈 결과")
+        default: return nil
+        }
+    }
+
+    /// 둘째 줄에 «되돌아간 사유» 를 보일지 — 재시도 중이고 사유 문자열이 있을 때만.
+    private var reasonLine: String? {
+        guard isRetrying, let r = loopbackReason?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !r.isEmpty else { return nil }
+        return r
+    }
 
     var body: some View {
         let color = workflowStatusColor(status)
@@ -622,9 +673,25 @@ private struct WorkflowNodeCard: View {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
-                workflowStatusText(status)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                // 둘째 줄: 재시도 중엔 «되돌아간 사유», 합성본/빈 결과면 warning 표식, 아니면 상태 라벨.
+                if let reason = reasonLine {
+                    Text(verbatim: reason)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                } else if let marker = resultMarkerText {
+                    Label { marker } icon: {
+                        Image(systemName: "doc.text.magnifyingglass")
+                    }
+                    .labelStyle(.titleAndIcon)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(Theme.warning)
+                    .lineLimit(1)
+                } else {
+                    workflowStatusText(status)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
             Spacer(minLength: 0)
         }
@@ -638,6 +705,56 @@ private struct WorkflowNodeCard: View {
             RoundedRectangle(cornerRadius: Theme.Radius.l)
                 .stroke(color.opacity(status == "pending" ? Theme.Opacity.border : 0.8), lineWidth: 1.5)
         )
+        // 합성본/빈 결과는 정상 «완료»(초록 테두리)와 헷갈리지 않게 warning 테두리를 덧입힌다.
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.l)
+                .strokeBorder(Theme.warning.opacity(synthetic ? 0.9 : 0), lineWidth: 1.5)
+        )
+        // 재시도 배지 — 레이아웃 footprint 를 키우지 않도록 overlay(우상단). limit_reached 면 danger,
+        // 아니면 중립(회색) — 반복 횟수는 «개수» 라 status 색을 빌려 쓰지 않는다.
+        .overlay(alignment: .topTrailing) {
+            if isRetrying || limitReached {
+                retryBadge
+                    .padding(Theme.Spacing.xs)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    @ViewBuilder
+    private var retryBadge: some View {
+        let isLimit = limitReached
+        HStack(spacing: 2) {
+            Image(systemName: isLimit ? "exclamationmark.octagon.fill" : "arrow.clockwise")
+                .font(.system(size: 9, weight: .bold))
+            Text(verbatim: "\(max(iteration, 1))")
+                .font(.system(size: 10, weight: .semibold))
+                .monospacedDigit()
+        }
+        .foregroundStyle(isLimit ? Theme.onAccent : Color.primary)
+        .padding(.horizontal, Theme.Spacing.s)
+        .padding(.vertical, Theme.Spacing.xxs)
+        .background(
+            Capsule().fill(isLimit ? Theme.danger : Color.secondary.opacity(Theme.Opacity.badge))
+        )
+    }
+
+    /// 카드 전체를 한 문장으로 — VoiceOver 가 제목·상태·재시도·한도·사유를 한 번에 읽는다.
+    private var accessibilityText: Text {
+        var t = Text(verbatim: title) + Text(verbatim: ", ") + workflowStatusText(status)
+        if limitReached {
+            t = t + Text(verbatim: ", ") + Text("재시도 한도 도달")
+        } else if isRetrying {
+            t = t + Text(verbatim: ", ") + Text("재시도 \(iteration)회")
+        }
+        if let reason = reasonLine {
+            t = t + Text(verbatim: ", ") + Text("되돌아간 사유: ") + Text(verbatim: reason)
+        }
+        if let marker = resultMarkerText {
+            t = t + Text(verbatim: ", ") + marker
+        }
+        return t
     }
 }
 

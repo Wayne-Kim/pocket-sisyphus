@@ -112,14 +112,19 @@ final class WSClient {
     /// 재연결 성공 시 자동 해제하는 데 쓴다(나머지 소비자는 nil — 동작 영향 없음).
     /// connected=true 는 subscribe 까지 성공해 송신 가능한 상태, false 는 끊김/재연결 진입.
     private let onConnectionChange: (@MainActor (Bool) -> Void)?
+    /// 비복구 사유(페어링 회전 등)로 재연결 루프를 «중단» 할 때 한 줄 안내를 통보. ChatViewModel
+    /// 이 이를 사용자에게 표면화(배너/lastError)한다. 복구 가능한 끊김에는 호출되지 않는다.
+    private let onNonRecoverable: (@MainActor (String) -> Void)?
     /// onConnectionChange 중복 발화 방지 — 같은 값 연속 통보를 누른다.
     private var lastReportedConnected: Bool?
 
     private var task: URLSessionWebSocketTask?
     /// reconnect 루프 동작 중인지. stop() 으로만 false 가 된다.
     private var running: Bool = false
-    /// 백오프 — 첫 실패는 즉시, 이후 지수 증가, 최대 30s.
+    /// 백오프 — 첫 실패는 즉시, 이후 지수 증가, 최대 30s. 수열/jitter/캡은 WSReconnectPolicy.
     private var reconnectAttempt: Int = 0
+    /// app-level ping/pong 누락 추적 — 2회 연속 누락 시 즉시 재연결(좀비 socket 빠른 탐지).
+    private var heartbeat = HeartbeatMonitor()
     /// 현재 연결에 대한 ping 루프 task. 연결마다 새로 spawn, 끊기면 cancel.
     private var pingTask: Task<Void, Never>?
     /// application-level ping 의 send 시각 (ms epoch) — pong 수신 시 RTT 계산용.
@@ -169,6 +174,7 @@ final class WSClient {
         sessionId: String?,
         sinceProvider: (() -> Int64?)? = nil,
         onConnectionChange: (@MainActor (Bool) -> Void)? = nil,
+        onNonRecoverable: (@MainActor (String) -> Void)? = nil,
         onEvent: @escaping EventHandler,
     ) {
         self.auth = auth
@@ -176,6 +182,7 @@ final class WSClient {
         self.sessionId = sessionId
         self.sinceProvider = sinceProvider
         self.onConnectionChange = onConnectionChange
+        self.onNonRecoverable = onNonRecoverable
         self.onEvent = onEvent
     }
 
@@ -215,10 +222,19 @@ final class WSClient {
         NSLog("[WSClient] kick — 백오프 건너뛰고 즉시 reconnect")
         reconnectAttempt = 0
         // 현재 task 가 살아있으면 강제 cancel — receive() 가 즉시 에러로 풀리고
-        // runLoop 가 backoffAndCleanup → wake 경로로 흘러간다.
+        // runLoop 가 backoffAndCleanup → wake 경로로 흘러간다. (foreground 복귀의 «즉시
+        // heartbeat 1회» probe 는 setForeground(true) 가 담당 — kick 은 곧장 재연결한다.)
         task?.cancel(with: .goingAway, reason: nil)
         // 이미 backoff sleep 중이면 즉시 탈출.
         wakeBox.wake()
+    }
+
+    /// 현재 연결 위로 app-level ping 을 «즉시» 1회 보낸다(포그라운드 복귀 probe). 소켓이
+    /// 없으면 no-op. heartbeat 집계에도 들어가 응답이 없으면 missed-pong 경로가 작동한다.
+    func heartbeatNow() {
+        guard let t = task else { return }
+        _ = heartbeat.beforePing()
+        Task { await sendAppPing(t) }
     }
 
     /// connect → subscribe → receive 루프. 끊기면 백오프 후 재시도.
@@ -276,6 +292,7 @@ final class WSClient {
 
             NSLog("[WSClient] connected session=\(sessionId ?? "<global>")")
             reconnectAttempt = 0  // 성공 — 백오프 리셋
+            heartbeat.reset()     // 새 연결 — pong 누락 카운트 초기화
             reportConnection(true)
 
             // 30s 주기 ping — Tor 회로의 idle 끊김 + iOS suspend 직후의 좀비 socket 을
@@ -286,9 +303,18 @@ final class WSClient {
             // receive 루프. 끊기면 break.
             await receiveLoop(t)
 
-            // 정상/비정상 종료 — 정리하고 (running 이면) 재시도.
+            // 정상/비정상 종료 — close code 로 «비복구» 사유를 먼저 분류한다. 페어링 회전
+            // (1008) 처럼 재시도해도 401 로 거절될 사유면 루프를 멈추고 사용자에게 안내한다.
             pingTask?.cancel()
             pingTask = nil
+            if running, case .nonRecoverable(let reason) = WSReconnectPolicy.classify(closeCode: t.closeCode) {
+                NSLog("[WSClient] 비복구 종료(closeCode=\(t.closeCode.rawValue)) — 재연결 루프 중단")
+                running = false
+                reportConnection(false)
+                onNonRecoverable?(reason.message)
+                break
+            }
+            // 복구 가능 — 정리하고 (running 이면) 백오프 후 재시도.
             await backoffAndCleanup()
         }
     }
@@ -304,6 +330,13 @@ final class WSClient {
                 try? await Task.sleep(nanoseconds: delayNs)
                 if Task.isCancelled { break }
                 firstDone = true
+                // 직전 ping 들이 연속으로 응답되지 않았으면(좀비 socket) 즉시 재연결한다 —
+                // receive() 에러를 기다리지 않고 task 를 cancel 해 runLoop 가 백오프→재시도로 흐른다.
+                if await self?.noteHeartbeatBeforePing() == true {
+                    NSLog("[WSClient] pong \(WSReconnectPolicy.missedPongThreshold)회 연속 누락 — 즉시 재연결")
+                    t.cancel(with: .goingAway, reason: nil)
+                    break
+                }
                 // (1) frame-level ping — 좀비 socket 탐지용 keepalive.
                 t.sendPing { err in
                     if let err {
@@ -315,6 +348,11 @@ final class WSClient {
                 await self?.sendAppPing(t)
             }
         }
+    }
+
+    /// ping 송신 직전의 heartbeat 집계 — @MainActor 격리 안에서 호출하려 분리. 임계 도달 시 true.
+    private func noteHeartbeatBeforePing() -> Bool {
+        heartbeat.beforePing()
     }
 
     /// application-level ping 송신. send 시각 (ms epoch) 을 t 필드에 박고 pendingPings 에 기록.
@@ -444,6 +482,9 @@ final class WSClient {
         guard foreground != value else { return }
         foreground = value
         guard let t = task else { return }
+        // 포그라운드 복귀 즉시 heartbeat 1회 — 백그라운드 동안 좀비가 된 소켓을 다음 ping
+        // 주기(최대 15s)까지 기다리지 않고 곧바로 probe 한다(응답 없으면 missed-pong 재연결).
+        if value { heartbeatNow() }
         Task { await sendVisibility(t, foreground: value) }
     }
 
@@ -472,6 +513,8 @@ final class WSClient {
     /// 매칭 안 되면 (이미 stale 로 다음 ping 사이클에서 덮인 경우) 그냥 무시.
     private func handlePong(echoed t: Int64) {
         let now = nowMs()
+        // 어떤 pong 이든 도착 = 채널이 살아있음 → 누락 카운트 리셋.
+        heartbeat.onPong()
         if pendingPings.removeValue(forKey: t) != nil {
             let rtt = Int(now - t)
             // 음수/광폭 클램핑은 ConnectionManager.recordRTT 가 한다.
@@ -637,12 +680,12 @@ final class WSClient {
         // sharedSession 은 의도적으로 유지 — reconnect 가 같은 connection pool 재사용.
         guard running else { return }
 
-        // 1, 2, 4, 8, 16, 30 (cap) 초.
-        let delays: [Double] = [1, 2, 4, 8, 16, 30]
-        let i = min(reconnectAttempt, delays.count - 1)
+        // 지수 백오프 + equal jitter + 30s 캡 — 수열/jitter/캡은 WSReconnectPolicy(순수, 테스트
+        // 로 고정). 1, 2, 4, 8, 16, 30(cap) 의 «상한» 을 따르되 각 단계에 [절반, 전체] jitter 를
+        // 줘 다수 클라이언트의 동시 재시도(thundering herd)를 흩는다.
+        let secs = WSReconnectPolicy.backoffSeconds(attempt: reconnectAttempt)
         reconnectAttempt += 1
-        let secs = delays[i]
-        NSLog("[WSClient] reconnect in \(Int(secs))s (attempt \(reconnectAttempt))")
+        NSLog("[WSClient] reconnect in \(String(format: "%.1f", secs))s (attempt \(reconnectAttempt))")
         // wake 가능한 sleep — kick() 이나 stop() 에서 즉시 깨울 수 있다.
         await sleepUntilWakeOrTimeout(seconds: secs, box: wakeBox)
     }

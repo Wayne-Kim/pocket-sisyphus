@@ -30,6 +30,7 @@ import {
   PREVIEW_ALL_REDACTED,
 } from "./preview.js";
 import { type CollectSignals, type SignalSourceState, isSignalFailure } from "../persona/signals.js";
+import { isSessionTainted } from "../taint.js";
 
 /** Discord 완료 알림용 — 한 신호원 상태의 영어 라벨. off/empty 는 «조용» 대상이라 호출처가 거른다. */
 function signalStateLabel(s: SignalSourceState): string {
@@ -148,8 +149,11 @@ export async function dispatchNotification(ev: DispatchEvent): Promise<void> {
     // 미리보기는 옵트인(includePreview) 일 때만. 추출은 절대 throw 하지 않게 감싸 — 실패해도
     // preview=null 로 폴백(정적 안내문)하고 알림 자체는 항상 나간다. raw tail 은 옵트아웃이면
     // 아예 추출하지 않아 외부로 새지 않는다.
+    // 오염 세션(capability_caps C3·T1) — 결과/본문을 외부 Discord payload 에 절대 싣지 않는다
+    // (메타 신호 title·status·소요시간만). 개인-데이터 적재 세션의 출력 한 줄이 요약 유출이 되는
+    // 걸 막는다. includePreview 옵트인이 켜져 있어도 오염이면 미리보기를 통째로 생략한다.
     let preview: string | null = null;
-    if (d.includePreview && ev.outputTail) {
+    if (d.includePreview && ev.outputTail && !isSessionTainted(ev.sessionId)) {
       try {
         preview = extractAgentPreview(ev.outputTail);
         // 외부(제3자 Discord)로 나가기 «직전» 에만 흔한 비밀 패턴을 가린다 — best-effort

@@ -7,7 +7,7 @@
  *  - duration 포맷
  *  - embed body 빌드 (종류별 title/color/fields)
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   isValidDiscordWebhookUrl,
   isValidDeepLinkBaseUrl,
@@ -15,6 +15,7 @@ import {
   redactWebhookUrl,
   formatDuration,
   buildDiscordBody,
+  checkDeepLinkBridgeHealth,
 } from "./discord.js";
 import { eventEnabled } from "./index.js";
 
@@ -346,5 +347,54 @@ describe("eventEnabled", () => {
     expect(eventEnabled("session_exit", { sessionExit: false })).toBe(false);
     expect(eventEnabled("error", { error: false })).toBe(false);
     expect(eventEnabled("turn_complete", undefined)).toBe(true);
+  });
+});
+
+describe("checkDeepLinkBridgeHealth", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // 응답(status)으로 분류: <400 = ok, >=400 = http_error.
+  it("브리지가 정상 응답(2xx)이면 ok", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }));
+    const r = await checkDeepLinkBridgeHealth(null);
+    expect(r.status).toBe("ok");
+    expect(r.custom).toBe(false);
+    expect(r.base).toBe("https://pocketsisyphus.app/open");
+  });
+
+  it("사용자 지정 주소도 동일하게 점검 (custom=true)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+    const r = await checkDeepLinkBridgeHealth("https://example.com/open/");
+    expect(r.status).toBe("ok");
+    expect(r.custom).toBe(true);
+    expect(r.base).toBe("https://example.com/open"); // 끝 슬래시 정규화
+  });
+
+  it("서버가 4xx/5xx 면 http_error (HEAD·GET 모두 오류)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 404 }));
+    const r = await checkDeepLinkBridgeHealth(null);
+    expect(r.status).toBe("http_error");
+    expect(r.httpStatus).toBe(404);
+  });
+
+  // 브리지 네트워크 실패 + control(discord.com) 성공 = 도메인 사망 → unreachable(경고).
+  it("브리지 응답 없음 + 인터넷은 됨 → unreachable", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input: Parameters<typeof fetch>[0]) => {
+      const url = String(input);
+      if (url.includes("discord.com")) return new Response(null, { status: 200 });
+      throw new Error("ENOTFOUND");
+    });
+    const r = await checkDeepLinkBridgeHealth(null);
+    expect(r.status).toBe("unreachable");
+  });
+
+  // 브리지 실패 + control 도 실패 = 오프라인 → inconclusive(거짓 경고 방지).
+  it("브리지·인터넷 모두 응답 없음 → inconclusive (오프라인)", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+    const r = await checkDeepLinkBridgeHealth(null);
+    expect(r.status).toBe("inconclusive");
+    expect(r.detail).toBe("offline");
   });
 });

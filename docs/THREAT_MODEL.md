@@ -236,8 +236,12 @@ the [ARCHITECTURE.md §4](ARCHITECTURE.md#4-보안-모델) table.
   **aggregated read signals** (reviews · crashes).
 - **Mitigation:**
   - **0600 permissions** — the key lives only in `config.json` (owner-only read/write). The PEM body is embedded, not a file path.
-  - **opt-in + owner-only** — the Mac app Settings «App Store» tab saves it only via `/api/po/asc-key` (a local-operator-only path).
-    **It never enters the phone (QR/pairing)** — a separate asset fully decoupled from the A3 pairing bundle.
+  - **opt-in + owner-only, enforced in code** — the Mac app Settings «App Store» tab saves it only via `/api/po/asc-key`, a **local-operator-only
+    path**. Those routes (`GET`/`PUT`/`DELETE /asc-key` + `POST /asc-key/verify`) are gated by `requireLocalAdmin` *on top of* bearer: the caller must
+    present `X-PS-Local == localAdminSecret`, a secret the Mac app reads from `config.json` but which is **never placed in the QR/pairing bundle**.
+    A phone holding only the A3 Bearer (+ attest token) therefore **cannot** read `keyId`/`issuerId` (the developer's Apple-team identity) nor
+    overwrite/delete the long-lived key — it gets `403 local_admin_required`. **It never enters the phone (QR/pairing)** — a separate asset fully
+    decoupled from the A3 pairing bundle, and the A5↔phone separation is held by the code, not merely declared.
   - **read-signals only** — the channel is used only for «aggregated reads» of reviews · crashes (no write-back · deploy · metadata change).
   - **No channel when the key is unset** — if `asc` is unset, the outbound ASC call simply does not happen (when the feature is off, the boundary
     does not exist). No regression.
@@ -265,15 +269,19 @@ the [ARCHITECTURE.md §4](ARCHITECTURE.md#4-보안-모델) table.
   - **single gate (preventing omission)** — every non-LAN outbound path goes through **one helper** (`guardNonLanEgress()` in
    `mac/daemon/src/egress.ts`). As long as whoever adds a new outbound does not forget that one line, the «forgot just one path» leak is structurally
    blocked. Application points: `nat/external-ip.ts` (echo) · `nat/port-mapping.ts` (UPnP/PMP) ·
-   `po/asc.ts` · `po/crash.ts` · `po/asc-check.ts` (ASC) · `notify/discord.ts` (webhook).
+   `po/asc.ts` · `po/crash.ts` · `po/asc-check.ts` (ASC) · `notify/discord.ts` (webhook) ·
+   `local-llm/download.ts` (model download — HF `fetch` + the `aria2c` subprocess; the gate is applied **before `spawn`**, since a subprocess
+   that has already launched can no longer be stopped by wrapping `fetch`).
   - **per-path default-deny behavior** — echo **skips the call** (last IP if cached, else `none`), UPnP/NAT-PMP **aborts the mapping attempt**
    (no public exposure needed), ASC **blocks outbound + throws «conflicts with mode»** (collection does not die, only the relevant signal section is
    omitted; the ASC availability probe is treated as «uncertain» to suppress a false «key expired» warning), Discord **blocks notification sending**
-   (no metadata leak of repo · session title, etc.).
+   (no metadata leak of repo · session title, etc.), model download **rejects synchronously with `lan_only_mode` before any side effect** (no
+   mkdir · no partial file · no progress flip — prevents a partial download that would leak the «this Mac is fetching model X from HF» fact · destination).
   - **zero regression when mode OFF** — when the mode is OFF the gate «just passes through» with zero side effects (not even a log). Because the
    default is OFF, existing users' behavior does not change by a single bit.
-  - **contract tests** — `mac/daemon/src/egress.test.ts` asserts that with the mode ON the actual `fetch` calls of echo/UPnP/ASC/Discord are **0**,
-   and with the mode OFF that echo takes the normal fetch path.
+  - **contract tests** — `mac/daemon/src/egress.test.ts` asserts that with the mode ON the actual `fetch` calls of echo/UPnP/ASC/Discord are **0**
+   and that model download performs **0 `fetch` + 0 `aria2c` spawn** (rejecting with `lan_only_mode`), and with the mode OFF that echo takes the
+   normal fetch path and model download takes the normal download path (aria2c spawned).
 - **Residual risk:** ① **OS-level traffic cannot be blocked** — packets emitted not by the daemon but by the operating system/other processes —
   DNS resolution · ARP · NTP · OS update checks, etc. — are outside this gate's control (true «egress 0» is the responsibility of the OS/network
   firewall layer). ② **prior exposure when mode OFF** — since the default is OFF, a user who has not explicitly turned it on retains the prior
@@ -323,7 +331,7 @@ What we have explicitly chosen «not to block» — threats that are intrinsic t
    external servers» principle — accepted because the target is Apple's own API · opt-in · owner-only · limited to read signals. The responsibility
    to issue a narrow key role and to manually revoke on leak remains with the user.
 10. **LAN-only mode is opt-in + outside OS-level traffic.** Egress confinement (§5.11) default-denies the daemon's «non-LAN» incidental outbound
-    (echo · UPnP/NAT-PMP · ASC · Discord) through a single gate, but **the default is OFF** and **OS-level traffic like DNS · ARP · NTP is outside its
+    (echo · UPnP/NAT-PMP · ASC · Discord · model download) through a single gate, but **the default is OFF** and **OS-level traffic like DNS · ARP · NTP is outside its
     control**. The full guarantee of «not a single bit of a packet leaves the company» is the responsibility of the OS/network firewall layer, and
     this control extends only to «blocking the incidental outbound the daemon voluntarily emits». That the mode toggle relies on trust in
     `config.json` (can be lifted on compromise) is also accepted.

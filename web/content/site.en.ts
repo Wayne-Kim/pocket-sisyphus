@@ -37,6 +37,10 @@ export const site = {
   },
 
   hero: {
+    // 정체성 레이어(1줄) — 능력 카피(title/tagline) «위» 에 얹는다. README 핵심 원칙의
+    // «1인 군단» 서사(README:45)를 hero 첫 줄로 끌어올려, 능력(폰에서 에이전트 제어) 위에
+    // 정체성(혼자서 다 만들고 굴린다)을 세운다. 자급의 근거는 아래 principles 에서 묶는다.
+    eyebrow: "One person, a whole legion — build and run a service solo.",
     title: "Your coding agents, in your pocket",
     tagline:
       "Drive Claude Code, Codex, Antigravity, Copilot & OpenCode on your Mac — securely, from your phone.",
@@ -50,7 +54,7 @@ export const site = {
   principles: {
     heading: "No servers of ours. No middleman. No cloud hop.",
     subheading:
-      "These guarantees describe the Pocket Sisyphus app on your iPhone and Mac — your traffic never touches infrastructure we run.",
+      "These guarantees describe the Pocket Sisyphus app on your iPhone and Mac — your traffic never touches infrastructure we run. That self-sufficiency is the point: with nothing of ours in the path and nothing to rent, one person can keep building and running their service on it — even if we disappear.",
     items: [
       {
         id: "zero-servers",
@@ -132,6 +136,20 @@ export const site = {
   features: {
     heading: "Built for steering, not just watching",
     items: [
+      // PO 루프(백로그 탭) — 이 앱의 «가장 다른 점». 카피는 두 SSOT 와 정합을 맞춘다:
+      //   ① 스토어 4_backlog 밴드(store v2.20.0 config.py): "An AI product owner for your
+      //      backlog" / "Scored by impact, effort & evidence".
+      //   ② iOS GuideContent.backlog: 레포 신호 수집(이슈·TODO·문서·변경) → 기회 브리프
+      //      (문제·근거·스코프·스펙) → 폰에서 승인·보류·기각. 백로그 탭이 주황 = 프로(고급).
+      // 포지셔닝: 경쟁 «폰에서 에이전트 보기» 와 달리 «폰에서 백로그를 운영» — heading 의
+      // «steering, not just watching» 과 한 줄로 맞물린다. pro:true → 주황 Pro 배지(노랑 아님).
+      {
+        id: "backlog",
+        icon: "🗂️",
+        title: "An AI product owner for your backlog",
+        body: "Instead of spelling out every task, an agent combs your repo — issues, TODOs, docs, recent changes — and posts opportunity briefs scored by impact, effort, and evidence. Each lays out the problem, evidence, scope, and spec, so you approve, hold, or reject right from your phone. You don't just watch agents — you run the backlog.",
+        pro: true,
+      },
       {
         id: "remote-sessions",
         icon: "📱",

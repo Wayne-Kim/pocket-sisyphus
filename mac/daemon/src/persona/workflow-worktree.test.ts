@@ -106,6 +106,7 @@ vi.mock("../workflow/task-folder.js", async (importOriginal) => {
       resultMd: "# ok\n",
       done: true,
       verdictPass: null,
+      verdictSummary: null,
       branches: null,
       needsAttention: false,
     })),
