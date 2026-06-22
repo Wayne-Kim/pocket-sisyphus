@@ -161,6 +161,7 @@ S	ios/PocketSisyphus/Views/BacklogBriefRow.swift	.padding(.vertical, 2)
 S	ios/PocketSisyphus/Views/BacklogBriefRow.swift	HStack(alignment: .top, spacing: 8) {
 S	ios/PocketSisyphus/Views/BacklogBriefRow.swift	HStack(spacing: 8) {
 S	ios/PocketSisyphus/Views/BacklogBriefRow.swift	VStack(alignment: .leading, spacing: 4) {
+S	ios/PocketSisyphus/Views/BacklogCollect.swift	.padding(.top, 2)
 S	ios/PocketSisyphus/Views/BacklogCollect.swift	.padding(.vertical, 4)
 S	ios/PocketSisyphus/Views/BacklogCollect.swift	.padding(.vertical, 4)
 S	ios/PocketSisyphus/Views/BacklogCollect.swift	.padding(.vertical, 4)
@@ -176,11 +177,11 @@ S	ios/PocketSisyphus/Views/BacklogCollect.swift	HStack(spacing: 4) {
 S	ios/PocketSisyphus/Views/BacklogCollect.swift	HStack(spacing: 6) {
 S	ios/PocketSisyphus/Views/BacklogCollect.swift	HStack(spacing: 8) {
 S	ios/PocketSisyphus/Views/BacklogCollect.swift	HStack(spacing: 8) {
-S	ios/PocketSisyphus/Views/BacklogCollect.swift	VStack(alignment: .leading, spacing: 2) {
 S	ios/PocketSisyphus/Views/BacklogCollect.swift	VStack(alignment: .leading, spacing: 4) {
 S	ios/PocketSisyphus/Views/BacklogCollect.swift	VStack(alignment: .leading, spacing: 4) {
 S	ios/PocketSisyphus/Views/BacklogCollect.swift	VStack(alignment: .leading, spacing: 4) {
 S	ios/PocketSisyphus/Views/BacklogCollect.swift	VStack(alignment: .leading, spacing: 8) {
+S	ios/PocketSisyphus/Views/BacklogCreate.swift	VStack(alignment: .leading, spacing: 2) {
 S	ios/PocketSisyphus/Views/BacklogResearch.swift	.padding(.horizontal, 7).padding(.vertical, 2)
 S	ios/PocketSisyphus/Views/BacklogResearch.swift	.padding(.horizontal, 7).padding(.vertical, 2)
 S	ios/PocketSisyphus/Views/BacklogResearch.swift	.padding(.vertical, 2)
@@ -189,7 +190,6 @@ S	ios/PocketSisyphus/Views/BacklogResearch.swift	HStack(spacing: 5) {
 S	ios/PocketSisyphus/Views/BacklogResearch.swift	HStack(spacing: 8) {
 S	ios/PocketSisyphus/Views/BacklogResearch.swift	HStack(spacing: 8) {
 S	ios/PocketSisyphus/Views/BacklogResearch.swift	VStack(alignment: .leading, spacing: 12) {
-S	ios/PocketSisyphus/Views/BacklogResearch.swift	VStack(alignment: .leading, spacing: 2) {
 S	ios/PocketSisyphus/Views/BacklogResearch.swift	VStack(alignment: .leading, spacing: 4) {
 S	ios/PocketSisyphus/Views/BacklogStats.swift	.padding(.vertical, 2)
 S	ios/PocketSisyphus/Views/BacklogStats.swift	.padding(.vertical, 2)

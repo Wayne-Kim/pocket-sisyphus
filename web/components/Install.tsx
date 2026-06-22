@@ -72,6 +72,47 @@ export default function Install() {
         </span>
       </a>
 
+      {/* 안드로이드 — 「준비 중」 + 관심 표명(GitHub Discussions). 실제 빌드/배포는 비-목표.
+          백엔드·폼 없이 신호만 모은다. status 「Coming soon」 은 중립(경고/프로 색 차용 금지). */}
+      <div data-block="android-coming-soon" className="mt-4">
+        <a
+          href={install.android.cta.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-cta="android-interest"
+          data-testid="cta-android"
+          aria-label={install.android.cta.label}
+          className="inline-flex items-center gap-3 rounded-2xl border border-line bg-black/40 px-5 py-3 transition-colors hover:border-accent-soft/50"
+        >
+          <svg
+            aria-hidden
+            viewBox="0 0 24 24"
+            className="h-7 w-7 shrink-0 fill-ink"
+          >
+            <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.2439 13.8533 7.8508 12 7.8508s-3.5902.3931-5.1367 1.0729L4.841 5.4207a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3435-4.1021-2.6892-7.5743-6.1185-9.4396" />
+          </svg>
+          <span className="text-left">
+            <span className="flex items-center gap-2">
+              <span className="text-base font-semibold text-ink">
+                {install.android.label}
+              </span>
+              <span
+                data-block="coming-soon-badge"
+                className="rounded-full border border-line px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted"
+              >
+                {install.android.status}
+              </span>
+            </span>
+            <span className="mt-0.5 block text-sm font-medium text-accent-soft">
+              {install.android.cta.label} <span aria-hidden>→</span>
+            </span>
+          </span>
+        </a>
+        <p className="mt-2 max-w-prose text-sm text-muted">
+          {install.android.note}
+        </p>
+      </div>
+
       <a
         href={install.repoHref}
         target="_blank"

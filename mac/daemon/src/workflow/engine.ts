@@ -34,6 +34,7 @@ import {
   type EdgeDef,
   type WorkflowDef,
 } from "./types.js";
+import { runCheckCommand, lastMeaningfulLines } from "./check-command.js";
 import {
   insertRun,
   insertNodeRun,
@@ -143,6 +144,9 @@ type RunState = {
   /** true 면 엔진의 워크플로우 알림(게이트/주의/실패)을 끈다 — PO «워크플로우로 실행» run 은
    *  자체 watch 루프가 po_gate/po_failed 를 쏘므로 이중 발화를 막는다. */
   suppressNotify: boolean;
+  /** fail-루프 반복 상한 (per-run). «반복 실행»(repeat_run_v1)이 사용자가 고른 «최대 횟수» 로
+   *  주입한다. 미지정(일반 캔버스 run)이면 MAX_ITERATIONS. completeNode 가 이 값을 본다. */
+  maxIterations: number;
 };
 
 /** run 폴더 스탬프 — 로컬 시각 YYYYMMDD-HHMMSS. */
@@ -166,7 +170,13 @@ const runs = new Map<string, RunState>();
 export function startWorkflowRun(
   workflow: WorkflowRow,
   triggerKind: "manual" | "cron" | "github",
-  opts?: { suppressNotify?: boolean; worktree?: { path: string; branch: string } },
+  opts?: {
+    suppressNotify?: boolean;
+    worktree?: { path: string; branch: string };
+    /** «반복 실행»(repeat_run_v1) — 점검 fail-루프의 per-run 반복 상한(«최대 횟수»). 1..MAX_ITERATIONS
+     *  로 클램프해 무한 루프·토큰 폭주를 막는다. 미지정이면 MAX_ITERATIONS(일반 캔버스 run). */
+    maxIterations?: number;
+  },
 ): { runId: string } | { error: string } {
   const def = parseDef(workflow.nodes, workflow.edges);
   if (def.nodes.length === 0) return { error: "노드가 비어 있어요." };
@@ -181,7 +191,19 @@ export function startWorkflowRun(
   }
 
   const snapshot = JSON.stringify({ nodes: def.nodes, edges: def.edges });
-  const run = insertRun(workflow.id, snapshot, triggerKind, opts?.worktree);
+  // per-run 반복 상한 — 1..MAX_ITERATIONS 클램프. «반복 실행» 이 준 «최대 횟수» 가 상한을 넘으면
+  // 엔진 하드캡으로 깎고(토큰 폭주 방지), 미지정/비정상이면 기본 상한.
+  const maxIterations =
+    opts?.maxIterations && Number.isFinite(opts.maxIterations)
+      ? Math.max(1, Math.min(MAX_ITERATIONS, Math.floor(opts.maxIterations)))
+      : MAX_ITERATIONS;
+  const run = insertRun(
+    workflow.id,
+    snapshot,
+    triggerKind,
+    opts?.worktree,
+    opts?.maxIterations !== undefined ? maxIterations : undefined,
+  );
 
   const nodeById = new Map<string, NodeDef>();
   for (const n of def.nodes) nodeById.set(n.id, n);
@@ -255,6 +277,7 @@ export function startWorkflowRun(
     anyFailed: false,
     finished: false,
     suppressNotify: opts?.suppressNotify === true,
+    maxIterations,
   };
   runs.set(run.id, state);
 
@@ -433,6 +456,12 @@ type NodeOutcome = {
   branches: BranchSpec[] | null;
   /** verdict.json summary — fail 판정 시 «되돌아간 사유» 한 줄로 캔버스에 노출. 없으면 null. */
   reason: string | null;
+  /**
+   * 에이전트가 «명시적» verdict.json 판정을 남겼는지 — true 면 verdict 가 진짜 점검 결과(검사),
+   * false 면 기본 «성공 간주»(점검 없음). «검사 통과/실패» 알림은 명시 판정에만 쏜다(통상 작업
+   * 성공이 매번 «검사 통과» 로 울리는 노이즈 방지).
+   */
+  explicitVerdict: boolean;
 };
 
 async function runNodeSession(
@@ -451,6 +480,12 @@ async function runNodeSession(
     title: string;
     /** 루프 재시도면 직전 점검의 실패 사유 — 프롬프트에 «직전 시도는 …» 로 붙는다 (첫 시도엔 미설정). */
     priorFailure?: string;
+    /**
+     * 통과/실패를 판정할 «검사 명령»(테스트·린트·타입체크·빌드). 비어 있지 않으면 에이전트 자기
+     * 판단(verdict.json) 대신 이 명령의 «종료 코드»(0=pass, 비0=fail)로 판정한다. 비면 종전대로
+     * verdict.json 폴백(= «검사 미설정»).
+     */
+    checkCommand?: string;
   },
 ): Promise<NodeOutcome> {
   const parts = {
@@ -514,6 +549,12 @@ async function runNodeSession(
   const harvest = await harvestTaskFolder(p.repoPath, thisFolderRel);
   let status: "done" | "failed" | "needs_attention";
   let verdict: "pass" | "fail" | null = null;
+  // 에이전트가 명시적 verdict.json 을 남겼는지(또는 검사 명령으로 판정했는지) — «검사 통과/실패»
+  // 알림을 명시 판정에만 쏘기 위한 플래그.
+  let explicitVerdict = false;
+  // fail 판정 시 «되돌아간 사유» — 루프 재시도 프롬프트(priorFailure)·캔버스(loopback_reason)에 쓰인다.
+  // 검사 명령을 쓰면 그 실패 출력 꼬리, 아니면 verdict.json summary.
+  let reason: string | null = null;
   if (result!.status === "error" || result!.status === "timeout") {
     // 하드 실패(세션 에러/타임아웃) — 실행 자체가 안 됨. run 을 failed 로 표시(엣지 비활성→dead-path).
     status = "failed";
@@ -544,8 +585,35 @@ async function runNodeSession(
       resultKind = "agent";
     }
     updateNodeRun(p.nodeRunId, { resultKind });
-    // verdict.json 이 있으면 그 판정, 없으면 성공으로 간주.
-    verdict = harvest.verdictPass === true ? "pass" : harvest.verdictPass === false ? "fail" : "pass";
+    updateNodeRun(p.nodeRunId, { resultKind });
+    // 판정: «검사 명령» 이 있으면 종료 코드로 결정한다(에이전트 자기 판단을 신뢰하지 않음 —
+    // 모호한 기준을 trivially 만족시키는 proxy-gaming 방지). 0=pass, 비0=fail, 실패 출력의
+    // 마지막 의미 있는 줄을 사유로 먹인다. 검사 명령이 없으면(=검사 미설정) 종전대로
+    // verdict.json 폴백 — 없으면 성공 간주.
+    const checkCmd = p.checkCommand?.trim();
+    if (checkCmd) {
+      const check = await runCheckCommand(p.repoPath, checkCmd);
+      console.log(
+        `[workflow] run=${state.runId} nodeRun=${p.nodeRunId} check exit=${check.exitCode}` +
+          `${check.timedOut ? " (timeout)" : ""} → ${check.pass ? "pass" : "fail"}`,
+      );
+      verdict = check.pass ? "pass" : "fail";
+      // 검사 명령은 «명시적» 판정 — verdict.json 보다 강하므로 explicitVerdict 로 친다(검사 통과/실패 알림 대상).
+      explicitVerdict = true;
+      if (!check.pass) {
+        const tail = lastMeaningfulLines(check.output);
+        reason =
+          tail ||
+          (check.timedOut
+            ? "검사 명령이 시간 초과로 중단됐어요."
+            : `검사 명령이 실패했어요 (종료 코드 ${check.exitCode ?? "?"}).`);
+      }
+    } else {
+      // verdict.json 이 있으면 그 판정, 없으면 성공으로 간주.
+      verdict = harvest.verdictPass === true ? "pass" : harvest.verdictPass === false ? "fail" : "pass";
+      explicitVerdict = harvest.verdictPass === true || harvest.verdictPass === false;
+      if (verdict === "fail") reason = harvest.verdictSummary;
+    }
     status = "done";
   }
   return {
@@ -554,7 +622,8 @@ async function runNodeSession(
     verdictSummary: harvest.verdictSummary,
     branches: harvest.branches,
     // fail 판정일 때만 사유를 노출 (성공/하드실패엔 «되돌아간 사유» 개념이 없다).
-    reason: verdict === "fail" ? harvest.verdictSummary : null,
+    reason: verdict === "fail" ? reason : null,
+    explicitVerdict,
   };
 }
 
@@ -614,6 +683,7 @@ async function executeWorkNode(state: RunState, defId: string): Promise<void> {
     parents,
     title: node.title ?? defId,
     priorFailure,
+    checkCommand: node.check_command,
   });
   if (r.status === "needs_attention") {
     parkNeedsAttention(state, nodeRunId, {
@@ -621,6 +691,16 @@ async function executeWorkNode(state: RunState, defId: string): Promise<void> {
       retry: () => { state.queue.unshift(defId); },
     });
     return;
+  }
+  // 점검(검사) 노드의 «명시적» 통과/실패 — 폰의 «루프 감독» 을 무인으로 깨우는 의미 신호.
+  // wantsVerdict(=fail 분기 있는 점검) + 에이전트가 verdict.json 으로 명시 판정했을 때만 (통상
+  // 작업 성공이 매번 울리는 노이즈 방지). 페이로드엔 제목·상태만 — 본문 콘텐츠 미포함.
+  if (r.status === "done" && wantsVerdict && r.explicitVerdict && r.verdict) {
+    notifyWorkflow(
+      state,
+      r.verdict === "fail" ? "workflow_check_fail" : "workflow_check_pass",
+      nodeRunId,
+    );
   }
   completeNode(state, defId, r.status, r.verdict, r.reason);
   if (r.status === "done" && r.branches) {
@@ -653,6 +733,7 @@ async function executeDynamicNode(state: RunState, item: DynamicItem): Promise<v
     repoPath,
     parents: [{ rel: item.parentFolderRel, title: item.parentTitle }],
     title: item.spec.title ?? "분기",
+    checkCommand: item.spec.check_command,
   });
   if (r.status === "needs_attention") {
     parkNeedsAttention(state, item.nodeRunId, {
@@ -762,12 +843,12 @@ function completeNode(
     const back = outgoing.find((e) => state.backEdgeIds.has(e.id));
     if (back) {
       const it = state.loopIter.get(back.id) ?? 0;
-      if (it < MAX_ITERATIONS) {
+      if (it < state.maxIterations) {
         state.loopIter.set(back.id, it + 1);
         runLoop(state, defId, back.to, it + 1, reason);
         return;
       }
-      console.warn(`[workflow] run=${state.runId} MAX_ITERATIONS(${MAX_ITERATIONS}) — 루프 종료 ${defId}`);
+      console.warn(`[workflow] run=${state.runId} MAX_ITERATIONS(${state.maxIterations}) — 루프 종료 ${defId}`);
       // 루프가 끝내 통과 못 함 → run 을 failed 로 표시 + 이 테스트 노드에 «한도 도달» 표식(캔버스가
       // danger 의미로 분명히 드러냄). fall through 로 일반 간선 해소.
       state.anyFailed = true;
@@ -818,6 +899,10 @@ function runLoop(
   const body = state.def.nodes.map((n) => n.id).filter(inBody);
   const bodySet = new Set(body);
   console.log(`[workflow] run=${state.runId} loop iter=${iter} body=[${body.join(",")}]`);
+
+  // 루프가 다음 반복으로 되돌아감 — 폰의 «루프 감독» 을 무인으로 깨우는 진행 신호(반복 카운터).
+  // 페이로드엔 의미 신호(제목·반복 번호)만 — 본문/결과 콘텐츠는 안 싣는다.
+  notifyWorkflow(state, "workflow_iteration", state.nodeRunByDefId.get(testDefId) ?? null, iter);
 
   // 점검 실패 사유를 «되돌아온 작업»(루프 몸통의 작업 노드들 — 점검 노드 자신은 제외)에 먹인다.
   // 그래야 다음 시도가 «직전 시도는 이래서 떨어졌다» 를 알고 자기교정한다. 사유가 없으면 미설정.
@@ -891,8 +976,17 @@ function computeReach(nodes: NodeDef[], edges: EdgeDef[]): Map<string, Set<strin
  * throw 하지 않는다. */
 function notifyWorkflow(
   state: RunState,
-  kind: "workflow_gate" | "workflow_attention" | "workflow_failed" | "workflow_done",
+  kind:
+    | "workflow_gate"
+    | "workflow_attention"
+    | "workflow_failed"
+    | "workflow_done"
+    | "workflow_done_hollow"
+    | "workflow_iteration"
+    | "workflow_check_pass"
+    | "workflow_check_fail",
   nodeRunId: string | null,
+  iteration?: number,
 ): void {
   if (state.suppressNotify) return;
   const nodeTitle = nodeRunId ? getNodeRun(nodeRunId)?.title ?? null : null;
@@ -901,6 +995,7 @@ function notifyWorkflow(
     runId: state.runId,
     workflowTitle: state.wfTitle,
     nodeTitle,
+    iteration,
     repoPath: state.defRepoPath,
   });
 }
@@ -1014,21 +1109,28 @@ function maybeFinish(state: RunState): void {
   // 취소(cancelled)는 사용자가 스스로 멈춘 의도된 종료라 신호 없음. 정상 done 이고 합성본/빈 결과
   // 노드가 하나도 없으면 attention 없음(거짓 경보 방지). end 노드뿐 아니라 어느 task 노드든 합성본을
   // 소비했으면(=다운스트림이 의미 없는 결과를 받았으면) «확인 필요» 로 잡는다.
+  let attention: "failed" | "empty" | "synthetic" | null = null;
   if (status !== "cancelled") {
     const nodeKinds = listNodeRuns(state.runId).map((nr) => nr.result_kind);
     const hasEmpty = nodeKinds.includes("empty");
     const hasSynthetic = nodeKinds.includes("synthetic");
-    const attention: "failed" | "empty" | "synthetic" | null =
+    attention =
       status === "failed" ? "failed" : hasEmpty ? "empty" : hasSynthetic ? "synthetic" : null;
     if (attention) setRunAttention(state.runId, attention);
   }
   broadcastRun(state.runId, status);
   // run 마감 알림 1회. finished 가드(상단)가 maybeFinish 재진입을 막아 run 당 정확히 1발.
   //   - failed → 실패(빨강) 알림.
-  //   - done   → 완료(초록) 알림 — 무인 함대를 돌려둔 사용자에게 «와서 리뷰/머지하라» 신호.
+  //   - done + 빈 결과/합성본 → 주의(노랑) 알림(workflow_done_hollow). 형식상 «완료» 여도 진짜
+  //     결과가 없으니 초록 «완료» 로 둔갑하지 않게 강등 — 앱 내 노드 표식(attention_kind)과 같은
+  //     판정(우선순위 failed>empty>synthetic). 자리를 비운 사용자가 헛돈 실행을 바로 인지한다.
+  //   - done + attention 없음 → 완료(초록) 알림 — 무인 함대를 돌려둔 사용자에게 «와서 리뷰/머지하라».
   //   - cancelled → 무음 (사용자가 스스로 멈춘 의도된 종료라 알릴 게 없다).
   if (status === "failed") notifyWorkflow(state, "workflow_failed", null);
-  else if (status === "done") notifyWorkflow(state, "workflow_done", null);
+  else if (status === "done") {
+    const hollow = attention === "empty" || attention === "synthetic";
+    notifyWorkflow(state, hollow ? "workflow_done_hollow" : "workflow_done", null);
+  }
   runs.delete(state.runId);
   console.log(`[workflow] run=${state.runId} finished — ${status}`);
 }

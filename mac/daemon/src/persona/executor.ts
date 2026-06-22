@@ -38,7 +38,15 @@ import { findSimilar, evidenceRefs } from "./similarity.js";
 import { selectConsensusBriefs } from "./consensus.js";
 import { analyzeBriefReadability, formatReadabilitySignals } from "./readability.js";
 import { readConfig, resolvePoMultiPass } from "../config.js";
-import { type CollectSignals, type SignalSourceState, serializeSignals, classifyAscFailure } from "./signals.js";
+import {
+  type CollectSignals,
+  type SignalSourceState,
+  type ScheduledOutcomeKind,
+  serializeSignals,
+  classifyAscFailure,
+  classifyScheduledOutcome,
+  shouldNotifyScheduledOutcome,
+} from "./signals.js";
 
 /**
  * 수집 1회의 신호원 실행 상태를 그 repo 의 «직전 수집» 으로 persist 한다 (po_signal_status_v1).
@@ -61,6 +69,121 @@ function persistCollectSignals(
       .run(serializeSignals(signals), sessionId, Date.now(), repoPath);
   } catch (e) {
     console.warn(`[po] persist collect signals failed repo=${repoPath}:`, (e as Error).message);
+  }
+}
+
+/** 직전 예약 수집의 결말 — 알림 폭주 억제 비교용 (shouldNotifyScheduledOutcome 입력). */
+function readPrevScheduledOutcome(
+  repoPath: string,
+): { outcome: ScheduledOutcomeKind; error: string | null } | null {
+  try {
+    const row = db()
+      .prepare(
+        `SELECT last_scheduled_outcome, last_scheduled_error FROM po_profiles WHERE repo_path = ?`,
+      )
+      .get(repoPath) as
+      | { last_scheduled_outcome: string | null; last_scheduled_error: string | null }
+      | undefined;
+    const o = row?.last_scheduled_outcome;
+    if (o === "new" || o === "empty" || o === "failed") {
+      return { outcome: o, error: row?.last_scheduled_error ?? null };
+    }
+  } catch {
+    /* best-effort — 못 읽으면 «직전 없음»(=알린다) 으로 폴백 */
+  }
+  return null;
+}
+
+/**
+ * 예약 수집의 결말을 그 repo 프로필에 persist (po_scheduled_status_v1) — 앱 내 «마지막 예약 수집»
+ * 카드의 원천. 알림 억제/꺼짐과 무관하게 «항상» 기록한다 (알림을 꺼도 결말을 앱에서 확인 가능 — AC6).
+ * 절대 throw 하지 않는다.
+ */
+function persistScheduledOutcome(
+  repoPath: string,
+  rec: {
+    outcome: ScheduledOutcomeKind;
+    briefCount: number;
+    error: string | null;
+    sessionId: string | null;
+    signals: CollectSignals | null;
+  },
+): void {
+  try {
+    db()
+      .prepare(
+        `UPDATE po_profiles
+           SET last_scheduled_outcome = ?, last_scheduled_brief_count = ?, last_scheduled_error = ?,
+               last_scheduled_session_id = ?, last_scheduled_signals = ?, last_scheduled_at = ?
+         WHERE repo_path = ?`,
+      )
+      .run(
+        rec.outcome,
+        rec.briefCount,
+        rec.error,
+        rec.sessionId,
+        rec.signals ? serializeSignals(rec.signals) : null,
+        Date.now(),
+        repoPath,
+      );
+  } catch (e) {
+    console.warn(`[po] persist scheduled outcome failed repo=${repoPath}:`, (e as Error).message);
+  }
+}
+
+/**
+ * 예약(scheduled) 수집의 결말을 기록 + (억제되지 않으면) 무인 알림. 수동 «지금 수집» 은 이 경로로
+ * 들어오지 않는다 — 화면 앞 사용자라 중복 알림이 잡음이다 (AC4). 두 호출처:
+ *   - finalizeCollection: 인입 끝(성공 N건 / 정상 0건 / 에러·타임아웃) 직후.
+ *   - PoScheduler: tick 의 startPoCollection 이 «시작 자체» 에 실패했을 때(세션 없음).
+ * persist 는 항상, 알림은 shouldNotifyScheduledOutcome 으로 폭주 억제(연속 empty/동일 failed 묶음).
+ * 절대 throw 하지 않는다 — 수집 본류/스케줄러 tick 을 결말 통지가 깨면 안 됨.
+ */
+export async function recordScheduledCollectOutcome(ev: {
+  repoPath: string;
+  /** 수집 세션 id. 시작 실패(스케줄러 tick)는 세션이 없어 null. */
+  sessionId: string | null;
+  status: "ok" | "error" | "timeout";
+  briefCount: number;
+  /** 새 브리프가 정확히 1건일 때 그 id — 알림 딥링크가 브리프 상세로 직행. */
+  briefId?: string;
+  /** failed 결말의 사유 요약 (알림 «Reason» 필드 + 카드). */
+  errorSummary?: string;
+  /** 그 수집의 App Store 신호원 실행 상태 — 카드/알림에 함께 surface. */
+  signals?: CollectSignals;
+}): Promise<void> {
+  try {
+    const outcome = classifyScheduledOutcome(ev.status, ev.briefCount);
+    const error = outcome === "failed" ? (ev.errorSummary?.trim().slice(0, 500) ?? null) : null;
+    const prev = readPrevScheduledOutcome(ev.repoPath);
+    // 결말은 늘 기록 — 알림이 꺼져 있거나 억제돼도 앱 내 카드로 확인 가능해야 한다 (AC5/AC6).
+    persistScheduledOutcome(ev.repoPath, {
+      outcome,
+      briefCount: ev.briefCount,
+      error,
+      sessionId: ev.sessionId,
+      signals: ev.signals ?? null,
+    });
+    if (!shouldNotifyScheduledOutcome(prev, { outcome, error })) {
+      console.log(
+        `[po] scheduled outcome notify suppressed repo=${ev.repoPath} outcome=${outcome} (폭주 억제)`,
+      );
+      return;
+    }
+    await dispatchPoNotification({
+      sessionId: ev.sessionId ?? undefined,
+      repoPath: ev.repoPath,
+      status: ev.status,
+      briefCount: ev.briefCount,
+      briefId: ev.briefId,
+      signals: ev.signals,
+      errorSummary: error ?? undefined,
+    });
+  } catch (e) {
+    console.warn(
+      `[po] recordScheduledCollectOutcome failed repo=${ev.repoPath}:`,
+      (e as Error).message,
+    );
   }
 }
 
@@ -291,6 +414,8 @@ function loadClosedFingerprints(
  * `locale` — 산출 언어 (po_locale_v1, 선택). iOS 가 실은 «앱 표시 언어». 지원 집합의 비-ko 면
  * 브리프 산출을 그 언어로 쓰게 프롬프트에 지시가 붙는다. 생략(주기 수집/옛 클라이언트)/ko/미지원은
  * 한국어 산출(byte-identical) — route 에서 normalizePoLocale 로 이미 정규화돼 들어온다.
+ * `trigger` — "scheduled"(PoScheduler tick) | "manual"(라우트의 «지금 수집», 기본). 예약만 결말을
+ * persist + 무인 알림한다 (po_scheduled_status_v1) — 수동은 화면 앞 사용자라 통지가 잡음(AC4).
  */
 export function startPoCollection(
   repoPathRaw: string,
@@ -298,6 +423,7 @@ export function startPoCollection(
   agentIdRaw?: string,
   lens?: PoLens,
   locale?: string,
+  trigger: "manual" | "scheduled" = "manual",
 ): PoCollectResult {
   const dir = resolveAndEnsureRepoDir(repoPathRaw);
   if ("error" in dir) return { status: "error", error: dir.error };
@@ -382,6 +508,7 @@ export function startPoCollection(
     promptOpts,
     agentId,
     profileRow?.asc_app_id ?? null,
+    trigger,
   ).catch((e) =>
     console.warn(`[po] finalize failed session=${sessionId}:`, (e as Error).message),
   );
@@ -499,6 +626,8 @@ async function finalizeCollection(
   promptOpts: Omit<Parameters<typeof buildPoCollectPrompt>[0], "storeReviews" | "crashSignals">,
   agentId: string,
   ascAppId: string | null,
+  // "scheduled" 면 결말을 persist + 무인 알림(po_scheduled_status_v1), "manual" 이면 둘 다 안 한다(AC4).
+  trigger: "manual" | "scheduled",
 ): Promise<void> {
   // 수집 중 일반 turn_complete 알림 억제 — 끝에 po 전용 알림 한 번만.
   markCronSession(sessionId);
@@ -583,18 +712,24 @@ async function finalizeCollection(
     console.log(
       `[po] collect done session=${sessionId} status=${result.status} briefs=${insertedIds.length} verdicts=${verdicts} signals=store:${signals.store.state}/crash:${signals.crash.state}`,
     );
-    void dispatchPoNotification({
-      sessionId,
-      // 브리프를 실제로 거뒀으면 «성공(po_briefs)» 으로 알린다 — settle 가 timeout 이어도 산출이
-      // 도착한 건 사실이라 status 를 ok 로 맞춰 «결재할 것이 생겼다» 알림이 울리게 한다(알림 게이트는
-      // ok+briefCount>0 만 발사). 0건이면 settle 결과 그대로 — ok 0건은 침묵, timeout/error 는 실패 알림.
-      status: insertedIds.length > 0 ? "ok" : result.status,
-      briefCount: insertedIds.length,
-      // 새 브리프가 정확히 1건이면 알림 딥링크가 그 브리프 상세로 바로 착지한다.
-      briefId: insertedIds.length === 1 ? insertedIds[0] : undefined,
-      // 신호원 실행 상태 — 완료 알림 상세에 «스토어/크래시 신호 사용됨/실패» 한 줄로 surface.
-      signals,
-    });
+    // 예약 수집만 결말을 표면화한다 (수동 «지금 수집» 은 화면 앞 사용자라 통지가 중복·잡음 — AC4).
+    // 브리프를 실제로 거뒀으면 «성공(new)» — settle 가 timeout 이어도 산출이 도착한 건 사실이라
+    // status 를 ok 로 맞춰 «새 제안» 결말이 되게 한다. 0건이면 settle 결과 그대로(ok→empty, 에러/
+    // timeout→failed). recordScheduledCollectOutcome 가 persist(항상) + 폭주 억제 알림을 맡는다.
+    if (trigger === "scheduled") {
+      // void(fire-and-forget) — persist 는 recordScheduledCollectOutcome 의 첫 await «앞» 에서
+      // 동기로 끝나므로 결말 기록은 보장되고, Discord POST 가 finally 의 /tmp 정리를 막지 않는다
+      // (기존 `void dispatchPoNotification` 와 같은 비차단 의미). 절대 throw 안 함(내부 try/catch).
+      void recordScheduledCollectOutcome({
+        repoPath,
+        sessionId,
+        status: insertedIds.length > 0 ? "ok" : result.status,
+        briefCount: insertedIds.length,
+        briefId: insertedIds.length === 1 ? insertedIds[0] : undefined,
+        errorSummary: result.error,
+        signals,
+      });
+    }
   } finally {
     unmarkCronSession(sessionId);
     collectingRepos.delete(repoPath);

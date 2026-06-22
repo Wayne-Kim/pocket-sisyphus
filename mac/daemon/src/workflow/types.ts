@@ -44,6 +44,12 @@ export type NodeDef = {
   prompt?: string;
   /** task — 결과물 처리(저장) 세부 지시. 비면 기본(Task 폴더 result.md)만 안내. */
   result_spec?: string;
+  /**
+   * task — 통과/실패를 판정할 «검사 명령»(예: 테스트·린트·타입체크·빌드). 비어 있지 않으면
+   * 에이전트 자기 판단(verdict.json) 대신 이 명령의 «종료 코드»(0=pass, 비0=fail)로 판정한다.
+   * 비면 «검사 미설정» — 종전대로 verdict.json 폴백.
+   */
+  check_command?: string;
   skip_permissions?: boolean;
   /** true 면 실행 전 사용자 승인 게이트 (Phase 2). */
   requires_approval?: boolean;
@@ -86,6 +92,7 @@ function asNodeArray(raw: unknown): NodeDef[] {
       repo_path: typeof o.repo_path === "string" ? o.repo_path : undefined,
       prompt: typeof o.prompt === "string" ? o.prompt : undefined,
       result_spec: typeof o.result_spec === "string" ? o.result_spec : undefined,
+      check_command: typeof o.check_command === "string" ? o.check_command : undefined,
       skip_permissions: o.skip_permissions === true,
       requires_approval: o.requires_approval === true,
       triggers: Array.isArray(o.triggers) ? (o.triggers as TriggerDef[]) : undefined,

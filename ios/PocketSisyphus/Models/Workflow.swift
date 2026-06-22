@@ -46,6 +46,10 @@ struct WorkflowNodeDef: Codable, Identifiable, Equatable, Hashable {
     let prompt: String?
     /// 결과물 처리(저장) 세부 지시 — 비면 기본(Task 폴더 result.md).
     let result_spec: String?
+    /// 통과/실패를 판정할 «검사 명령»(테스트·린트·타입체크·빌드 등). 비어 있지 않으면 daemon 이
+    /// 에이전트 자기 판단(verdict.json) 대신 이 명령의 «종료 코드»(0=통과, 비0=실패)로 판정한다.
+    /// 비면 «검사 미설정» — 종전대로 자기 판단 폴백(약함).
+    let check_command: String?
     let skip_permissions: Bool?
     /// true 면 실행 전 사용자 승인 게이트.
     let requires_approval: Bool?
@@ -63,6 +67,7 @@ struct WorkflowNodeDef: Codable, Identifiable, Equatable, Hashable {
         repo_path: String? = nil,
         prompt: String? = nil,
         result_spec: String? = nil,
+        check_command: String? = nil,
         skip_permissions: Bool? = nil,
         requires_approval: Bool? = nil,
         triggers: [WorkflowTriggerDef]? = nil,
@@ -76,6 +81,7 @@ struct WorkflowNodeDef: Codable, Identifiable, Equatable, Hashable {
         self.repo_path = repo_path
         self.prompt = prompt
         self.result_spec = result_spec
+        self.check_command = check_command
         self.skip_permissions = skip_permissions
         self.requires_approval = requires_approval
         self.triggers = triggers
@@ -347,6 +353,7 @@ enum WorkflowTemplateCatalog {
                 repo_path: n.repo_path,
                 prompt: n.prompt,
                 result_spec: n.result_spec,
+                check_command: n.check_command,
                 skip_permissions: n.skip_permissions,
                 requires_approval: n.requires_approval,
                 triggers: n.triggers,

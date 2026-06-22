@@ -421,6 +421,22 @@ final class ConnectionManager: ObservableObject {
                 connectTimeout: ep.type == .torOnion ? Self.torConnectTimeout : Self.directConnectTimeout
             )
             let localPort = try await client.connect(opts)
+            // SSH 세션·로컬 리스너가 떴다고 끝이 아니다 — directTCPIP 포워딩이 실제로 데몬에
+            // 닿는지는 별개다. 캐시된 daemonLocalPort 가 stale(데몬이 포트 충돌로 폴백했다가
+            // 다른 포트로 옮김)하면 sshd PermitOpen 화이트리스트에 안 맞아 채널 open 이 거부되고
+            // 모든 API/WS 가 죽는다 — 그런데 connect() 는 채널을 inbound 마다 lazy 로만 열어
+            // 이 사실을 모른 채 «연결됨» 으로 보고했다(= 화면은 붙었는데 아무것도 안 됨). 비인증
+            // GET /health 를 forward 로 1회 쏴, 응답(2xx)이 와야만 채택한다. 거부면 inbound 소켓이
+            // 즉시 끊겨 transport 에러로 빨리 실패 → 상위 connectImpl 이 fresh /endpoint 재조회로
+            // 올바른 포트를 받아 자동 복구한다(캐시만 믿고 stale 포트에 영원히 묶이던 회귀 차단).
+            let probeTimeout: TimeInterval =
+                ep.type == .torOnion ? Self.torConnectTimeout : Self.directConnectTimeout
+            guard await probeForwardHealth(localPort: localPort, timeout: probeTimeout) else {
+                NSLog("[ConnMgr] %@ %@:%d 연결됐으나 forward 헬스 프로브 실패 — 후보 폐기(stale 데몬 포트 의심)",
+                      ep.type.rawValue, ep.host, ep.port)
+                client.disconnect()
+                return nil
+            }
             return ConnectResult(
                 localPort: localPort,
                 endpointType: ep.type,
@@ -437,6 +453,29 @@ final class ConnectionManager: ObservableObject {
                   ep.type.rawValue, ep.host, ep.port, error.localizedDescription)
             client.disconnect()
             return nil
+        }
+    }
+
+    /// 연결 직후 «포워딩이 실제로 데몬에 닿는지» 1회 검증한다 — 비인증 `GET /health`.
+    /// 로컬 forward 포트(127.0.0.1)로 직접 쏜다: SOCKS/프록시 불필요(SSH 채널 자체가 전송 계층)라
+    /// 직접·onion 채널 공통이다. directTCPIP 가 sshd PermitOpen 에서 거부되면 SSHClient 가 inbound
+    /// 소켓을 즉시 cancel 해 transport 에러로 빨리 false 가 된다. `/health` 는 인증 미들웨어 앞단의
+    /// 비인증 라우트라 attest 토큰·클라이언트 버전 헤더 없이도 200 → forward 정상 판정에 적합하다.
+    private func probeForwardHealth(localPort: UInt16, timeout: TimeInterval) async -> Bool {
+        guard let url = URL(string: "http://127.0.0.1:\(localPort)/health") else { return false }
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = timeout
+        config.timeoutIntervalForResource = timeout
+        config.waitsForConnectivity = false
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel() }
+        do {
+            let (_, resp) = try await session.data(from: url)
+            return ((resp as? HTTPURLResponse)?.statusCode).map { (200..<300).contains($0) } ?? false
+        } catch {
+            NSLog("[ConnMgr] forward 헬스 프로브 실패 (localPort=%d): %@",
+                  Int(localPort), error.localizedDescription)
+            return false
         }
     }
 

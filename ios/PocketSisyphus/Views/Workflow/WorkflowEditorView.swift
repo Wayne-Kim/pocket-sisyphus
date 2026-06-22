@@ -798,6 +798,8 @@ struct EditNode: Identifiable, Equatable {
     var prompt: String
     /// 결과물 처리 지시 (비면 기본 Task 폴더 안내).
     var resultSpec: String
+    /// 통과/실패를 가를 «검사 명령» (비면 «검사 미설정» — 자기 판단 폴백).
+    var checkCommand: String
     var agent: String?
     var skipPermissions: Bool
     var requiresApproval: Bool
@@ -811,6 +813,7 @@ struct EditNode: Identifiable, Equatable {
         title: String,
         prompt: String,
         resultSpec: String = "",
+        checkCommand: String = "",
         agent: String?,
         skipPermissions: Bool,
         requiresApproval: Bool = false,
@@ -823,6 +826,7 @@ struct EditNode: Identifiable, Equatable {
         self.title = title
         self.prompt = prompt
         self.resultSpec = resultSpec
+        self.checkCommand = checkCommand
         self.agent = agent
         self.skipPermissions = skipPermissions
         self.requiresApproval = requiresApproval
@@ -837,6 +841,7 @@ struct EditNode: Identifiable, Equatable {
         self.title = def.title ?? ""
         self.prompt = def.prompt ?? ""
         self.resultSpec = def.result_spec ?? ""
+        self.checkCommand = def.check_command ?? ""
         self.agent = def.agent ?? (isWorkType(def.type) ? "claude_code" : nil)
         self.skipPermissions = def.skip_permissions ?? true
         self.requiresApproval = def.requires_approval ?? false
@@ -854,6 +859,7 @@ struct EditNode: Identifiable, Equatable {
             agent: isWork ? agent : nil,
             prompt: isWork ? (prompt.isEmpty ? nil : prompt) : nil,
             result_spec: isWork ? (resultSpec.isEmpty ? nil : resultSpec) : nil,
+            check_command: isWork ? (checkCommand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : checkCommand) : nil,
             skip_permissions: isWork ? skipPermissions : nil,
             requires_approval: (isWork && requiresApproval) ? true : nil,
             triggers: (type == "start" && !triggers.isEmpty) ? triggers : nil,
@@ -953,6 +959,12 @@ private struct NodeInspectorSheet: View {
     }
     private var isValid: Bool { !promptMissing }
 
+    /// 검사 명령 미설정 — 통과 여부를 에이전트 «자기 판단» 에 의존하게 된다(약한 게이트). 진짜 «설정
+    /// 필요» 경고라 warning(노랑). pro(주황)와 혼동 금지.
+    private var checkMissing: Bool {
+        isWork && node.checkCommand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     @ViewBuilder
     private var triggerSection: some View {
         Section {
@@ -998,6 +1010,31 @@ private struct NodeInspectorSheet: View {
             get: { node.triggers[i].schedule ?? "0 9 * * *" },
             set: { node.triggers[i].schedule = $0 }
         )
+    }
+
+    @ViewBuilder
+    private var checkSection: some View {
+        Section {
+            VoiceInputField("예: npm test · ./scripts/lint.sh · swift build", text: $node.checkCommand, lineLimit: 1...4)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .font(.system(.body, design: .monospaced))
+                .accessibilityLabel(Text("검사 명령"))
+        } header: {
+            Text("검사 명령")
+        } footer: {
+            if checkMissing {
+                Label {
+                    Text("검사 미설정 — 통과 여부를 에이전트 자기 판단에 맡겨요. 검사 명령(종료 코드 0=통과)을 지정하면 더 믿을 수 있어요.")
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                }
+                .foregroundStyle(Theme.warning)
+                .accessibilityLabel(Text("검사 미설정 경고"))
+            } else {
+                Text("이 명령의 종료 코드로 통과/실패를 판정해요 (0=통과, 비0=실패). 실패하면 마지막 출력 몇 줄을 다음 반복에 «직전 실패 사유» 로 알려줘요.")
+            }
+        }
     }
 
     var body: some View {
@@ -1062,6 +1099,7 @@ private struct NodeInspectorSheet: View {
                     } footer: {
                         Text("켜면 이 노드는 실행 직전에 멈추고, 캔버스에서 승인해야 진행해요.")
                     }
+                    checkSection
                 }
                 if node.type == "start" {
                     triggerSection

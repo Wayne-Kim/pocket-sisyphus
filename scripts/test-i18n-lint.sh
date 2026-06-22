@@ -2,9 +2,11 @@
 #
 # test-i18n-lint.sh — scripts/i18n-lint.sh 의 회귀/단위 테스트.
 #
-# 1) «회귀 고정» (핵심): HEAD 직전 커밋(37bb50a^, 즉 12곳 수정 «이전») 상태에서 돌리면
-#    그 12곳이 [A] 후보로 잡히고, 현재 HEAD 에서는 그 12곳이 사라졌음을 검증한다.
-#    (git blob 비교 — 작업 트리·히스토리를 건드리지 않는다.)
+# 1) «회귀 고정» (핵심): 「12곳 수정 직전」 의 ternary 코어를 합성 픽스처로 재현하면 그 12곳이
+#    [A] 후보로 잡히고, 현재 HEAD 의 실제 6파일에서는 그 12곳이 사라졌음을 검증한다.
+#    (옛 버전은 git show 37bb50a^ 로 실파일을 떴으나, v2.21.0 공개 스쿼시로 그 커밋이 main 의
+#    조상에서 사라져 CI 의 새 체크아웃에선 추출 불가 → 히스토리 비의존 합성 픽스처로 고정한다.
+#    12줄은 수정 직전 «실제 소스 라인» 그대로라 [A] 검출·발췌 출력이 동일하다.)
 # 2) «단위»: B/C/D 패턴과 제외 규칙(verbatim·주석·로깅·LocalizedStringKey·분리된 Text)을
 #    합성 픽스처로 검증한다(양성/음성).
 #
@@ -16,9 +18,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 LINT="$SCRIPT_DIR/i18n-lint.sh"
 
-# 12곳 수정 커밋. 그 «부모» 가 수정 직전 상태.
-FIX_COMMIT="37bb50a"
-
 PASS=0
 FAIL=0
 ok()   { PASS=$((PASS+1)); printf '  \033[32m✓\033[0m %s\n' "$1"; }
@@ -27,7 +26,7 @@ bad()  { FAIL=$((FAIL+1)); printf '  \033[31m✗ %s\033[0m\n' "$1"; }
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-# 12곳 수정이 닿은 6개 파일 (commit 37bb50a stat).
+# 12곳 수정이 닿은 6개 파일. [1b] 가 현재 HEAD 의 이 실파일들을 읽어 「사라졌나」 를 본다.
 FIXED_FILES=(
   "ios/PocketSisyphus/Views/ChatView.swift"
   "ios/PocketSisyphus/Views/PreviewView.swift"
@@ -54,15 +53,57 @@ KNOWN_12=(
   "WorkflowWindow.swift	cron\" ? \"크론 스케줄\" : \"GitHub 변경 감지 (준비 중)\""
 )
 
-# ── (1a) 수정 «전»(37bb50a^) → 6파일 추출 후 린트 → 12곳이 [A] 로 잡혀야 한다 ──────────
-echo "[1a] 회귀: 수정 직전(${FIX_COMMIT}^) 상태에서 12곳이 [A] 후보로 잡히는가"
+# ── (1a) 수정 «전» 합성 픽스처 → 린트 → 12곳이 [A] 로 잡혀야 한다 ────────────────────────
+# 각 파일을 «실제 basename» 으로 써서 [A] 발췌 줄의 경로에 basename 이 들어가게 하고(아래 매칭이
+# basename 으로 #1/#5 동일 문구를 구분), 12줄은 수정 직전 실제 소스 라인 그대로 박는다.
+echo "[1a] 회귀(합성): 수정 직전 12곳 ternary 가 [A] 후보로 잡히는가"
 BEFORE_DIR="$TMP/before"
-for f in "${FIXED_FILES[@]}"; do
-  mkdir -p "$BEFORE_DIR/$(dirname "$f")"
-  if ! git -C "$REPO_ROOT" show "${FIX_COMMIT}^:$f" > "$BEFORE_DIR/$f" 2>/dev/null; then
-    bad "git blob 추출 실패: ${FIX_COMMIT}^:$f"
-  fi
-done
+mk_before() { mkdir -p "$BEFORE_DIR/$(dirname "$1")"; cat > "$BEFORE_DIR/$1"; }
+mk_before "ios/PocketSisyphus/Views/ChatView.swift" <<'SWIFT'
+import SwiftUI
+struct ChatView: View { var body: some View {
+    EmptyView()
+        .accessibilityLabel(Text(chromeHidden ? "컨트롤 표시" : "컨트롤 숨기기"))
+        .accessibilityLabel(Text(isBusy ? "음성 모델 준비 중" : "음성 입력 (누르고 말하기)"))
+        .accessibilityValue(Text(isRecording ? "녹음 중" : ""))
+} }
+SWIFT
+mk_before "ios/PocketSisyphus/Views/PreviewView.swift" <<'SWIFT'
+import SwiftUI
+struct PreviewView: View { var body: some View {
+    Text(up ? "실행 중" : "꺼짐")
+} }
+SWIFT
+mk_before "ios/PocketSisyphus/Views/RemoteScreenView.swift" <<'SWIFT'
+import SwiftUI
+struct RemoteScreenView: View { var body: some View {
+    EmptyView()
+        .accessibilityLabel(Text(chromeHidden ? "컨트롤 표시" : "컨트롤 숨기기"))
+    Text(running ? "화면 수신 대기 중…" : "화면 캡처 시작 중…")
+    Text(statusReason == "screen_permission" ? "Mac 에서 화면 기록 권한이 필요해요" : "화면이 보이지 않나요?")
+    EmptyView()
+        .accessibilityLabel(Text(saved ? "즐겨찾기 적용" : "즐겨찾기 저장"))
+} }
+SWIFT
+mk_before "ios/PocketSisyphus/Views/SessionsView.swift" <<'SWIFT'
+import SwiftUI
+struct SessionsView: View { var body: some View {
+    Text(ok ? "준비됨" : "필요")
+} }
+SWIFT
+mk_before "mac/PocketSisyphusMac/Views/SettingsWindow.swift" <<'SWIFT'
+import SwiftUI
+struct SettingsWindow: View { var body: some View {
+    Text(granted ? "허용됨" : "아직 허용되지 않음")
+    Text(ok ? "설치됨" : "미설치")
+} }
+SWIFT
+mk_before "mac/PocketSisyphusMac/Views/WorkflowWindow.swift" <<'SWIFT'
+import SwiftUI
+struct WorkflowWindow: View { var body: some View {
+    Text(node.triggers[i].kind == "cron" ? "크론 스케줄" : "GitHub 변경 감지 (준비 중)")
+} }
+SWIFT
 BEFORE_OUT="$(cd "$REPO_ROOT" && "$LINT" --soft --quiet "$BEFORE_DIR" 2>&1)"
 
 before_hits=0
@@ -474,21 +515,11 @@ if printf '%s\n' "$NOYML_OUT" | grep -Fq "knownRegions 미발견"; then
   ok "knownRegions(SSOT) 없으면 커버리지 생략(하드코딩 금지)"
 else bad "project.yml 없는데 커버리지 생략 안내 누락"; fi
 
-# ── (7) 회귀: 실제 iOS 카탈로그의 잔존 빈 키가 [T] 양성으로 잡힌다 ───────────────────────
-# 브리프 evidence: `claude --dangerously-skip-permissions` 가 든 키의 localizations 가 통째로 비어
-#   9개 비-ko 로케일에서 ko 가 새어 나간다. 이 회귀가 [T] 로 «양성» 잡히는지 고정한다.
-#   (이 키가 나중에 번역되거나 정리되면 이 검사는 갱신/제거한다 — 수용 기준 #7 고정 목적.)
-echo "[7] 회귀: 실제 iOS 카탈로그 잔존 빈 키가 [T] 양성"
-IOS_COV="$(cd "$REPO_ROOT" && "$LINT" --coverage --soft --quiet ios/PocketSisyphus 2>/dev/null)"
-DANGER_LINE="$(grep -F "[T] 미완역" <<<"$IOS_COV" | grep -F "dangerously-skip-permissions" || true)"
-if [ -n "$DANGER_LINE" ]; then
-  ok "잔존 빈 키(claude --dangerously-skip-permissions)가 [T] 양성으로 표면화됨"
-  if grep -Eq '누락 9: ' <<<"$DANGER_LINE"; then
-    ok "잔존 빈 키: 비-source 9개 로케일 전부 누락 표기"
-  else bad "잔존 빈 키 누락 로케일 수 표기 오류(누락 9 기대)"; fi
-else
-  bad "잔존 빈 키가 [T] 후보로 안 잡힘(수용 기준 #7 회귀 실패)"
-fi
+# ── (7) [제거됨] 실제 iOS 카탈로그 잔존 빈 키([claude --dangerously-skip-permissions]) [T] 회귀 ──
+# 그 키는 이제 10개 언어 전부 번역돼 더는 빈 키가 아니다(=의도대로 정리됨). 위 [6] 의 합성
+# «커버리지 완전히 빈 키» 가 동일한 «빈 키 → [T] 양성 + 비-source 로케일 전부 누락» 동작을
+# 히스토리/실카탈로그 비의존으로 이미 고정하므로, 실카탈로그 결합 회귀는 제거한다(원 주석의
+# «번역되면 갱신/제거» 지침대로).
 
 # ── (8) --strict (CI 게이트): A–D+[T] 차단 · [O] 비차단 · baseline 래칫 ──────────────────
 # 핵심(수용 기준 ①②③): 노출 문자열은 knownRegions «전부» 채워야 통과, orphan 은 비차단(후보),

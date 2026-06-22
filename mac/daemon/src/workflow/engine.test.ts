@@ -52,6 +52,13 @@ const H = vi.hoisted(() => {
     /** abortPtySession/awaitPtyExit mock — 회귀 테스트가 throw 주입에 쓴다. */
     abortPtySessionMock: vi.fn((_sessionId: string) => true),
     awaitPtyExitMock: vi.fn(async (_sessionId: string, _ms?: number) => {}),
+    /** runCheckCommand 부분 mock — 검사 명령 종료 코드 게이트 주입(기본 pass). */
+    checkMock: vi.fn(async (_repoPath: string, _command: string) => ({
+      pass: true,
+      exitCode: 0,
+      timedOut: false,
+      output: "",
+    })),
   };
 });
 
@@ -107,6 +114,13 @@ vi.mock("../notify/index.js", () => ({
 vi.mock("../workflow/task-folder.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../workflow/task-folder.js")>();
   return { ...actual, harvestTaskFolder: H.harvestMock };
+});
+
+// runCheckCommand 만 부분 mock — 실제 셸 spawn 없이 종료 코드 게이트를 주입한다. lastMeaningfulLines
+// 등 순수 함수는 진짜를 쓴다.
+vi.mock("../workflow/check-command.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../workflow/check-command.js")>();
+  return { ...actual, runCheckCommand: H.checkMock };
 });
 
 const { db, _resetDbForTest } = await import("../db/index.js");
@@ -213,6 +227,8 @@ beforeEach(() => {
   H.awaitPtyExitMock.mockResolvedValue(undefined);
   H.harvestMock.mockReset();
   H.harvestMock.mockResolvedValue({ ...DONE_HARVEST });
+  H.checkMock.mockReset();
+  H.checkMock.mockResolvedValue({ pass: true, exitCode: 0, timedOut: false, output: "" });
 });
 
 afterAll(() => {
@@ -578,6 +594,124 @@ describe("합성본 표식 + 미해결 표면화 (workflow_attention_v1)", () =>
   });
 });
 
+describe("done 알림 분기 — empty/synthetic 이면 완료 대신 주의 (workflow_done_hollow)", () => {
+  // run 을 terminal 까지 구동 — 뜨는 세션마다 session_exit 를 쏜다. preEmit 으로 session_exit
+  // «전» 에 세션별 사전작업(pty_chunk 주입 등)을 끼울 수 있다 (synthetic 캡처 재현용).
+  async function driveToTerminal(
+    runId: string,
+    preEmit?: (sessionId: string) => void,
+  ): Promise<void> {
+    const emitted = new Set<string>();
+    for (let i = 0; i < 200; i++) {
+      for (const s of [...H.startedSessions]) {
+        if (emitted.has(s)) continue;
+        emitted.add(s);
+        preEmit?.(s);
+        H.ptyEvents.emit("session_exit", { sessionId: s });
+      }
+      const st = getRun(runId)?.status;
+      if (st === "done" || st === "failed" || st === "cancelled") return;
+      await new Promise((r) => setTimeout(r, 15));
+    }
+  }
+
+  // pty_chunk 한 줄을 세션에 박아 readSessionText 가 «캡처 출력» 을 보게 한다 (합성본 경로).
+  function seedPtyChunk(sessionId: string, text: string) {
+    db()
+      .prepare(
+        `INSERT INTO messages (id, session_id, role, type, payload, created_at) VALUES (?, ?, 'assistant', 'pty_chunk', ?, ?)`,
+      )
+      .run(
+        `m-${sessionId}`,
+        sessionId,
+        JSON.stringify({ bytes_b64: Buffer.from(text, "utf8").toString("base64") }),
+        Date.now(),
+      );
+  }
+
+  const hollowCalls = () =>
+    H.notifyMock.mock.calls.filter((c) => (c[0] as { kind: string }).kind === "workflow_done_hollow");
+
+  it("done 이지만 빈 결과(empty) → workflow_done 아님, workflow_done_hollow 1발", async () => {
+    // harvest 가 result.md 없음 + 캡처 출력도 없음 → result_kind="empty", run attention="empty".
+    H.harvestMock.mockResolvedValue({ ...DONE_HARVEST, resultMd: null });
+    const wf = makeWorkflow(TASK_NODES, TASK_EDGES);
+    const runId = runIdOf(startWorkflowRun(wf, "cron"));
+
+    await driveToTerminal(runId);
+
+    // run 은 형식상 done 이지만 앱 표식·알림 판정 모두 empty.
+    expect(getRun(runId)?.status).toBe("done");
+    expect(getRun(runId)?.attention_kind).toBe("empty");
+    expect(listNodeRuns(runId).find((n) => n.def_node_id === "task")?.result_kind).toBe("empty");
+    // 핵심: 초록 «완료» 가 아니라 노랑 «주의» 알림 — 앱 노드 표식과 같은 의미.
+    expect(notifyKinds()).not.toContain("workflow_done");
+    const hollow = hollowCalls();
+    expect(hollow).toHaveLength(1);
+    expect(hollow[0][0]).toMatchObject({
+      kind: "workflow_done_hollow",
+      runId,
+      workflowTitle: "Fleet WF",
+      repoPath: H.repoDir,
+    });
+  });
+
+  it("done + 합성본(synthetic) → workflow_done_hollow (완료 알림 아님)", async () => {
+    H.harvestMock.mockResolvedValue({ ...DONE_HARVEST, resultMd: null });
+    const wf = makeWorkflow(TASK_NODES, TASK_EDGES);
+    const runId = runIdOf(startWorkflowRun(wf, "cron"));
+
+    // session_exit «전» 에 캡처 출력을 심어 result_kind 가 synthetic 이 되게 한다.
+    await driveToTerminal(runId, (s) => seedPtyChunk(s, "프롬프트 타이핑 화면…"));
+
+    expect(getRun(runId)?.status).toBe("done");
+    expect(getRun(runId)?.attention_kind).toBe("synthetic");
+    expect(notifyKinds()).not.toContain("workflow_done");
+    expect(hollowCalls()).toHaveLength(1);
+  });
+
+  it("done + attention 없음(정상 결과) → 기존대로 workflow_done, hollow 아님 (무회귀)", async () => {
+    // 기본 harvest(DONE_HARVEST: resultMd 있음) → result_kind="agent" → attention 없음.
+    const wf = makeWorkflow(TASK_NODES, TASK_EDGES);
+    const runId = runIdOf(startWorkflowRun(wf, "cron"));
+
+    await driveToTerminal(runId);
+
+    expect(getRun(runId)?.status).toBe("done");
+    expect(getRun(runId)?.attention_kind).toBeNull();
+    expect(notifyKinds()).toContain("workflow_done");
+    expect(notifyKinds()).not.toContain("workflow_done_hollow");
+  });
+
+  it("엣지: 정상+빈 결과 노드가 섞이면 우선순위(empty)로 hollow 1발", async () => {
+    // start → A(정상)·B(빈 결과) → end. 한 노드라도 비면 run 결말은 주의 (empty>synthetic>agent).
+    const MIX_NODES: RawNode[] = [
+      { id: "start", type: "start", title: "시작", x: 0, y: 0 },
+      { id: "A", type: "task", title: "정상작업", prompt: "일해라", skip_permissions: true, x: -100, y: 100 },
+      { id: "B", type: "task", title: "빈작업", prompt: "일해라", skip_permissions: true, x: 100, y: 100 },
+      { id: "end", type: "end", title: "종료", x: 0, y: 200 },
+    ];
+    const MIX_EDGES: RawEdge[] = [
+      { id: "e1", from: "start", to: "A" },
+      { id: "e2", from: "start", to: "B" },
+      { id: "e3", from: "A", to: "end" },
+      { id: "e4", from: "B", to: "end" },
+    ];
+    H.harvestMock.mockImplementation(async (_repo: string, rel: string) =>
+      rel.includes("빈작업") ? { ...DONE_HARVEST, resultMd: null } : { ...DONE_HARVEST },
+    );
+    const wf = makeWorkflow(MIX_NODES, MIX_EDGES);
+    const runId = runIdOf(startWorkflowRun(wf, "cron"));
+
+    await driveToTerminal(runId);
+
+    expect(getRun(runId)?.status).toBe("done");
+    expect(getRun(runId)?.attention_kind).toBe("empty");
+    expect(notifyKinds()).not.toContain("workflow_done");
+    expect(hollowCalls()).toHaveLength(1);
+  });
+});
+
 describe("cancelled → 완료/실패 알림 없음", () => {
   it("사용자가 게이트 대기 run 을 취소하면 done/failed 어느 쪽도 안 온다 (의도된 종료)", () => {
     const wf = makeWorkflow(GATE_NODES, GATE_EDGES);
@@ -695,6 +829,95 @@ describe("루프 재시도 → 실패 사유 먹인 재시도(자기교정)", ()
     // 2회차: «직전 시도는 다음 이유로 통과하지 못했다: …» + 실제 사유 포함.
     expect(workPrompts[1]).toContain("직전 시도는 다음 이유로 통과하지 못했다:");
     expect(workPrompts[1]).toContain(FAIL_REASON);
+  });
+});
+
+// 검사 명령 게이트 — 노드에 check_command 가 있으면 에이전트 자기 판단(verdict.json)이 아니라
+// 검사 명령의 «종료 코드» 로 pass/fail 을 결정하고, 실패 출력 꼬리를 다음 반복 사유로 먹인다.
+const CHECK_NODES: RawNode[] = [
+  { id: "start", type: "start", title: "시작", x: 0, y: 0 },
+  {
+    id: "work",
+    type: "task",
+    title: "작업노드",
+    prompt: "기능을 구현하라",
+    skip_permissions: true,
+    x: 0,
+    y: 100,
+  },
+  {
+    id: "check",
+    type: "task",
+    title: "점검",
+    prompt: "검사를 준비하라",
+    check_command: "npm test",
+    skip_permissions: true,
+    x: 0,
+    y: 200,
+  },
+  { id: "end", type: "end", title: "종료", x: 0, y: 300 },
+];
+const CHECK_EDGES: RawEdge[] = [
+  { id: "e1", from: "start", to: "work" },
+  { id: "e2", from: "work", to: "check" },
+  { id: "e3", from: "check", to: "work", condition: "fail" }, // back-edge (루프)
+  { id: "e4", from: "check", to: "end" }, // 통과 시 진행
+];
+
+describe("검사 명령(종료 코드) 게이트 — 자기 판단이 아니라 exit code 로 판정", () => {
+  it("verdict.json 이 pass 라도 검사 비0 종료면 fail→루프, 실패 출력 꼬리를 재시도에 먹인다", async () => {
+    // verdict.json 은 항상 pass 라고 «거짓 신고» 하지만(proxy-gaming), 검사 명령이 진실을 가른다.
+    H.harvestMock.mockResolvedValue({
+      ...DONE_HARVEST,
+      verdictPass: true,
+      verdictSummary: "스스로 통과 선언",
+    });
+
+    // 점검 노드의 검사 명령: 1회차 fail(꼬리 사유) → 루프, 2회차 pass → 종료. (작업 노드는 검사
+    // 명령이 없어 호출되지 않는다 — checkMock 은 점검 노드에 대해서만 불린다.)
+    let checkCalls = 0;
+    H.checkMock.mockImplementation(async () => {
+      checkCalls++;
+      return checkCalls === 1
+        ? {
+            pass: false,
+            exitCode: 1,
+            timedOut: false,
+            output: "running tests…\n\nFAIL src/foo.test.ts > 경계값\nexpected 1 but got null\n",
+          }
+        : { pass: true, exitCode: 0, timedOut: false, output: "ok" };
+    });
+
+    const wf = makeWorkflow(CHECK_NODES, CHECK_EDGES);
+    const runId = runIdOf(startWorkflowRun(wf, "manual"));
+
+    let settled = 0;
+    const done = await waitUntil(() => {
+      while (settled < H.startedSessions.length) {
+        H.ptyEvents.emit("session_exit", { sessionId: H.startedSessions[settled] });
+        settled++;
+      }
+      return getRun(runId)?.status === "done";
+    }, 5000);
+    expect(done).toBe(true);
+
+    // 검사 명령은 점검 노드에 대해서만(작업 노드 X) 두 번 호출 — 첫 fail, 둘째 pass.
+    expect(checkCalls).toBe(2);
+
+    // 2회차 작업 프롬프트에 검사 실패 출력 꼬리가 «직전 시도 실패» 로 먹여졌는지.
+    const workPrompts = H.startedPrompts
+      .filter((p) => p.prompt.includes("기능을 구현하라"))
+      .map((p) => p.prompt);
+    expect(workPrompts.length).toBeGreaterThanOrEqual(2);
+    expect(workPrompts[0]).not.toContain("이전 시도 실패");
+    expect(workPrompts[1]).toContain("직전 시도는 다음 이유로 통과하지 못했다:");
+    expect(workPrompts[1]).toContain("expected 1 but got null");
+    // 에이전트의 «거짓» 자기 판단 사유는 먹이지 않는다 — 검사 출력만.
+    expect(workPrompts[1]).not.toContain("스스로 통과 선언");
+
+    // run 은 결국 검사 통과로 done.
+    const checkRun = listNodeRuns(runId).find((n) => n.def_node_id === "check");
+    expect(checkRun?.verdict).toBe("pass");
   });
 });
 

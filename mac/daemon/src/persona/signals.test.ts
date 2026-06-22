@@ -4,6 +4,8 @@ import {
   isSignalFailure,
   serializeSignals,
   parseSignals,
+  classifyScheduledOutcome,
+  shouldNotifyScheduledOutcome,
   type CollectSignals,
 } from "./signals.js";
 import { formatSignalsLine } from "../notify/index.js";
@@ -82,5 +84,72 @@ describe("formatSignalsLine — Discord 완료 알림 한 줄", () => {
     expect(
       formatSignalsLine({ store: { state: "key_missing" }, crash: { state: "key_missing" } }),
     ).toBe("Store reviews: key not set · Crashes: key not set");
+  });
+});
+
+describe("classifyScheduledOutcome — settle 상태 + 인입 건수 → 결말", () => {
+  it("ok + N(≥1) → new", () => {
+    expect(classifyScheduledOutcome("ok", 1)).toBe("new");
+    expect(classifyScheduledOutcome("ok", 7)).toBe("new");
+  });
+  it("ok + 0 → empty (정상 종료·빈손)", () => {
+    expect(classifyScheduledOutcome("ok", 0)).toBe("empty");
+  });
+  it("error/timeout → failed (건수 무관)", () => {
+    expect(classifyScheduledOutcome("error", 0)).toBe("failed");
+    expect(classifyScheduledOutcome("timeout", 3)).toBe("failed");
+  });
+});
+
+describe("shouldNotifyScheduledOutcome — 알림 폭주 억제 (앱 카드는 항상, 알림만 가린다)", () => {
+  it("new 는 항상 알린다 (직전이 무엇이든·새 결재 대상)", () => {
+    expect(shouldNotifyScheduledOutcome(null, { outcome: "new" })).toBe(true);
+    expect(shouldNotifyScheduledOutcome({ outcome: "new" }, { outcome: "new" })).toBe(true);
+    expect(shouldNotifyScheduledOutcome({ outcome: "empty" }, { outcome: "new" })).toBe(true);
+    expect(shouldNotifyScheduledOutcome({ outcome: "failed", error: "x" }, { outcome: "new" })).toBe(true);
+  });
+
+  it("첫 결말(직전 없음)은 항상 알린다", () => {
+    expect(shouldNotifyScheduledOutcome(null, { outcome: "empty" })).toBe(true);
+    expect(shouldNotifyScheduledOutcome(null, { outcome: "failed", error: "boom" })).toBe(true);
+  });
+
+  it("empty 가 연속이면 억제 (여전히 빈손을 매일 반복 통지 안 함)", () => {
+    expect(shouldNotifyScheduledOutcome({ outcome: "empty" }, { outcome: "empty" })).toBe(false);
+  });
+
+  it("empty 직전이 empty 가 아니면 알린다 (상태 전이)", () => {
+    expect(shouldNotifyScheduledOutcome({ outcome: "new" }, { outcome: "empty" })).toBe(true);
+    expect(shouldNotifyScheduledOutcome({ outcome: "failed", error: "x" }, { outcome: "empty" })).toBe(true);
+  });
+
+  it("failed 가 연속이고 사유가 같으면 억제 (매일 같은 실패 폭주 방지)", () => {
+    expect(
+      shouldNotifyScheduledOutcome(
+        { outcome: "failed", error: "agent_missing: codex" },
+        { outcome: "failed", error: "agent_missing: codex" },
+      ),
+    ).toBe(false);
+    // 공백/길이 변형은 같은 사유로 본다 (정규화).
+    expect(
+      shouldNotifyScheduledOutcome(
+        { outcome: "failed", error: "boom" },
+        { outcome: "failed", error: "  boom  " },
+      ),
+    ).toBe(false);
+  });
+
+  it("failed 인데 사유가 바뀌면 다시 알린다 (새 고장)", () => {
+    expect(
+      shouldNotifyScheduledOutcome(
+        { outcome: "failed", error: "network" },
+        { outcome: "failed", error: "agent_missing" },
+      ),
+    ).toBe(true);
+  });
+
+  it("직전이 failed 가 아니면 failed 를 알린다 (정상→고장 전이)", () => {
+    expect(shouldNotifyScheduledOutcome({ outcome: "empty" }, { outcome: "failed", error: "x" })).toBe(true);
+    expect(shouldNotifyScheduledOutcome({ outcome: "new" }, { outcome: "failed", error: "x" })).toBe(true);
   });
 });

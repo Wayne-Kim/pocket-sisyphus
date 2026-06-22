@@ -54,9 +54,13 @@ export type NotifyEventKind =
   // 체인(10m/30m/60m)이 보낸다. «한 번 놓치면 에이전트가 무한 대기» 하는 약한고리 보강.
   // on/off 는 turnComplete 토글을 따른다 (같은 의도의 이벤트 family).
   | "still_waiting"
-  // PO 루프 — 수집 세션이 끝나 새 기회 브리프가 백로그에 들어왔다 (또는 수집 실패).
+  // PO 루프 — 수집 세션이 끝나 새 기회 브리프가 백로그에 들어왔다 (또는 수집 실패/빈손).
   // cron 과 같은 무인 실행이라 away-gating 무시. po/executor 가 보낸다.
+  //   po_briefs : 새 제안 N(≥1)건 인입 (주황 — «프로» 결재 family). 딥링크 = 백로그 탭.
+  //   po_empty  : 정상 종료했으나 제안 0건 («이번엔 없음» — 회색 중립, 실패와 시각적으로 구분).
+  //   po_failed : 시작 실패 또는 인입 파이프 에러/타임아웃 (빨강 — danger).
   | "po_briefs"
+  | "po_empty"
   | "po_failed"
   // PO 루프 «워크플로우로 실행» (po_workflow_v1) — 구현/자가검증이 끝나 사람 승인 게이트에
   // 도달했다. 결재 요청이라 po_briefs 와 같은 정책 (무인 실행, away-gating 무시). 딥링크는
@@ -65,15 +69,28 @@ export type NotifyEventKind =
   // 일반 워크플로우(fleet orchestration) — workflow/engine 의 상태 전이 훅이 보낸다. PO 가 아닌
   // 사용자 워크플로우 run 이 사람을 기다리거나(게이트/주의) 끝났을(완료/실패) 때 폰을 울린다.
   // po_gate 와 같은 «결재/완료» family 정책 (무인 실행, away-gating 무시). 딥링크는 workflow/<runId>.
-  //   - workflow_gate     : requires_approval 노드가 awaiting_approval 진입 (승인 대기, 주황)
-  //   - workflow_attention: 노드가 needs_attention (수동 개입 필요, 노랑 — still_waiting 과 동형)
-  //   - workflow_failed   : run 이 failed 로 마감 (노드 하드 실패/루프 소진/재시작 reconcile, 빨강)
-  //   - workflow_done     : run 이 done(성공)으로 마감 (와서 리뷰/머지하라는 «완료» 신호, 초록).
-  //                         cancelled(사용자가 스스로 멈춤)는 의도된 종료라 무음 — kind 없음.
+  //   - workflow_gate       : requires_approval 노드가 awaiting_approval 진입 (승인 대기, 주황)
+  //   - workflow_attention  : 노드가 needs_attention (수동 개입 필요, 노랑 — still_waiting 과 동형)
+  //   - workflow_failed     : run 이 failed 로 마감 (노드 하드 실패/루프 소진/재시작 reconcile, 빨강)
+  //   - workflow_done       : run 이 done(성공) + 진짜 결과 있음 (와서 리뷰/머지하라는 «완료» 신호, 초록).
+  //   - workflow_done_hollow: run 이 형식상 done 이지만 결과가 비었거나(empty) 합성본(synthetic)이라
+  //                           «진짜 결과 없이» 끝남 (workflow_attention_v1) — 초록 «완료» 로 둔갑하지
+  //                           않게 노랑 «주의» 로 강등. 앱 내 노드 표식(Theme.warning)과 같은 판정·의미.
+  //                           cancelled(사용자가 스스로 멈춤)는 의도된 종료라 무음 — kind 없음.
+  // 자기교정 루프(랄프 «루프 위에 앉아라») 무인 진행 신호 — engine 의 루프/점검 훅이 보낸다.
+  // 폰의 «루프 감독» 화면을 무인으로 깨우는 신호. 페이로드엔 의미 신호(제목·상태·반복 카운터)만
+  // 싣고 본문/결과 콘텐츠는 절대 안 싣는다(기존 정책 유지). 딥링크는 workflow/<runId>.
+  //   - workflow_iteration  : 루프가 다음 반복으로 되돌아감 (진행 카운터, accent 보라)
+  //   - workflow_check_pass : 점검(검사) 통과 (success 초록)
+  //   - workflow_check_fail : 점검(검사) 실패 → 루프 재시도 (danger 빨강)
   | "workflow_gate"
   | "workflow_attention"
   | "workflow_failed"
-  | "workflow_done";
+  | "workflow_done"
+  | "workflow_done_hollow"
+  | "workflow_iteration"
+  | "workflow_check_pass"
+  | "workflow_check_fail";
 
 /** buildDiscordBody 입력 — notify/index 의 enrich 결과. */
 export type NotifyRenderInput = {
@@ -123,6 +140,11 @@ export type NotifyRenderInput = {
    * 없는 daemon 텍스트 표면(앱 내 카드가 로컬라이즈된 본 surface).
    */
   signalsLine?: string;
+  /**
+   * 실패 사유 요약 한 줄 (po_failed 전용) — «실패 사실·repo·사유» 중 «사유» 를 «Reason» 필드로
+   * 싣는다. 없으면 필드 생략. 영어/원문 그대로 (Discord 는 비-로컬라이즈 daemon 텍스트 표면).
+   */
+  reason?: string;
 };
 
 const WEBHOOK_USERNAME = "Pocket Sisyphus";
@@ -139,8 +161,8 @@ const WEBHOOK_USERNAME = "Pocket Sisyphus";
  * `<pocketsisyphus://…>` 꺾쇠도 `[label](pocketsisyphus://…)` 마스크 링크도 전부 죽은
  * 평문으로 렌더되고, 버튼에 넣으면 400(`Scheme … is not supported`)으로 거부된다.
  * (예전 steam:// 시절엔 됐지만 막힘.) 그래서 daemon 은 커스텀 scheme 대신 공개 레포
- * pocket-sisyphus 의 GitHub Pages(pocketsisyphus.app) 정적 페이지(`/open`)로 가는 «https» 링크를 싣고,
- * 그 페이지가 클라이언트에서 `pocketsisyphus://session/<id>` 로 핸드오프한다.
+ * pocket-sisyphus 의 GitHub Pages(wayne-kim.github.io/pocket-sisyphus) 정적 페이지(`/open`)로
+ * 가는 «https» 링크를 싣고, 그 페이지가 클라이언트에서 `pocketsisyphus://session/<id>` 로 핸드오프한다.
  *
  * 외부서버 0: 정적 호스팅이라 운영 서버가 없고, 세션 id 는 URL fragment(`#<id>`)로만
  * 다뤄 네트워크에 흘리지 않는다 (페이지에 비밀값 없음 — 한 장이 모든 빌드 공용).
@@ -153,7 +175,8 @@ const WEBHOOK_USERNAME = "Pocket Sisyphus";
  * 사용자가 config.notify.discord.deepLinkBaseUrl 로 자기 GitHub Pages 등에 올린 브리지
  * 페이지를 지정할 수 있다 — 미지정이면 이 기본값.
  */
-export const DEFAULT_DEEP_LINK_BRIDGE_BASE = "https://pocketsisyphus.app/open";
+export const DEFAULT_DEEP_LINK_BRIDGE_BASE =
+  "https://wayne-kim.github.io/pocket-sisyphus/open";
 
 /**
  * 사용자 지정 딥링크 브리지 base URL 검증. https 만 — http 는 Discord 인앱 브라우저에서
@@ -309,12 +332,17 @@ const EMBED_COLOR: Record<NotifyEventKind, number> = {
   cron_failed: 0xed4245, // red — 예약 작업 실패/타임아웃
   still_waiting: 0xfee75c, // Discord yellow — 주의: 에이전트가 입력 못 받고 멈춰 있음
   po_briefs: 0xe67e22, // orange — «주황 = 프로» 약속색. 새 브리프 결재 요청
-  po_failed: 0xed4245, // red — 수집 실패
+  po_empty: 0x95a5a6, // grey — 정상 종료·제안 0건 («이번엔 없음»). 실패(빨강)와 시각적으로 구분 (session_exit 동색 = 중립 종료)
+  po_failed: 0xed4245, // red — 수집 실패 (danger)
   po_gate: 0xe67e22, // orange — 머지 승인 결재 요청 (po_briefs 와 같은 «결재» family)
   workflow_gate: 0xe67e22, // orange — «주황 = 프로» 결재류. 워크플로우 승인 게이트 도달
   workflow_attention: 0xfee75c, // yellow — 주의: 노드가 멈춰 수동 개입 대기 (still_waiting 과 동색)
   workflow_failed: 0xed4245, // red — 워크플로우 run 실패
   workflow_done: 0x57f287, // green — 성공: 워크플로우 run 완료 (와서 리뷰/머지). cron_complete 와 동색
+  workflow_done_hollow: 0xfee75c, // yellow — 주의: done 이지만 빈 결과/합성본 (warning, workflow_attention 과 동색). 초록 «완료» 금지
+  workflow_iteration: 0x9a5abf, // purple(accent #9A5ABF) — 진행/반복 카운터는 기본 accent (의미색 아님, «진행» 강조)
+  workflow_check_pass: 0x57f287, // green — 검사 통과 (success, workflow_done 과 동색)
+  workflow_check_fail: 0xed4245, // red — 검사 실패 → 루프 재시도 (danger). 점검이 떨어졌다는 의미 신호
 };
 
 const EMBED_TITLE: Record<NotifyEventKind, string> = {
@@ -326,12 +354,17 @@ const EMBED_TITLE: Record<NotifyEventKind, string> = {
   cron_failed: "⚠️ Scheduled task failed",
   still_waiting: "⏳ Still waiting",
   po_briefs: "📋 New product briefs",
+  po_empty: "🍃 No new briefs",
   po_failed: "⚠️ Brief collection failed",
   po_gate: "🚦 Merge approval needed",
   workflow_gate: "🚦 Workflow approval needed",
   workflow_attention: "⏳ Workflow needs attention",
   workflow_failed: "❌ Workflow run failed",
   workflow_done: "✅ Workflow run complete",
+  workflow_done_hollow: "⚠️ Workflow finished without results",
+  workflow_iteration: "🔁 Workflow loop iteration",
+  workflow_check_pass: "✅ Workflow check passed",
+  workflow_check_fail: "🔁 Workflow check failed",
 };
 
 const EMBED_HINT: Partial<Record<NotifyEventKind, string>> = {
@@ -346,7 +379,9 @@ const EMBED_HINT: Partial<Record<NotifyEventKind, string>> = {
     "The agent is still blocked on your input — tap to answer so it can keep going.",
   po_briefs:
     "The PO agent collected signals and proposed opportunity briefs — review them in the Backlog tab.",
-  po_failed: "The PO signal-collection session ended with an error — tap to inspect it.",
+  po_empty:
+    "The scheduled collection ran cleanly but found nothing new to propose this time — nothing to review.",
+  po_failed: "The scheduled signal collection ended with an error — tap to inspect it.",
   po_gate:
     "Implementation and self-verification are done — approve the gate in the workflow canvas to merge.",
   workflow_gate:
@@ -357,6 +392,14 @@ const EMBED_HINT: Partial<Record<NotifyEventKind, string>> = {
     "A workflow run ended in failure — open the run canvas to see which node failed.",
   workflow_done:
     "A workflow run finished successfully — open the run canvas to review and merge the result.",
+  workflow_done_hollow:
+    "A workflow run finished, but one or more nodes produced no real result — empty or auto-synthesized output. Open the run canvas to review the flagged nodes.",
+  workflow_iteration:
+    "A self-correcting loop started another iteration — open the run canvas to oversee progress.",
+  workflow_check_pass:
+    "A workflow check passed — open the run canvas to review what changed.",
+  workflow_check_fail:
+    "A workflow check failed and the loop will retry — open the run canvas to oversee it.",
 };
 
 /** ms → "2m 13s" / "45s" / "1h 03m" 같은 짧은 사람 가독 표현. */
@@ -450,6 +493,10 @@ export function buildDiscordBody(input: NotifyRenderInput): DiscordWebhookBody {
   // 문자열을 넘겨 이 필드가 안 뜬다 (정상/안 켬은 조용히).
   if (input.signalsLine && input.signalsLine.trim()) {
     fields.push({ name: "Signals", value: input.signalsLine.trim().slice(0, 1024), inline: false });
+  }
+  // 실패 사유 한 줄 (po_failed) — «실패 사실·repo·사유» 의 사유. repo 는 위 Repo 필드, 사실은 제목.
+  if (input.reason && input.reason.trim()) {
+    fields.push({ name: "Reason", value: input.reason.trim().slice(0, 1024), inline: false });
   }
 
   // 제목 = 상태 라벨 + 요약(세션 제목 우선, 없으면 repo 이름). 요약이 없으면 라벨만.

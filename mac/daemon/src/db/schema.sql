@@ -188,6 +188,10 @@ CREATE TABLE IF NOT EXISTS workflows (
   -- JSON 배열. 각 간선: { id, from, to, condition?:'pass'|'fail' }. 방향 = from→to.
   edges       TEXT NOT NULL,
   enabled     INTEGER NOT NULL DEFAULT 1,
+  -- 1 = «반복 실행»(repeat_run_v1)이 합성한 일회용 워크플로우 — 캔버스 목록(GET /api/workflows)에서
+  -- 숨긴다. 사용자가 직접 만든 워크플로우(0)와 달리, «반복 실행» 시트가 자기교정 루프(start→실행→
+  -- 점검→end + fail back-edge)를 즉석 합성해 엔진으로 돌리는 단위다. 옛 row 는 0(일반)으로 회귀 0.
+  ephemeral   INTEGER NOT NULL DEFAULT 0,
   created_at  INTEGER NOT NULL,
   updated_at  INTEGER
 );
@@ -227,6 +231,9 @@ CREATE TABLE IF NOT EXISTS workflow_runs (
   trigger_kind    TEXT NOT NULL,                      -- 'manual'|'cron'|'github'
   worktree_path   TEXT,                               -- per-run 격리 worktree 절대경로 (없으면 NULL = 공유 repo)
   worktree_branch TEXT,                               -- 그 worktree 의 브랜치 (`po/<id8>`). NULL = 격리 없음
+  -- «반복 실행»(repeat_run_v1)의 fail-루프 반복 상한 — 점검이 끝내 통과 못 하면 이 횟수에서 멈춘다.
+  -- 일반 캔버스 run 은 NULL → 엔진 기본 상한(WORKFLOW_MAX_ITERATIONS). 옛 row 는 NULL 로 회귀 0.
+  max_iterations  INTEGER,
   -- «미해결» 신호 (workflow_attention_v1) — run 마감 시 산출. NULL = 정상(표시 없음).
   -- 'failed'(하드 실패)|'empty'(빈 결과)|'synthetic'(터미널 출력 자동 합성본 소비). 무인(cron/github)
   -- 실행이 «진짜 결과 없이» 끝났는데 정상 «완료» 로 보이는 막다른 길을, 앱이 배너로 표면화하는 원천.
@@ -355,6 +362,24 @@ CREATE TABLE IF NOT EXISTS po_profiles (
   last_collect_signals TEXT,
   last_collect_session_id TEXT,
   last_collect_at INTEGER,
+  -- 직전 «예약(scheduled) 수집» 의 결말 (po_scheduled_status_v1) — 무인 사용자가 앱을 열지
+  -- 않고도 알림으로, 열어서도 백로그 카드로 «새 제안/빈손/실패» 를 구분해 확인하게 한다.
+  -- last_collect_* 는 «수동·예약 가리지 않은 직전 1회» 의 신호원 상태(폴링용)지만, 이건 «예약»
+  -- 트리거만 기록한다 (수동 «지금 수집» 은 화면 앞 사용자라 표면화/알림 대상이 아니다 — AC4).
+  --   outcome: 'new'(새 제안 N≥1) | 'empty'(정상 종료·제안 0건) | 'failed'(시작 실패 또는 인입
+  --            파이프 에러/타임아웃). NULL = 아직 예약 수집 결말 없음(스케줄만 켜진 «대기»).
+  --   brief_count: new 일 때 인입된 제안 수. error: failed 일 때 사유 요약(없으면 NULL).
+  --   session_id: 그 수집 세션(실패 진단 딥링크용 — 시작 실패는 세션이 없어 NULL).
+  --   signals: 그 수집의 App Store 신호원 실행 상태 스냅샷(JSON, off/off 등은 NULL 로 둘 수 있음).
+  --   at: 결말 persist epoch ms (상대시간 표시용).
+  -- CHECK 는 두지 않는다 — ALTER 로 추가되는 컬럼이라 fresh/migrated DB 의 제약이 갈리는 drift 를
+  -- 피하려고 (lens·dedup status 컬럼과 동일 정책). 값은 앱 계층(classifyScheduledOutcome)이 보증한다.
+  last_scheduled_outcome TEXT,
+  last_scheduled_brief_count INTEGER,
+  last_scheduled_error TEXT,
+  last_scheduled_session_id TEXT,
+  last_scheduled_signals TEXT,
+  last_scheduled_at INTEGER,
   updated_at INTEGER NOT NULL
 );
 

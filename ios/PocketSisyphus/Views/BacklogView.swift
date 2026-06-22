@@ -41,6 +41,11 @@ struct BacklogView: View {
     /// 와 달리 이건 실행 결과라 used·app id·네트워크까지 구분 → 결과 카드로 노출. 신호 안 켰거나
     /// 옛 daemon/로드 실패는 nil → 카드 안 뜸 (잡음 금지).
     @State private var collectSignals: CollectSignals?
+    /// 마지막 «예약(자동) 수집» 의 결말 목록 (po_scheduled_status_v1) — repo 별 new/empty/failed/대기.
+    /// 무인 사용자가 «오늘은 없네» 와 «수집이 깨졌네» 를 혼동하지 않게 백로그에서 결말을 확인한다
+    /// (수동 «지금 수집» 의 즉시 결과는 collectSignals 가, 무인 예약의 결말은 이게 표면화). reload 마다
+    /// 새로 읽고, 미지원(옛) daemon/로드 실패는 빈 배열 → 섹션 자체가 안 뜬다 (soft).
+    @State private var scheduledOutcomes: [PoScheduledCollect] = []
     /// 위 두 안내 배너가 «어느 프로젝트의 수집» 이었는지 — «전체» 필터에선 어떤 레포를 점검했는지
     /// 안 보여 모호하다는 피드백(2026-06). 직전 수집 repoPath 를 기억해 배너에 프로젝트명을 곁들인다.
     /// 배너가 안 떠 있으면 읽히지 않으므로 dismiss 시 따로 비우지 않는다 (다음 수집이 덮어쓴다).
@@ -109,6 +114,13 @@ struct BacklogView: View {
     private var filteredResearch: [PoResearch] {
         guard let repoFilter else { return research }
         return research.filter { $0.repoPath == repoFilter }
+    }
+    /// 표시할 예약 수집 결말 — 미지의 결말(.unknown)은 거르고, repo 필터를 따른다.
+    /// 「전체」 면 결말 있는 모든 repo (보통 스케줄 켠 1~2개), 단일 레포 모드면 그 repo 만.
+    private var filteredScheduled: [PoScheduledCollect] {
+        let items = scheduledOutcomes.filter { $0.outcome != .unknown }
+        guard let repoFilter else { return items }
+        return items.filter { $0.repoPath == repoFilter }
     }
 
     /// 결재 대기 — 백로그의 본문. 전체 모드는 impact 내림차순(여러 프로젝트를 한 줄로 훑는
@@ -340,6 +352,14 @@ struct BacklogView: View {
                     }
                 }
             }
+            // 마지막 «예약(자동) 수집» 결말 (po_scheduled_status_v1) — 무인 사용자가 «새 제안 N /
+            // 이번엔 없음 / 실패 / 아직 없음» 을 여기서 확인한다 (알림을 꺼도 결말이 보인다 — AC6).
+            // 결말 있는 repo 만 (필터 따름). 미지원 daemon/로드 실패는 빈 배열이라 섹션이 안 뜬다.
+            if !filteredScheduled.isEmpty {
+                Section("마지막 예약 수집") {
+                    scheduledOutcomeCards
+                }
+            }
             if let error {
                 Section {
                     Text(LocalizedStringKey(error))
@@ -485,6 +505,18 @@ struct BacklogView: View {
         }
     }
 
+    /// 예약 수집 결말 카드들 — briefList(Section 안)과 emptyState(VStack 안) 양쪽에서 공유.
+    /// repoName 은 repoPath 디렉토리명(식별자). 실패 카드의 «세션 보기» 는 onOpenSession 으로 진단 진입.
+    @ViewBuilder private var scheduledOutcomeCards: some View {
+        ForEach(filteredScheduled) { item in
+            ScheduledCollectCard(
+                item: item,
+                repoName: (item.repoPath as NSString).lastPathComponent,
+                onOpenSession: onOpenSession,
+            )
+        }
+    }
+
     private var emptyState: some View {
         // 쌍둥이 빈 상태(ApprovalReviewSheet)와 동일하게 토큰화 — VStack 간격은 Theme.Spacing.xxl(16),
         // placeholder 아이콘은 Theme.IconSize.l(44). 기존 spacing:14 는 4pt 그리드 밖이라 «쌍둥이 정합»
@@ -538,6 +570,14 @@ struct BacklogView: View {
                 }
                 .padding(.horizontal, 24)
             }
+            // 백로그가 비어 있어도 마지막 예약 수집의 결말(이번엔 없음 / 실패 / 아직 없음)은 여기서
+            // 보인다 — 그래야 «오늘은 제안이 없네» 와 «수집이 깨졌네» 를 구분한다 (AC3/AC5/AC6).
+            if !filteredScheduled.isEmpty {
+                VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                    scheduledOutcomeCards
+                }
+                .padding(.horizontal, 24)
+            }
             if let error {
                 Text(LocalizedStringKey(error))
                     .font(.caption)
@@ -574,6 +614,8 @@ struct BacklogView: View {
             // 진행 중 수집의 «신호원 실행 상태» 를 폴링 — 끝났으면(sessionId 일치) 결과 카드를 띄우고
             // 진행 배너를 내린다. 0건 수집(브리프로 완료를 못 잡는 경우)도 이 경로가 잡는다.
             await pollCollectSignals()
+            // 마지막 예약 수집 결말 — 무인 사용자가 백로그에서 결말을 확인할 수 있게 (po_scheduled_status_v1).
+            await loadScheduledOutcomes()
         } catch {
             if ApiError.isCancellation(error) { return }
             self.error = (error as? LocalizedError)?.errorDescription ?? "\(error)"
@@ -595,6 +637,13 @@ struct BacklogView: View {
         collectSignals = signals.enabled ? signals : nil
         // 실행 결과가 더 정확하므로 수집 직전 프로브 ASC 안내는 거둔다 (한 건 중복 표시 방지).
         if collectSignals != nil { collectAscNotice = nil }
+    }
+
+    /// 마지막 예약 수집 결말 로드 — capability 게이트 (po_scheduled_status_v1). 미지원(옛 daemon, 404)/
+    /// 로드 실패는 빈 배열 → 섹션 자체가 안 뜬다 (soft, loadStats 와 같은 정책).
+    private func loadScheduledOutcomes() async {
+        guard capabilities.contains("po_scheduled_status_v1") else { return }
+        scheduledOutcomes = (try? await api.getScheduledCollectOutcomes()) ?? []
     }
 
     /// 누적 성적표 로드 — capability 게이트 (po_stats_v1). 실패/미지원은 nil 로 카드 숨김 (soft).

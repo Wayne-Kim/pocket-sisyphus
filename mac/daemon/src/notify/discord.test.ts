@@ -188,7 +188,7 @@ describe("buildDiscordBody", () => {
     // 커스텀 scheme(pocketsisyphus://)은 메시지에 직접 넣지 않는다 (죽은 평문/400 거부).
     expect(body.content).not.toContain("pocketsisyphus://");
     expect(body.content).toContain(
-      "https://pocketsisyphus.app/open/#abc-123",
+      "https://wayne-kim.github.io/pocket-sisyphus/open/#abc-123",
     );
     // 마스크 링크 + embed unfurl 억제(<>) 형태.
     expect(body.content).toContain("[Open in app](<https://");
@@ -221,7 +221,7 @@ describe("buildDiscordBody", () => {
     });
     // 경로 구분자 / 는 fragment 에서 합법 — 인코딩하지 않고 그대로 싣는다.
     expect(body.content).toContain(
-      "https://pocketsisyphus.app/open/#backlog/brief-42",
+      "https://wayne-kim.github.io/pocket-sisyphus/open/#backlog/brief-42",
     );
     // 세션 딥링크로 폴백하지 않는다.
     expect(body.content).not.toContain("collect-session-1");
@@ -263,7 +263,7 @@ describe("buildDiscordBody", () => {
     expect(e?.color).toBe(0x57f287); // 여전히 test 색(green)
     expect(e?.title).toContain("예시 작업"); // 요약 제목
     expect(body.content).toContain(
-      "https://pocketsisyphus.app/open/#abc-123",
+      "https://wayne-kim.github.io/pocket-sisyphus/open/#abc-123",
     ); // 딥링크 미리보기(content) — https 브리지
     expect(e?.fields?.find((f) => f.name === "Repo")?.value).toContain("my-repo");
   });
@@ -334,6 +334,75 @@ describe("buildDiscordBody", () => {
     // 막힌 세션으로 바로 진입할 수 있어야 리마인더가 의미 있다 — 딥링크 필수.
     expect(body.content).toContain("#abc-123");
   });
+
+  it("workflow_done_hollow — 빈 결과/합성본 done 은 yellow «주의» (초록 완료 아님) + run 캔버스 딥링크", () => {
+    const body = buildDiscordBody({
+      kind: "workflow_done_hollow",
+      repoName: "my-repo",
+      repoPath: "/my-repo",
+      agentName: "",
+      sessionTitle: "야간 함대",
+      deepLinkPath: "workflow/run-77",
+    });
+    const e = body.embeds?.[0];
+    // 색·의미: workflow_attention/still_waiting 과 같은 warning(yellow), 초록 완료(0x57f287) 아님.
+    expect(e?.color).toBe(0xfee75c);
+    expect(e?.color).not.toBe(0x57f287);
+    expect(e?.title).toContain("야간 함대");
+    // 정적 안내문이 «진짜 결과 없음» 을 설명한다.
+    expect(e?.description).toMatch(/no real result/i);
+    // 딥링크는 run 캔버스로 — 앱이 그 run 의 빈/합성본 노드 표식을 보여준다.
+    expect(body.content).toContain("/open/#workflow/run-77");
+  });
+
+  it("workflow_iteration — 진행 카운터는 accent(보라) + run 캔버스 딥링크 (검사/주의 색과 구분)", () => {
+    const body = buildDiscordBody({
+      kind: "workflow_iteration",
+      repoName: "my-repo",
+      repoPath: "/my-repo",
+      agentName: "",
+      sessionTitle: "자기교정 루프 · 점검 · #3",
+      deepLinkPath: "workflow/run-88",
+    });
+    const e = body.embeds?.[0];
+    // 색·의미: 진행/반복 카운터는 의미색이 아니라 기본 accent(보라 #9A5ABF). 검사 실패(red)/통과(green) 와 구분.
+    expect(e?.color).toBe(0x9a5abf);
+    expect(e?.color).not.toBe(0x57f287);
+    expect(e?.color).not.toBe(0xed4245);
+    expect(e?.title).toContain("Workflow loop iteration");
+    expect(e?.title).toContain("#3");
+    expect(body.content).toContain("/open/#workflow/run-88");
+  });
+
+  it("workflow_check_pass — 검사 통과는 success(초록)", () => {
+    const body = buildDiscordBody({
+      kind: "workflow_check_pass",
+      repoName: "r",
+      repoPath: "/r",
+      agentName: "",
+      sessionTitle: "루프 · 점검",
+      deepLinkPath: "workflow/run-89",
+    });
+    const e = body.embeds?.[0];
+    expect(e?.color).toBe(0x57f287);
+    expect(e?.title).toContain("check passed");
+  });
+
+  it("workflow_check_fail — 검사 실패는 danger(빨강), 루프 재시도 신호", () => {
+    const body = buildDiscordBody({
+      kind: "workflow_check_fail",
+      repoName: "r",
+      repoPath: "/r",
+      agentName: "",
+      sessionTitle: "루프 · 점검",
+      deepLinkPath: "workflow/run-90",
+    });
+    const e = body.embeds?.[0];
+    expect(e?.color).toBe(0xed4245);
+    expect(e?.color).not.toBe(0x57f287);
+    expect(e?.title).toContain("check failed");
+    expect(e?.description).toMatch(/retry/i);
+  });
 });
 
 describe("eventEnabled", () => {
@@ -361,7 +430,7 @@ describe("checkDeepLinkBridgeHealth", () => {
     const r = await checkDeepLinkBridgeHealth(null);
     expect(r.status).toBe("ok");
     expect(r.custom).toBe(false);
-    expect(r.base).toBe("https://pocketsisyphus.app/open");
+    expect(r.base).toBe("https://wayne-kim.github.io/pocket-sisyphus/open");
   });
 
   it("사용자 지정 주소도 동일하게 점검 (custom=true)", async () => {

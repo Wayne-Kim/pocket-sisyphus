@@ -212,6 +212,8 @@ export type BranchSpec = {
   type?: "task";
   /** 이 분기에서 성공/실패 판정을 받을지 — verdict.json 안내를 프롬프트에 넣는다. */
   wants_verdict?: boolean;
+  /** 이 분기의 판정을 가를 «검사 명령»(있으면 종료 코드로 pass/fail). 비면 verdict.json 폴백. */
+  check_command?: string;
   requires_approval?: boolean;
 };
 
@@ -289,6 +291,10 @@ export async function harvestTaskFolder(
               agent: typeof o.agent === "string" ? o.agent : undefined,
               type: "task",
               wants_verdict: o.wants_verdict === true || o.type === "test" ? true : undefined,
+              check_command:
+                typeof o.check_command === "string" && o.check_command.trim()
+                  ? o.check_command
+                  : undefined,
               requires_approval: o.requires_approval === true ? true : undefined,
             });
           }

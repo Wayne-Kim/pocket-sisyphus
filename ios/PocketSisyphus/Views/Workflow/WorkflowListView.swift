@@ -16,8 +16,12 @@ struct WorkflowListView: View {
     private var supportsDesign: Bool { capabilities.contains("workflow_design_v1") }
     private var supportsTemplates: Bool { capabilities.contains("workflow_templates_v1") }
     private var supportsAttention: Bool { capabilities.contains("workflow_attention_v1") }
+    /// 「반복 실행」(repeat_run_v1) — 자동화 탭에 시작 진입점 + 진행 상태 섹션을 노출할지. 없으면 숨김(soft).
+    private var supportsRepeat: Bool { capabilities.contains("repeat_run_v1") }
 
     @EnvironmentObject var lifecycle: AppLifecycle
+    /// 프로(주황) 기능 게이트 — 「반복 실행」은 프로 전용(.repeatRun). 미보유 시 시작 대신 페이월.
+    @EnvironmentObject var purchase: PurchaseStore
     /// `pocketsisyphus://workflow/<runId>` 딥링크 (po_gate «머지 승인 대기» 알림) 소비 —
     /// runId 를 workflow 로 해석해 캔버스로 push 한다.
     @EnvironmentObject var deepLink: DeepLinkRouter
@@ -45,6 +49,14 @@ struct WorkflowListView: View {
     @State private var pendingDesigns: [PendingDesign] = []
     /// 미해결 무인 실행 집계 (workflow_attention_v1) — 상단 배너의 원천.
     @State private var attention: WorkflowAttentionResponse?
+    /// 「반복 실행」(repeat_run_v1) run 목록 — 상단 섹션의 진행/완료/실패 카드 원천.
+    @State private var repeatRuns: [RepeatRun] = []
+    /// 「반복 실행」 시작 시트 표시.
+    @State private var showRepeat = false
+    /// 비-nil 이면 그 「반복 실행」 의 진행 상태 화면으로 push.
+    @State private var repeatStatusTarget: RepeatRunRef?
+    /// 프로 게이트 페이월 — non-nil 이면 PaywallView 를 띄운다(.repeatRun 트리거).
+    @State private var paywallFeature: ProFeature?
 
     var body: some View {
         List {
@@ -83,6 +95,23 @@ struct WorkflowListView: View {
                         Text("모두 확인 처리")
                     }
                     .font(.caption)
+                }
+            }
+            // 「반복 실행」(repeat_run_v1) 진행/완료/실패 — 자동화 탭의 가벼운 «통과할 때까지 무인 반복».
+            // 진행 중·끝난 반복을 상단에 모아 보여준다. 행을 탭하면 진행 상태 화면으로 들어간다. 비활성
+            // (미지원 daemon)이면 섹션 자체가 안 뜬다(supportsRepeat 게이트). 빈(아직 반복 없음)이면 섹션 생략.
+            if supportsRepeat, !repeatRuns.isEmpty {
+                Section {
+                    ForEach(repeatRuns) { run in
+                        Button {
+                            repeatStatusTarget = RepeatRunRef(runId: run.run_id)
+                        } label: {
+                            RepeatRunRow(run: run)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } header: {
+                    Text("반복 실행")
                 }
             }
             // AI 초안 설계는 백그라운드라 진행/완료를 목록 카드로 보여준다 — 사용자는 그동안
@@ -159,6 +188,18 @@ struct WorkflowListView: View {
         .toolbar {
             // 좌상단 설정/도움말은 자동화 홈(AutomationHomeView)이 두 세그먼트 공통으로 제공한다
             // — 여기선 «새 워크플로우» 액션만. (이전엔 워크플로우 탭이 직접 들고 있었다.)
+            // 「반복 실행」(repeat_run_v1) — 캔버스 없이 «통과할 때까지 무인 반복». 프로(.repeatRun) 게이트.
+            // 시트/콘텐츠 버튼이라 기본 틴트(accent) 그대로 — pro(주황)는 «탭 버튼» 만.
+            if supportsRepeat {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        purchase.gate(.repeatRun, $paywallFeature) { showRepeat = true }
+                    } label: {
+                        Image(systemName: "repeat")
+                    }
+                    .accessibilityLabel(Text("반복 실행 시작"))
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     showCreate = true
@@ -171,12 +212,23 @@ struct WorkflowListView: View {
         .overlay {
             if loading && workflows.isEmpty { ProgressView() }
         }
-        .refreshable { await reload(); await reloadAttention() }
+        .refreshable { await reload(); await reloadAttention(); await reloadRepeats() }
         .task { await reload() }
         .task { await reloadAttention() }
+        .task { await reloadRepeats() }
         .task { await consumeRunDeepLink() }
-        .onChange(of: lifecycle.reawakeToken) { _ in Task { await reload(); await reloadAttention() } }
+        .onChange(of: lifecycle.reawakeToken) { _ in Task { await reload(); await reloadAttention(); await reloadRepeats() } }
         .onChange(of: deepLink.pendingWorkflowRunId) { _ in Task { await consumeRunDeepLink() } }
+        // 「반복 실행」 진행 상태 — 행 탭/시작 직후 그 run 의 상태 화면으로 push.
+        .navigationDestination(item: $repeatStatusTarget) { ref in
+            RepeatRunStatusView(
+                auth: auth,
+                conn: conn,
+                inflight: inflight,
+                runId: ref.runId
+            )
+            .toolbar(canvasTabBarVisibility, for: .tabBar)
+        }
         // 딥링크 착지 — runId 가 해석되면 그 run 의 캔버스로 push.
         .navigationDestination(item: $runLanding) { ref in
             WorkflowRunLoaderView(
@@ -225,6 +277,15 @@ struct WorkflowListView: View {
             )
             .presentationDetents([.large])
         }
+        // 「반복 실행」 시작 시트 — 시작하면 진행 상태 화면으로 push + 목록 reload.
+        .sheet(isPresented: $showRepeat) {
+            RepeatRunSheet(auth: auth, conn: conn, inflight: inflight) { runId in
+                Task { await reloadRepeats() }
+                repeatStatusTarget = RepeatRunRef(runId: runId)
+            }
+            .presentationDetents([.large])
+        }
+        .proPaywall(item: $paywallFeature)
         // 이 워크플로우가 만든 세션 보기/삭제. 세션 열기는 onOpenSession(세션 탭 전환+딥링크) 재사용.
         .sheet(item: $sessionsTarget) { wf in
             WorkflowSessionsSheet(
@@ -323,6 +384,15 @@ struct WorkflowListView: View {
         let api = ApiClient(auth: auth, conn: conn, tracker: inflight)
         if let att = try? await api.workflowAttention() {
             attention = att
+        }
+    }
+
+    /// 「반복 실행」(repeat_run_v1) 목록 reload — 미지원이면 건너뛴다(섹션 자체가 숨김).
+    private func reloadRepeats() async {
+        guard supportsRepeat else { return }
+        let api = ApiClient(auth: auth, conn: conn, tracker: inflight)
+        if let runs = try? await api.listRepeatRuns() {
+            repeatRuns = runs
         }
     }
 

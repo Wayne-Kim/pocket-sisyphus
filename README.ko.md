@@ -13,7 +13,7 @@
 <p>
   <a href="https://apps.apple.com/app/pocket-sisyphus/id6772206998"><strong>📱 App Store (iPhone)</strong></a> &nbsp;·&nbsp;
   <a href="#설치-mac"><strong>💻 Mac 설치</strong></a> &nbsp;·&nbsp;
-  <a href="https://pocketsisyphus.app"><strong>🌐 pocketsisyphus.app</strong></a>
+  <a href="https://wayne-kim.github.io/pocket-sisyphus"><strong>🌐 웹사이트</strong></a>
 </p>
 
 <p>

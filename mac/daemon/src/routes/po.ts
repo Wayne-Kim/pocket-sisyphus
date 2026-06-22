@@ -532,6 +532,46 @@ po.get("/collect/last", (c) => {
   });
 });
 
+// 예약(scheduled) 수집의 «마지막 결말» 목록 (po_scheduled_status_v1) — 무인 사용자가 앱을 열지
+// 않고도 알림으로, 열어서도 백로그 카드로 «새 제안 N / 정상 빈손 / 실패» 를 구분해 확인하게 한다.
+// /collect/last 가 «수동·예약 가리지 않은 직전 1회» 의 신호원 상태(수동 수집 폴링용)인 것과 달리,
+// 이건 «예약» 트리거만 기록된 결말이다 (수동 «지금 수집» 은 화면 앞 사용자라 표면화 대상 아님).
+// 스케줄이 켜졌거나(결말 아직 없음=대기) 결말이 한 번이라도 난 모든 repo 를 돌려준다 — iOS 백로그가
+// «전체/레포» 필터에 맞춰 카드로 렌더하고, 결말 없는 «대기» 는 «아직 예약 수집 없음» 으로 안내한다.
+po.get("/collect/scheduled", (c) => {
+  const rows = db()
+    .prepare(
+      `SELECT repo_path, schedule, last_scheduled_outcome, last_scheduled_brief_count,
+              last_scheduled_error, last_scheduled_session_id, last_scheduled_signals, last_scheduled_at
+         FROM po_profiles
+        WHERE schedule IS NOT NULL OR last_scheduled_outcome IS NOT NULL`,
+    )
+    .all() as Array<{
+    repo_path: string;
+    schedule: string | null;
+    last_scheduled_outcome: string | null;
+    last_scheduled_brief_count: number | null;
+    last_scheduled_error: string | null;
+    last_scheduled_session_id: string | null;
+    last_scheduled_signals: string | null;
+    last_scheduled_at: number | null;
+  }>;
+  const items = rows.map((r) => ({
+    repoPath: r.repo_path,
+    // 결말이 아직 없어도 스케줄이 켜졌으면 «대기» 카드를 띄울 수 있게 노출.
+    scheduleEnabled: !!r.schedule,
+    // 'new' | 'empty' | 'failed' | null(아직 결말 없음). 미지의 값은 그대로 흘려보내 클라가 폴백.
+    outcome: r.last_scheduled_outcome ?? null,
+    briefCount: r.last_scheduled_brief_count ?? 0,
+    error: r.last_scheduled_error ?? null,
+    sessionId: r.last_scheduled_session_id ?? null,
+    // 신호원 상태 스냅샷 — 깨졌거나 없으면 null (카드가 신호 줄을 생략).
+    signals: parseSignals(r.last_scheduled_signals),
+    at: r.last_scheduled_at ?? null,
+  }));
+  return c.json({ items });
+});
+
 po.post("/collect", async (c) => {
   let body: {
     repoPath?: unknown;

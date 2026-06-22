@@ -12,7 +12,10 @@ enum EntitlementDecision {
     ///  - `PurchaseStore.init()` 가 StoreKit 구독 / product fetch 를 건너뛴다.
     ///
     /// App Store Connect 에 상품이 «승인» 된 뒤 true 로 바꾸면 프로 기능 잠금이 작동한다.
-    static let iapEnabled = true
+    ///
+    /// 2026-06: 일시적 «전체 무료» 캠페인 — 모든 프로 기능을 잠금 없이 개방(페이월 0, StoreKit
+    /// fetch 0). 유료 잠금을 되살리려면 true 로 되돌린다.
+    static let iapEnabled = false
 
     /// 프로 기능을 사용할 수 있는가?
     ///  - iapEnabled == false → 항상 true (무료 단계엔 전부 무료).
@@ -43,6 +46,7 @@ enum ProFeature: String, CaseIterable, Identifiable {
     case worktree        // git worktree 생성 — 새 세션 시트 + 채팅 BranchSheet 공통
     case chatTools       // 채팅 «고급 도구» (브랜치/worktree·파일 탐색·diff·이미지·세션 알림 음소거 등)
     case preview         // 라이브 프리뷰 — 폰에서 dev 서버(localhost:3000 류)를 WKWebView 로 렌더
+    case repeatRun       // 반복 실행 — 캔버스 없이 자기교정 루프를 즉석 합성해 «통과할 때까지» 무인 반복
 
     var id: String { rawValue }
 

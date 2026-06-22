@@ -21,6 +21,7 @@ import { opencode } from "./routes/opencode.js";
 import { cron } from "./routes/cron.js";
 import { mcp } from "./routes/mcp.js";
 import { workflows } from "./routes/workflows.js";
+import { repeat } from "./routes/repeat.js";
 import { screen } from "./routes/screen.js";
 import { po } from "./routes/po.js";
 import { merge } from "./routes/merge.js";
@@ -299,6 +300,9 @@ export async function start(opts: StartOptions = {}): Promise<void> {
     // 멀티 에이전트 워크플로우. iOS 캔버스에서 그린 DAG 를 daemon 의 WorkflowEngine 이 노드=세션
     // 으로 위상 순서대로 실행. 노드 간 결과물 전달은 Task 폴더 계약 (workflow/task-folder.ts).
     app.route("/api/workflows", workflows);
+    // 「반복 실행」(repeat_run_v1) — 캔버스 없이 자기교정 루프를 즉석 합성해 엔진으로 돌리는 가벼운
+    // 단위. (repo·에이전트·목표 스펙·완료 검사·최대 횟수)만 받아 같은 WorkflowEngine 으로 실행.
+    app.route("/api/repeat", repeat);
     // 화면 원샷 스크린샷 (screen_shot_v1) — 미러링 «캡처/녹화 → 채팅 첨부» 데이터원.
     app.route("/api/screen", screen);
     // PO 루프 — 기회 브리프 백로그. 수집(에이전트 세션) + 결정(승인→실행 세션 spawn).

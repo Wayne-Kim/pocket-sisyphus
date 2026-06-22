@@ -17,6 +17,11 @@ const URLS = {
   appStore: "https://apps.apple.com/app/pocket-sisyphus/id6772206998",
   repo: "https://github.com/Wayne-Kim/pocket-sisyphus",
   discussions: "https://github.com/Wayne-Kim/pocket-sisyphus/discussions",
+  // Android 「관심 표명」 경로 — 백엔드·폼·DB 없이 신호를 모으는 한 곳. discussions 와
+  // 같은 GitHub Discussions(메인테이너 인프라 0)이며, android 로 필터해 사람들이 👍/댓글로
+  // 「얼마나 원하는지」를 남기게 한다. 전용 스레드를 핀하면 이 한 줄만 그 URL 로 교체하면 됨.
+  discussionsAndroid:
+    "https://github.com/Wayne-Kim/pocket-sisyphus/discussions?discussions_q=android",
   installShRaw:
     "https://raw.githubusercontent.com/Wayne-Kim/pocket-sisyphus/main/install.sh",
   installShBlob:
@@ -28,7 +33,7 @@ export const site = {
     title: "Pocket Sisyphus — coding agents in your pocket",
     description:
       "Drive Claude Code, Codex, Antigravity, Copilot & OpenCode running on your Mac — securely, from your iPhone. Dual-channel SSH-first with Tor fallback, or a private same-Wi-Fi-only mode. The app keeps zero servers of its own.",
-    url: "https://pocketsisyphus.app",
+    url: "https://wayne-kim.github.io/pocket-sisyphus",
   },
 
   brand: {
@@ -191,6 +196,14 @@ export const site = {
       label: "Download on the App Store",
       sublabel: "iPhone app",
       href: URLS.appStore,
+    },
+    // 안드로이드 — 「준비 중」 + 관심 표명 한 줄. 실제 앱 빌드/배포는 비-목표(브리프 스코프).
+    // 「Coming soon」 은 경고도 프로도 아닌 중립 상태 → 토큰 warning/pro 차용 금지(중립 muted 칩).
+    android: {
+      label: "Android",
+      status: "Coming soon",
+      note: "An Android app isn't out yet. Want it sooner? React or comment on the Android thread — that's how we gauge demand and set priority.",
+      cta: { label: "Tell us you want Android", href: URLS.discussionsAndroid },
     },
     repoLabel: "View install.sh on GitHub",
     repoHref: URLS.installShBlob,

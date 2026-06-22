@@ -36,7 +36,7 @@ struct DiscordSettingsView: View {
     // 사용자가 자기 GitHub Pages 등에 직접 호스팅한 브리지 페이지로 바꿀 수 있다.
     @State private var deepLinkBaseUrl = ""
     /// daemon 이 알려주는 기본 브리지 URL — placeholder 표시용. 응답에 없으면 이 fallback.
-    @State private var deepLinkDefaultBase = "https://pocketsisyphus.app/open"
+    @State private var deepLinkDefaultBase = "https://wayne-kim.github.io/pocket-sisyphus/open"
 
     // 직접 호스팅용 브리지 페이지 소스 (공개 레포 web/public/open/index.html) — 복사해 쓰면 된다.
     private let bridgeSourceURL =

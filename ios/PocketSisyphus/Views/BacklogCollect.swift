@@ -965,6 +965,146 @@ struct SignalSourceLine: View {
     }
 }
 
+// MARK: - 마지막 예약 수집 결과 카드 (po_scheduled_status_v1)
+
+/// 무인 사용자가 «오늘은 제안이 없네» 와 «수집이 깨졌네» 를 혼동하지 않게, 마지막 «예약(자동)
+/// 수집» 의 결말을 한 카드로 보여 준다 — 알림을 꺼도(혹은 폭주 억제로 안 와도) 여기서 결말을 안다.
+/// 색 정책: 실패=danger(빨강), 새 제안=success(초록), 정상 빈손/대기=중립 .secondary (노랑 아님 —
+/// 경고가 아니다, warning 색을 의미 밖으로 빌리지 않는다). 본문은 의미색 외엔 .primary/.secondary
+/// 자동 적응(다크/라이트). 미지의 결말(.unknown)은 조용히 숨긴다 (거짓 표시 금지).
+struct ScheduledCollectCard: View {
+    let item: PoScheduledCollect
+    /// 어느 프로젝트인지 — repoPath 의 디렉토리명 (picker·BriefRow 와 같은 표기). 식별자라 verbatim.
+    let repoName: String?
+    /// 실패 결말의 세션 진단 진입 — sessionId 있을 때만 «세션 보기» 노출 (시작 실패는 세션 없음).
+    let onOpenSession: (String) -> Void
+
+    /// 상대시간 — 시스템 로케일로 자동 번역 (RelativeDateTimeFormatter). 비싸서 1회 생성 재사용
+    /// (SessionRow·WorkflowRunHistory 와 같은 관례).
+    private static let relFormatter: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .abbreviated
+        return f
+    }()
+
+    var body: some View {
+        if item.outcome == .unknown {
+            EmptyView()
+        } else {
+            HStack(alignment: .top, spacing: Theme.Spacing.m) {
+                Image(systemName: iconName)
+                    .foregroundStyle(iconColor)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    title
+                        .font(.callout.weight(.semibold))
+                    if let repoName {
+                        HStack(spacing: 4) {
+                            Image(systemName: "folder")
+                            Text(verbatim: repoName)
+                        }
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    }
+                    if let detail {
+                        detail
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    // failed 의 daemon 사유 요약 — 진단 텍스트라 verbatim(번역 대상 아님).
+                    if item.outcome == .failed, let reason = failureReason {
+                        Text(verbatim: reason)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let at = item.at {
+                        Text(verbatim: Self.relFormatter.localizedString(
+                            for: Date(timeIntervalSince1970: at / 1000), relativeTo: Date()))
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    // 신호원 실행 상태 스냅샷 — 켰을 때만 (off/unknown 만이면 SignalSourceLine 이 빈 뷰).
+                    if let signals = item.signals, signals.enabled {
+                        SignalSourceLine(label: "스토어 리뷰", source: signals.store)
+                        SignalSourceLine(label: "크래시", source: signals.crash)
+                    }
+                    // 실패면 그 세션으로 진단 진입 (시작 실패는 세션이 없어 sessionId nil → 버튼 생략).
+                    if item.outcome == .failed, let sid = item.sessionId {
+                        Button {
+                            onOpenSession(sid)
+                        } label: {
+                            Label("세션 보기", systemImage: "doc.text.magnifyingglass")
+                                .font(.caption)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(Theme.accent)
+                        .padding(.top, 2)
+                        .accessibilityLabel(Text("실패한 예약 수집 세션 보기"))
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    /// 공백뿐인 사유는 숨긴다.
+    private var failureReason: String? {
+        let r = item.error?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return r.isEmpty ? nil : r
+    }
+
+    private var iconName: String {
+        switch item.outcome {
+        case .new: return "tray.and.arrow.down.fill"
+        case .empty: return "tray"
+        case .failed: return "exclamationmark.octagon.fill"
+        case .pending: return "clock"
+        case .unknown: return "tray"
+        }
+    }
+
+    private var iconColor: Color {
+        switch item.outcome {
+        case .new: return Theme.success
+        case .failed: return Theme.danger
+        case .empty, .pending, .unknown: return Color.secondary
+        }
+    }
+
+    /// 결말별 제목 — ternary 가 아니라 분기된 Text 로 각 한국어 리터럴이 카탈로그 추출 경로를 탄다.
+    private var title: Text {
+        switch item.outcome {
+        case .new:
+            // 보간 \(briefCount) 자동 추출 (%lld).
+            return Text("예약 수집 — 새 제안 \(item.briefCount)건")
+        case .empty:
+            return Text("예약 수집 — 이번엔 제안 없음")
+        case .failed:
+            return Text("예약 수집 실패")
+        case .pending:
+            return Text("아직 예약 수집이 없어요")
+        case .unknown:
+            return Text(verbatim: "")
+        }
+    }
+
+    /// 결말별 보조 설명 — failed/pending 만 둔다 (new/empty 는 제목으로 충분).
+    private var detail: Text? {
+        switch item.outcome {
+        case .failed:
+            return Text("수집이 시작되지 않았거나 중간에 멈췄어요.")
+        case .pending:
+            return Text("매일 예약된 수집이 처음 끝나면 결과가 여기에 표시돼요.")
+        case .new, .empty, .unknown:
+            return nil
+        }
+    }
+}
+
 struct CopyableCommandRow: View {
     let command: String
     @State private var copied = false

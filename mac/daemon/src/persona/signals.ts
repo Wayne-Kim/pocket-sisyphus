@@ -87,6 +87,50 @@ export function parseSignals(json: string | null | undefined): CollectSignals | 
   return null;
 }
 
+// ─── 예약(scheduled) 수집의 «결말» (po_scheduled_status_v1) ──────────────────────
+//
+// 무인 사용자가 «오늘은 제안이 없네» 와 «수집이 깨졌네» 를 혼동하지 않게, 예약 수집의 끝을
+// 세 결말로 가른다. 신호원 상태(CollectSignals)와 별개 축 — 신호는 «무엇을 봤나», 결말은
+// «그래서 무엇이 나왔나» 다.
+//   new   — 새 제안 N(≥1)건이 인입됨 (결재 대상 — 항상 알린다).
+//   empty — 정상 종료했으나 제안 0건 («이번엔 없음» — 실패와 시각적으로 구분).
+//   failed— 시작 실패(스케줄러 tick) 또는 인입 파이프 에러/타임아웃.
+export type ScheduledOutcomeKind = "new" | "empty" | "failed";
+
+/** settle 상태 + 인입 건수 → 결말. 순수 — db/네트워크 없음. */
+export function classifyScheduledOutcome(
+  status: "ok" | "error" | "timeout",
+  briefCount: number,
+): ScheduledOutcomeKind {
+  if (status !== "ok") return "failed";
+  return briefCount > 0 ? "new" : "empty";
+}
+
+/** failed 사유 비교를 위한 정규화 — trim + 길이 cap (같은 실패의 미세 변형을 같게 본다). */
+function normalizeScheduledError(e: string | null | undefined): string {
+  return (e ?? "").trim().slice(0, 200);
+}
+
+/**
+ * 이 결말을 알림으로 «보낼지» 결정 (알림 폭주 방지 — po 브리프 엣지케이스).
+ * persist 는 호출처가 «항상» 한다(앱 내 카드는 억제와 무관). 이 함수는 «알림» 만 가린다.
+ *   new   → 항상 (새 결재 대상이라 묶지 않는다).
+ *   첫 결말(prev 없음) → 항상.
+ *   empty → 직전이 empty 면 억제 («여전히 빈손» 을 매일 반복 통지하지 않는다).
+ *   failed→ 직전도 failed 고 사유가 같으면 억제 (매일 같은 실패 폭주 방지). 사유가 바뀌면 다시 알린다.
+ */
+export function shouldNotifyScheduledOutcome(
+  prev: { outcome: ScheduledOutcomeKind; error?: string | null } | null,
+  next: { outcome: ScheduledOutcomeKind; error?: string | null },
+): boolean {
+  if (next.outcome === "new") return true;
+  if (!prev) return true;
+  if (next.outcome === "empty") return prev.outcome !== "empty";
+  // next.outcome === "failed"
+  if (prev.outcome !== "failed") return true;
+  return normalizeScheduledError(prev.error) !== normalizeScheduledError(next.error);
+}
+
 function isState(v: unknown): v is SignalSourceState {
   if (!v || typeof v !== "object") return false;
   const s = (v as { state?: unknown }).state;

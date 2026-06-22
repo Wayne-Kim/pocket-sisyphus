@@ -21,13 +21,16 @@ export type WorkflowInput = {
   /** JSON 문자열 (EdgeDef[]). */
   edges: string;
   enabled: boolean;
+  /** «반복 실행»(repeat_run_v1)이 합성한 일회용 워크플로우면 true — 캔버스 목록에서 숨긴다. */
+  ephemeral?: boolean;
 };
 
-const WF_COLS = `id, title, repo_path, nodes, edges, enabled, created_at, updated_at`;
+const WF_COLS = `id, title, repo_path, nodes, edges, enabled, ephemeral, created_at, updated_at`;
 
+/** 사용자가 만든 워크플로우만 (ephemeral=0). «반복 실행» 합성본은 repeat 라우트가 따로 다룬다. */
 export function listWorkflows(): WorkflowRow[] {
   return db()
-    .prepare(`SELECT ${WF_COLS} FROM workflows ORDER BY created_at DESC`)
+    .prepare(`SELECT ${WF_COLS} FROM workflows WHERE ephemeral = 0 ORDER BY created_at DESC`)
     .all() as WorkflowRow[];
 }
 
@@ -42,8 +45,8 @@ export function insertWorkflow(input: WorkflowInput): WorkflowRow {
   const now = Date.now();
   db()
     .prepare(
-      `INSERT INTO workflows (id, title, repo_path, nodes, edges, enabled, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO workflows (id, title, repo_path, nodes, edges, enabled, ephemeral, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -52,6 +55,7 @@ export function insertWorkflow(input: WorkflowInput): WorkflowRow {
       input.nodes,
       input.edges,
       input.enabled ? 1 : 0,
+      input.ephemeral ? 1 : 0,
       now,
       now,
     );
@@ -90,7 +94,7 @@ export function deleteWorkflow(id: string): boolean {
 
 // ── 실행 (workflow_runs) ──────────────────────────────────────────────────────
 
-const RUN_COLS = `id, workflow_id, def_snapshot, status, trigger_kind, worktree_path, worktree_branch, attention_kind, attention_ack, started_at, ended_at`;
+const RUN_COLS = `id, workflow_id, def_snapshot, status, trigger_kind, worktree_path, worktree_branch, max_iterations, attention_kind, attention_ack, started_at, ended_at`;
 
 export function insertRun(
   workflowId: string,
@@ -98,14 +102,25 @@ export function insertRun(
   triggerKind: "manual" | "cron" | "github",
   /** PO «워크플로우로 실행» run 의 per-run 격리 worktree (po_run_worktree_v1). 일반 run 은 생략 → NULL. */
   worktree?: { path: string; branch: string },
+  /** «반복 실행»(repeat_run_v1)의 fail-루프 반복 상한. 일반 run 은 생략 → NULL(엔진 기본 상한). */
+  maxIterations?: number,
 ): WorkflowRunRow {
   const id = randomUUID();
   db()
     .prepare(
-      `INSERT INTO workflow_runs (id, workflow_id, def_snapshot, status, trigger_kind, worktree_path, worktree_branch, started_at)
-       VALUES (?, ?, ?, 'running', ?, ?, ?, ?)`,
+      `INSERT INTO workflow_runs (id, workflow_id, def_snapshot, status, trigger_kind, worktree_path, worktree_branch, max_iterations, started_at)
+       VALUES (?, ?, ?, 'running', ?, ?, ?, ?, ?)`,
     )
-    .run(id, workflowId, defSnapshot, triggerKind, worktree?.path ?? null, worktree?.branch ?? null, Date.now());
+    .run(
+      id,
+      workflowId,
+      defSnapshot,
+      triggerKind,
+      worktree?.path ?? null,
+      worktree?.branch ?? null,
+      maxIterations ?? null,
+      Date.now(),
+    );
   return getRun(id)!;
 }
 
@@ -143,6 +158,30 @@ export function listRunningRuns(): WorkflowRunRow[] {
   return db()
     .prepare(`SELECT ${RUN_COLS} FROM workflow_runs WHERE status = 'running'`)
     .all() as WorkflowRunRow[];
+}
+
+/**
+ * «반복 실행»(repeat_run_v1) run 목록 — ephemeral 워크플로우(시트가 합성한 자기교정 루프)의 run 들.
+ * workflow.repo_path 를 함께 실어(repo 라벨) iOS 가 JOIN 없이 카드를 그린다. 최신순, 표시할 만큼만(50).
+ */
+export function listRepeatRuns(
+  limit = 50,
+): Array<WorkflowRunRow & { repo_path: string | null; workflow_title: string | null }> {
+  return db()
+    .prepare(
+      `SELECT wr.id, wr.workflow_id, wr.def_snapshot, wr.status, wr.trigger_kind,
+              wr.worktree_path, wr.worktree_branch, wr.max_iterations, wr.attention_kind,
+              wr.attention_ack, wr.started_at, wr.ended_at,
+              w.repo_path AS repo_path, w.title AS workflow_title
+         FROM workflow_runs wr
+         JOIN workflows w ON w.id = wr.workflow_id
+        WHERE w.ephemeral = 1
+        ORDER BY wr.started_at DESC
+        LIMIT ?`,
+    )
+    .all(Math.max(1, Math.min(100, limit))) as Array<
+    WorkflowRunRow & { repo_path: string | null; workflow_title: string | null }
+  >;
 }
 
 export function setRunStatus(

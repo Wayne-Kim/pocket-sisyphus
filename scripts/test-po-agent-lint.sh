@@ -2,9 +2,10 @@
 #
 # test-po-agent-lint.sh — scripts/po-agent-lint.sh 의 회귀/단위 테스트.
 #
-# 1) «회귀 고정» (핵심): 실제 회귀 수정 커밋(7265d2d «PO 검증수집·정리 진입점 에이전트 선택
-#    누락 수정») 의 «직전» 상태(7265d2d^)에서 BacklogView 를 린트하면 그 누락이 후보로
-#    잡히고, 현재 HEAD 에서는 사라졌음을 검증한다(git blob 비교 — 트리/히스토리 안 건드림).
+# 1) «회귀 고정» (핵심): 「검증수집·정리 진입점 에이전트 선택 누락」 직전 상태를 합성 픽스처로
+#    재현하면 그 누락이 P1/P2 후보로 잡히고, 현재 HEAD 의 실제 소스에선 사라졌음을 검증한다.
+#    (옛 버전은 git show 7265d2d^ 로 실파일을 떴으나, v2.21.0 공개 스쿼시로 그 커밋이 main 의
+#    조상에서 사라져 CI 의 새 체크아웃에선 추출 불가 → 히스토리 비의존 합성 픽스처로 고정한다.)
 # 2) «단위»: P1/P2/P3 패턴과 제외 규칙(agent: 인자·의도적 nil·reject/hold·allow 주석)을
 #    합성 픽스처로 검증한다(양성/음성/예외).
 # 3) 종료코드 계약: 후보 0→0, ≥1→비-0(기본), --soft→항상 0.
@@ -17,10 +18,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 LINT="$SCRIPT_DIR/po-agent-lint.sh"
 
-# 검증수집·정리 진입점 에이전트 선택 누락을 «고친» 커밋. 그 부모가 누락 «직전» 상태.
-FIX_COMMIT="7265d2d"
-BACKLOG="ios/PocketSisyphus/Views/BacklogView.swift"
-
 PASS=0
 FAIL=0
 ok()   { PASS=$((PASS+1)); printf '  \033[32m✓\033[0m %s\n' "$1"; }
@@ -29,13 +26,44 @@ bad()  { FAIL=$((FAIL+1)); printf '  \033[31m✗ %s\033[0m\n' "$1"; }
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-# ── (1a) 수정 «전»(7265d2d^) → cleanup/collect 가 agent 누락[P1], shipped 액션이 픽커 없음[P2] ──
-echo "[1a] 회귀: 수정 직전(${FIX_COMMIT}^) 에서 누락이 P1/P2 후보로 잡히는가"
+# ── (1a) 수정 «전» 합성 픽스처 → cleanup/collect 가 agent 누락[P1], shipped 액션이 픽커 없음[P2] ──
+# 누락 직전 BacklogView 의 핵심 구조만 재현: ① 픽커(PoAgentSection)를 쓰는 화면이라 [P2] 스코프
+# 진입, ② shipped 액션(startVerifyCollect)이 픽커 없이 spawn → [P2], ③ 정리(cleanup)·검증수집
+# (collect) spawn 이 agent 인자 없이 호출 → 각각 [P1]. (실제 소스 라인 그대로라 검출·발췌 동일.)
+echo "[1a] 회귀(합성): 수정 직전 누락이 P1/P2 후보로 잡히는가"
 BEFORE="$TMP/before/ios/PocketSisyphus/Views"
 mkdir -p "$BEFORE"
-if ! git -C "$REPO_ROOT" show "${FIX_COMMIT}^:$BACKLOG" > "$BEFORE/BacklogView.swift" 2>/dev/null; then
-  bad "git blob 추출 실패: ${FIX_COMMIT}^:$BACKLOG"
-fi
+cat > "$BEFORE/BacklogView.swift" <<'SWIFT'
+import SwiftUI
+
+// 합성 회귀 픽스처(「검증수집·정리 진입점 agent 선택 누락」 직전 상태 재현).
+private struct BriefDetailView: View {
+    var body: some View {
+        Form {
+            // approve 픽커(decidable) — 이 화면이 «픽커를 쓰는» 화면임을 표시 → [P2] 스코프 진입.
+            if decidable && !agents.isEmpty {
+                PoAgentSection(agents: agents, selection: $execAgentId)
+            }
+            // shipped 액션은 픽커 없이 검증수집을 돌린다 → shipped 가 [P2] 후보(픽커 미커버).
+            if brief.status == "shipped" {
+                Button { Task { await startVerifyCollect() } } label: { Text("지금 수집해 검증하기") }
+            }
+        }
+    }
+
+    // [P1] 양성: 정리 세션 spawn 인데 agent 인자 없음.
+    private func cleanupAndDismiss() async {
+        let result = try await api.cleanupPoBrief(id: brief.id)
+        onDecided(result.brief, result.cleanupSessionId)
+    }
+
+    // [P1] 양성: 검증수집(collect) spawn 인데 agent 인자 없음.
+    private func startVerifyCollect() async {
+        let started = try await api.startPoCollection(repoPath: brief.repoPath, instruction: nil)
+        onVerifyCollect(started)
+    }
+}
+SWIFT
 BEFORE_OUT="$(cd "$REPO_ROOT" && "$LINT" --soft --quiet "$TMP/before" 2>&1)"
 
 # cleanup 호출이 agent 없이 → [P1]

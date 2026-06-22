@@ -76,7 +76,7 @@ settings:
     EAGER_LINKING: NO
     EAGER_LINKING_TBDS: NO
     # 빌드 시 외부에서 override 가능 (TestFlight 스크립트가 git commit count 로 덮어씀)
-    MARKETING_VERSION: "2.20.0"
+    MARKETING_VERSION: "2.22.0"
     CURRENT_PROJECT_VERSION: "1"
 
 # Tor.framework SPM 미지원 — CocoaPods 로 통합 (Podfile 참고).
@@ -304,12 +304,14 @@ targets:
           CODE_SIGN_STYLE: Automatic
           CODE_SIGN_IDENTITY: "Apple Development"
         Release:
-          # 메인테이너 배포(Release archive) 절차에서 이 확장 전용 «PocketSisyphus Widget AppStore»
-          # 프로비저닝 프로파일을 만들고 Manual 서명으로 교체해야 한다 (메인 앱과 동일한 사유 —
-          # 두 Apple ID 가 같은 팀이라 automatic 이 development cert 를 잘못 고를 수 있음). dev/검증
-          # 빌드는 Debug(Automatic)로 동작하므로 여기선 Automatic 으로 둔다.
-          CODE_SIGN_STYLE: Automatic
-          CODE_SIGN_IDENTITY: "Apple Development"
+          # 위젯 확장 전용 App Store 프로파일로 Manual 서명 — 메인 앱과 동일한 사유(두 Apple ID 가
+          # 같은 팀이라 automatic 이 development cert 를 잘못 골라, distribution archive 의
+          # ValidateEmbeddedBinary 가 실패한다). 프로파일 «PocketSisyphus Widget AppStore» 는
+          # bundle id pe.wayne.pocketsisyphus.widget + Apple Distribution cert 로 발급됨.
+          # dev/검증 빌드는 Debug(Automatic) 그대로.
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "Apple Distribution"
+          PROVISIONING_PROFILE_SPECIFIER: "PocketSisyphus Widget AppStore"
 
   # ──────────────────────────────────────────────────────────────────────────
   # PocketTunnel 익스텐션은 듀얼 채널 모델 전환과 함께 제거됨 (2026-05-27).

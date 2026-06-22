@@ -20,12 +20,14 @@
 		14E1CAF809DDB9842098960E /* ConnectionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61F9BA4922EBCC2524CC6F61 /* ConnectionManager.swift */; };
 		15FCFD2137E59F7F2AC4A075 /* SessionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B230E2DD043D3A9D3F6F8491 /* SessionsView.swift */; };
 		164A36D201B0D8DB5D45CADF /* TreeSitterJavaRunestone in Frameworks */ = {isa = PBXBuildFile; productRef = 150FB6090BF1C292217EFB57 /* TreeSitterJavaRunestone */; };
+		18509DE0760EE63038667754 /* RepeatRunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDE686E70D118BA037F8412A /* RepeatRunView.swift */; };
 		193A3FA89599BCF5BC1DD5E4 /* FileViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48A5FB443260BA93F2021D12 /* FileViewer.swift */; };
 		194A49F08ACB96A087E13CE1 /* CronEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16E9493EBEB1CE2867971B54 /* CronEditorSheet.swift */; };
 		19C81B85413967CC5F5FAED4 /* TreeSitterTOMLRunestone in Frameworks */ = {isa = PBXBuildFile; productRef = 89E56AD77FD73434C38F4795 /* TreeSitterTOMLRunestone */; };
 		19CC74804C1EF4ED715518D3 /* FleetLiveActivityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15583846E445BF6F5999A544 /* FleetLiveActivityViews.swift */; };
 		1ABCFF047F015FBF3ADBD33A /* WorkflowRunHistorySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A19522996CC2055F8DD4CA7 /* WorkflowRunHistorySheet.swift */; };
 		1C948CC4D2AA56DC0EBD4678 /* PaywallCopyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A117CF2B3BFA0142B284EB1C /* PaywallCopyTests.swift */; };
+		1CB192DD0749E6B1B6ABCFA3 /* RepeatRun.swift in Sources */ = {isa = PBXBuildFile; fileRef = A562719772DB82D311FA81DE /* RepeatRun.swift */; };
 		1CFC977AEBA4D12E26285EB2 /* WSReconnectPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C9B248A5D3D16E9514E9830 /* WSReconnectPolicy.swift */; };
 		1D9C328EDEB332C095550F2D /* StoreShotUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0B9EB4A20FBC30325886368 /* StoreShotUITest.swift */; };
 		1E2C1B3F687C2238AFC1D8D3 /* DevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44D37ED49BCC873D7C215282 /* DevicesView.swift */; };
@@ -54,7 +56,9 @@
 		38E11B95E6658F4AAA28CF52 /* KnownHostStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 426C2552FA18AF408484816F /* KnownHostStore.swift */; };
 		3B7223FDFE7EA790E2007AAD /* ScheduleBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C45B942B0DB5C99A9E959C /* ScheduleBuilder.swift */; };
 		3D525D411CB607C6E1FAAD90 /* EndpointCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC2E1C9F0F5D09796302B234 /* EndpointCache.swift */; };
+		3DDDED33438A2F053E4F133C /* VerifyCheckCommandUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14CE764DB54853DCD29606B3 /* VerifyCheckCommandUITest.swift */; };
 		3E19B798919BFC0D97B74DEB /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BA655C84BB1BF2A99BF886C /* DesignTokens.swift */; };
+		408492061779240F2FEAA461 /* Pods_PocketSisyphus.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 219EBBED87E29A014DDCF57C /* Pods_PocketSisyphus.framework */; };
 		434DD8F8629206AEDC868970 /* VersionCompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 147551853CF3BBA8619DAA89 /* VersionCompat.swift */; };
 		4424C62134A055A11930163C /* PtyByteBufferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8EEE6C6CF4C28EC88B86EEE /* PtyByteBufferTests.swift */; };
 		45704E686010329133EC67BE /* ProductCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D188284EF33D7065AD9707F9 /* ProductCatalog.swift */; };
@@ -93,6 +97,7 @@
 		6E44241CEB620AEEF617DCA5 /* WorkflowEdgeRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7A582219E7E02BA064AE6FC /* WorkflowEdgeRouter.swift */; };
 		6E7257E7880A1EE84F95B4E1 /* WorkflowCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C691E4F7495453C90686A864 /* WorkflowCanvasView.swift */; };
 		6F312663858B09012EFBD55C /* DeepLinkConsumeGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5362D4492297C33AD7DB94D6 /* DeepLinkConsumeGate.swift */; };
+		6FE1DC891A9093CA01E662B6 /* WorkflowLoopMonitorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C7B075BF5DB659AC33F9B4F /* WorkflowLoopMonitorView.swift */; };
 		718FB1E5C8CB4CC4CD9DE117 /* PtyLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = E29E28F82A65995EF4B30909 /* PtyLog.swift */; };
 		726F5B9898D6F2C9A1541C20 /* ApiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D37261AD97A186596151FD1 /* ApiClient.swift */; };
 		72FABFAB5A988DFDB4A308A2 /* DeepLinkRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0DF8F92EA4D36A25A52BB2 /* DeepLinkRouter.swift */; };
@@ -205,7 +210,6 @@
 		F405187B2B8CBA4580762A5D /* DecideReason.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E85D1CED5E3F875ACED4A24 /* DecideReason.swift */; };
 		F55FBF885DEDA9DFF3F4AE47 /* AttachmentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9FAF2999A4DF28D646BF295 /* AttachmentSheet.swift */; };
 		F69537A3692D6235448A2B73 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 934F7FF0F6039E2A8B333DFC /* ChatView.swift */; };
-		F6C287C0F8511C24D07AE6ED /* Pods_PocketSisyphus.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A945B482385F60C78E2498A0 /* Pods_PocketSisyphus.framework */; };
 		F8BD3B3D546496C3E350AFA7 /* TreeSitterRubyRunestone in Frameworks */ = {isa = PBXBuildFile; productRef = D723199DBC2BF68E3CBE9B69 /* TreeSitterRubyRunestone */; };
 		FD13CAA054C6DA7EB8AADF11 /* ShortcutEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35700C5F373E239122BD5C63 /* ShortcutEditorSheet.swift */; };
 		FF869CF8C31300B68740F567 /* CronJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F04D3E7926CB9CAEFA2AF9A /* CronJob.swift */; };
@@ -248,11 +252,13 @@
 		025890686C239ACA73F6D57A /* AppRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRoot.swift; sourceTree = "<group>"; };
 		04E7B06E2C74E8A7F789D8CD /* DiffComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffComponents.swift; sourceTree = "<group>"; };
 		0E85D1CED5E3F875ACED4A24 /* DecideReason.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecideReason.swift; sourceTree = "<group>"; };
+		0EB27C3D4FA0A8EC07EE4A88 /* Pods-PocketSisyphus.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PocketSisyphus.release.xcconfig"; path = "Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus.release.xcconfig"; sourceTree = "<group>"; };
 		100D06F509E70FBB46164D81 /* DeepLinkContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkContractTests.swift; sourceTree = "<group>"; };
 		108D76182E4D18942223E62A /* ChatItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatItem.swift; sourceTree = "<group>"; };
 		13B45B28D458AF9363E81913 /* EntitlementDecisionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntitlementDecisionTests.swift; sourceTree = "<group>"; };
 		13D6C3EBF7F973100F755223 /* SessionListBadges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionListBadges.swift; sourceTree = "<group>"; };
 		147551853CF3BBA8619DAA89 /* VersionCompat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionCompat.swift; sourceTree = "<group>"; };
+		14CE764DB54853DCD29606B3 /* VerifyCheckCommandUITest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerifyCheckCommandUITest.swift; sourceTree = "<group>"; };
 		14EB8F126A76632C211AB3B6 /* EntitlementDecision.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntitlementDecision.swift; sourceTree = "<group>"; };
 		15583846E445BF6F5999A544 /* FleetLiveActivityViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetLiveActivityViews.swift; sourceTree = "<group>"; };
 		15BA142999E1B754B0478D62 /* LanOnlyPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanOnlyPolicyTests.swift; sourceTree = "<group>"; };
@@ -264,6 +270,7 @@
 		1A19522996CC2055F8DD4CA7 /* WorkflowRunHistorySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowRunHistorySheet.swift; sourceTree = "<group>"; };
 		1C9B248A5D3D16E9514E9830 /* WSReconnectPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WSReconnectPolicy.swift; sourceTree = "<group>"; };
 		207B37DEF7D41FDCAA147983 /* BacklogStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BacklogStats.swift; sourceTree = "<group>"; };
+		219EBBED87E29A014DDCF57C /* Pods_PocketSisyphus.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PocketSisyphus.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		24D542D319009817B157B7F0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		2606E7013EF5B416A54FA64C /* LanOnlyPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanOnlyPolicy.swift; sourceTree = "<group>"; };
 		2643C0466579111792CF2A59 /* AttachmentAnnotationEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentAnnotationEditor.swift; sourceTree = "<group>"; };
@@ -271,7 +278,7 @@
 		27D4ED92531CD9C622F91E9F /* AgentWaitNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentWaitNotifier.swift; sourceTree = "<group>"; };
 		2949CEE0C11C1C776DA3F77E /* SSHHostKeyTOFU.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHHostKeyTOFU.swift; sourceTree = "<group>"; };
 		29AF33AFB6CBB1C000C296F4 /* DiffSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffSheet.swift; sourceTree = "<group>"; };
-		2AD9E163627A548840731D74 /* Pods-PocketSisyphus.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PocketSisyphus.release.xcconfig"; path = "Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus.release.xcconfig"; sourceTree = "<group>"; };
+		2C7B075BF5DB659AC33F9B4F /* WorkflowLoopMonitorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowLoopMonitorView.swift; sourceTree = "<group>"; };
 		2D7E25A4AA174DBC558FC112 /* BacklogCollect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BacklogCollect.swift; sourceTree = "<group>"; };
 		2EAC582EC5B3759EEFF3DAD2 /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
 		325B0C98B9FD65F658CF2FC2 /* PocketSisyphusTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PocketSisyphusTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -351,7 +358,7 @@
 		9BA655C84BB1BF2A99BF886C /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		9EA63E77E6C51EE5FABF70A8 /* OrientationLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrientationLock.swift; sourceTree = "<group>"; };
 		A117CF2B3BFA0142B284EB1C /* PaywallCopyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallCopyTests.swift; sourceTree = "<group>"; };
-		A945B482385F60C78E2498A0 /* Pods_PocketSisyphus.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PocketSisyphus.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		A562719772DB82D311FA81DE /* RepeatRun.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepeatRun.swift; sourceTree = "<group>"; };
 		A9FAF2999A4DF28D646BF295 /* AttachmentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentSheet.swift; sourceTree = "<group>"; };
 		AAA2EC929C93FE450119450A /* SecurityStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityStatusView.swift; sourceTree = "<group>"; };
 		AADD66895B8A7753883ECDCA /* GuideContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuideContent.swift; sourceTree = "<group>"; };
@@ -389,7 +396,6 @@
 		D48F9F2535633B860DA0CEA7 /* AgentInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentInfo.swift; sourceTree = "<group>"; };
 		D5182486FC1972B4EB44D136 /* GuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuideView.swift; sourceTree = "<group>"; };
 		D77F4E89886DEE8A1993F240 /* WorkflowRunLoaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowRunLoaderView.swift; sourceTree = "<group>"; };
-		D7BA8B555EFFB7F6496FCD42 /* Pods-PocketSisyphus.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PocketSisyphus.debug.xcconfig"; path = "Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus.debug.xcconfig"; sourceTree = "<group>"; };
 		D8EEE6C6CF4C28EC88B86EEE /* PtyByteBufferTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PtyByteBufferTests.swift; sourceTree = "<group>"; };
 		DC2E1C9F0F5D09796302B234 /* EndpointCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndpointCache.swift; sourceTree = "<group>"; };
 		DCCD0308242B5ECD3C975D80 /* FleetLiveActivitySnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetLiveActivitySnapshotTests.swift; sourceTree = "<group>"; };
@@ -408,9 +414,11 @@
 		EB20E0DED13E419483CDCA88 /* SessionListCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionListCache.swift; sourceTree = "<group>"; };
 		EBF01A11D636ECAFE95ABBBF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		EDE588CBF52EDD525D42BC31 /* VoiceDictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDictation.swift; sourceTree = "<group>"; };
+		EDE686E70D118BA037F8412A /* RepeatRunView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepeatRunView.swift; sourceTree = "<group>"; };
 		EF368B0545E733EDD1AD2A64 /* BacklogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BacklogView.swift; sourceTree = "<group>"; };
 		F61CAB4ED243B6E9736DC1F5 /* InFlight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InFlight.swift; sourceTree = "<group>"; };
 		F813A5E03CD4880612C42864 /* PocketSisyphus.storekit */ = {isa = PBXFileReference; path = PocketSisyphus.storekit; sourceTree = "<group>"; };
+		F85E3BE5FC479DAEF8676D25 /* Pods-PocketSisyphus.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PocketSisyphus.debug.xcconfig"; path = "Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -442,7 +450,7 @@
 				164A36D201B0D8DB5D45CADF /* TreeSitterJavaRunestone in Frameworks */,
 				89724EBCF4A3D9B8B178EB36 /* TreeSitterPHPRunestone in Frameworks */,
 				C5D42C99027F202178CF6D40 /* TreeSitterSQLRunestone in Frameworks */,
-				F6C287C0F8511C24D07AE6ED /* Pods_PocketSisyphus.framework in Frameworks */,
+				408492061779240F2FEAA461 /* Pods_PocketSisyphus.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -474,6 +482,7 @@
 				703B7A967D679236F6CBAEAA /* PocketSisyphusE2ETests.swift */,
 				E0B9EB4A20FBC30325886368 /* StoreShotUITest.swift */,
 				841984D4CFF1DA03F6F1012E /* VerifyBlurToolUITest.swift */,
+				14CE764DB54853DCD29606B3 /* VerifyCheckCommandUITest.swift */,
 				5EBB8DAF6A77A98D5825B90F /* VerifyDiffHighlightUITest.swift */,
 				85C7B8244A19F25C0590937A /* VerifyLanOnlyToggleUITest.swift */,
 				ADFFA75D4CFC2FD05496D200 /* VerifySecurityPanelUITest.swift */,
@@ -504,11 +513,13 @@
 		40D95B579CDB94CBB4879901 /* Workflow */ = {
 			isa = PBXGroup;
 			children = (
+				EDE686E70D118BA037F8412A /* RepeatRunView.swift */,
 				C691E4F7495453C90686A864 /* WorkflowCanvasView.swift */,
 				AB8AE56F3823EE153667CCF2 /* WorkflowCreatorSheet.swift */,
 				B7A582219E7E02BA064AE6FC /* WorkflowEdgeRouter.swift */,
 				EB1AFBC8270891A5EFC29910 /* WorkflowEditorView.swift */,
 				495F586D14655A0E2D009699 /* WorkflowListView.swift */,
+				2C7B075BF5DB659AC33F9B4F /* WorkflowLoopMonitorView.swift */,
 				1A19522996CC2055F8DD4CA7 /* WorkflowRunHistorySheet.swift */,
 				75FFDDA20702394B91E4C358 /* WorkflowRunIsolationView.swift */,
 				D77F4E89886DEE8A1993F240 /* WorkflowRunLoaderView.swift */,
@@ -576,24 +587,6 @@
 				1C9B248A5D3D16E9514E9830 /* WSReconnectPolicy.swift */,
 			);
 			path = Services;
-			sourceTree = "<group>";
-		};
-		5A1E9966905024E7DECFEA9D /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				D7BA8B555EFFB7F6496FCD42 /* Pods-PocketSisyphus.debug.xcconfig */,
-				2AD9E163627A548840731D74 /* Pods-PocketSisyphus.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
-			sourceTree = "<group>";
-		};
-		5A5D7E439B6ABDCC57CFE6C6 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				A945B482385F60C78E2498A0 /* Pods_PocketSisyphus.framework */,
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		70EA4318798D75F992877FCE /* Views */ = {
@@ -676,6 +669,24 @@
 			path = Shared;
 			sourceTree = "<group>";
 		};
+		8511EFEA1DA9A77C22086D4F /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				F85E3BE5FC479DAEF8676D25 /* Pods-PocketSisyphus.debug.xcconfig */,
+				0EB27C3D4FA0A8EC07EE4A88 /* Pods-PocketSisyphus.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		8947E1FC92BE1756C8AFB087 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				219EBBED87E29A014DDCF57C /* Pods_PocketSisyphus.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		8E6CC1D13D49CE9FAD15CA8E = {
 			isa = PBXGroup;
 			children = (
@@ -685,8 +696,8 @@
 				4A2A9D12DA1CCB60F293FE40 /* PocketSisyphusWidget */,
 				7F59CEC3B2477198C559A034 /* Shared */,
 				C3783434D7A7A23B1FC07A86 /* Products */,
-				5A1E9966905024E7DECFEA9D /* Pods */,
-				5A5D7E439B6ABDCC57CFE6C6 /* Frameworks */,
+				8511EFEA1DA9A77C22086D4F /* Pods */,
+				8947E1FC92BE1756C8AFB087 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -701,6 +712,7 @@
 				5277F7DEA5CF720C287A0884 /* DiagnosticsBundle.swift */,
 				AADD66895B8A7753883ECDCA /* GuideContent.swift */,
 				74CD5384D3AAFC54BCAE8139 /* McpServer.swift */,
+				A562719772DB82D311FA81DE /* RepeatRun.swift */,
 				4B36EC7B975EB47EE6C2A675 /* SentMessage.swift */,
 				147551853CF3BBA8619DAA89 /* VersionCompat.swift */,
 				79133EDD5D8223CF3B9C83FB /* Workflow.swift */,
@@ -767,12 +779,12 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 7B88EEBFA28589BE142DF566 /* Build configuration list for PBXNativeTarget "PocketSisyphus" */;
 			buildPhases = (
-				3E45915A0145A93E20107D26 /* [CP] Check Pods Manifest.lock */,
+				D587C06856A094701EA77FC5 /* [CP] Check Pods Manifest.lock */,
 				A3B6BFA3AD5BDD7DF6F807DA /* Sources */,
 				CC95CCEEDF26BD0FDA9C912E /* Resources */,
 				E8929BAF82F6F517D44BB206 /* Frameworks */,
 				7B19BCE82E517D1DCF663532 /* Embed Foundation Extensions */,
-				E8876486CE959B1841C220AD /* [CP] Embed Pods Frameworks */,
+				5B804B88DE3C77C9910581BC /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -915,7 +927,24 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		3E45915A0145A93E20107D26 /* [CP] Check Pods Manifest.lock */ = {
+		5B804B88DE3C77C9910581BC /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		D587C06856A094701EA77FC5 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -937,23 +966,6 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		E8876486CE959B1841C220AD /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PocketSisyphus/Pods-PocketSisyphus-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -964,6 +976,7 @@
 				E339FD3441199F7B75D12E79 /* PocketSisyphusE2ETests.swift in Sources */,
 				1D9C328EDEB332C095550F2D /* StoreShotUITest.swift in Sources */,
 				7E2C45284E9C71CD00C42249 /* VerifyBlurToolUITest.swift in Sources */,
+				3DDDED33438A2F053E4F133C /* VerifyCheckCommandUITest.swift in Sources */,
 				E26AFF584083032A9F129429 /* VerifyDiffHighlightUITest.swift in Sources */,
 				8E1261BEF7291CB14F093448 /* VerifyLanOnlyToggleUITest.swift in Sources */,
 				0DE4476AEB7C68A2BD2E62A6 /* VerifySecurityPanelUITest.swift in Sources */,
@@ -1112,6 +1125,8 @@
 				1EA4BEDC4249819648AEFA4E /* PurchaseStore.swift in Sources */,
 				F14CE24DC63AFB401D91603D /* QRScannerView.swift in Sources */,
 				9B128528E1DB2A1C9481E0F2 /* RemoteScreenView.swift in Sources */,
+				1CB192DD0749E6B1B6ABCFA3 /* RepeatRun.swift in Sources */,
+				18509DE0760EE63038667754 /* RepeatRunView.swift in Sources */,
 				AD92AF19368BF553F25A8479 /* RepoPathField.swift in Sources */,
 				E9D2C7BE0BD83122583199DD /* ReviewPrompt.swift in Sources */,
 				28198F0DB18BEE3C07E7C5EB /* SSHClient.swift in Sources */,
@@ -1147,6 +1162,7 @@
 				6E44241CEB620AEEF617DCA5 /* WorkflowEdgeRouter.swift in Sources */,
 				A6A40CAA57589B8BD96074D9 /* WorkflowEditorView.swift in Sources */,
 				59004E4AE7DA57D9EBED6296 /* WorkflowListView.swift in Sources */,
+				6FE1DC891A9093CA01E662B6 /* WorkflowLoopMonitorView.swift in Sources */,
 				1ABCFF047F015FBF3ADBD33A /* WorkflowRunHistorySheet.swift in Sources */,
 				8A42837D95888053114BA5B7 /* WorkflowRunIsolationView.swift in Sources */,
 				6DAEB32E7B3128567ADBA824 /* WorkflowRunLoaderView.swift in Sources */,
@@ -1174,8 +1190,8 @@
 		073A4D24A9D88BE844DF4BEE /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_STYLE = Manual;
 				DEVELOPMENT_TEAM = AZ9NKP8D9G;
 				INFOPLIST_FILE = PocketSisyphusWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -1185,6 +1201,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = pe.wayne.pocketsisyphus.widget;
+				PROVISIONING_PROFILE_SPECIFIER = "PocketSisyphus Widget AppStore";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -1284,7 +1301,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 2.20.0;
+				MARKETING_VERSION = 2.22.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1337,7 +1354,7 @@
 		};
 		DB85191AA7338F5DA532E518 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 2AD9E163627A548840731D74 /* Pods-PocketSisyphus.release.xcconfig */;
+			baseConfigurationReference = 0EB27C3D4FA0A8EC07EE4A88 /* Pods-PocketSisyphus.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -1360,7 +1377,7 @@
 		};
 		DBFE0D0D47E5CD98821E9662 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = D7BA8B555EFFB7F6496FCD42 /* Pods-PocketSisyphus.debug.xcconfig */;
+			baseConfigurationReference = F85E3BE5FC479DAEF8676D25 /* Pods-PocketSisyphus.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -1450,7 +1467,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 2.20.0;
+				MARKETING_VERSION = 2.22.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

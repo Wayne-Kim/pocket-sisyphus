@@ -438,6 +438,98 @@ describe("GET /api/po/collect/last — 직전 수집 신호원 상태 (po_signal
   });
 });
 
+describe("GET /api/po/collect/scheduled — 예약 수집 결말 (po_scheduled_status_v1)", () => {
+  it("스케줄·결말 둘 다 없으면 items=[] (빈 목록)", async () => {
+    const app = buildApp();
+    const res = await app.request("/api/po/collect/scheduled", { headers: AUTH });
+    expect(res.status).toBe(200);
+    const body = await jsonAs<{ items: unknown[] }>(res);
+    expect(body.items).toEqual([]);
+  });
+
+  it("스케줄만 켜졌고 결말 없으면 outcome=null·scheduleEnabled=true (대기)", async () => {
+    const app = buildApp();
+    await app.request("/api/po/profile", {
+      method: "PUT",
+      headers: AUTH,
+      body: JSON.stringify({ repoPath: H.repoDir, directive: "지침", schedule: "0 9 * * *" }),
+    });
+    const res = await app.request("/api/po/collect/scheduled", { headers: AUTH });
+    const body = await jsonAs<{
+      items: Array<{ repoPath: string; scheduleEnabled: boolean; outcome: string | null }>;
+    }>(res);
+    const item = body.items.find((i) => i.repoPath === H.repoDir);
+    expect(item).toBeDefined();
+    expect(item?.scheduleEnabled).toBe(true);
+    expect(item?.outcome).toBeNull();
+  });
+
+  it("persist 된 결말(new)을 건수·신호·시각과 함께 돌려준다", async () => {
+    const app = buildApp();
+    await app.request("/api/po/profile", {
+      method: "PUT",
+      headers: AUTH,
+      body: JSON.stringify({ repoPath: H.repoDir, directive: "지침" }),
+    });
+    db()
+      .prepare(
+        `UPDATE po_profiles
+           SET last_scheduled_outcome = ?, last_scheduled_brief_count = ?, last_scheduled_error = ?,
+               last_scheduled_session_id = ?, last_scheduled_signals = ?, last_scheduled_at = ?
+         WHERE repo_path = ?`,
+      )
+      .run(
+        "new",
+        3,
+        null,
+        "sess-sched",
+        JSON.stringify({ store: { state: "used", count: 5 }, crash: { state: "off" } }),
+        9999,
+        H.repoDir,
+      );
+    const res = await app.request("/api/po/collect/scheduled", { headers: AUTH });
+    const body = await jsonAs<{
+      items: Array<{
+        repoPath: string;
+        outcome: string | null;
+        briefCount: number;
+        error: string | null;
+        sessionId: string | null;
+        signals: { store: { state: string; count?: number }; crash: { state: string } } | null;
+        at: number | null;
+      }>;
+    }>(res);
+    const item = body.items.find((i) => i.repoPath === H.repoDir);
+    expect(item?.outcome).toBe("new");
+    expect(item?.briefCount).toBe(3);
+    expect(item?.error).toBeNull();
+    expect(item?.sessionId).toBe("sess-sched");
+    expect(item?.signals).toEqual({ store: { state: "used", count: 5 }, crash: { state: "off" } });
+    expect(item?.at).toBe(9999);
+  });
+
+  it("failed 결말은 사유를 함께 돌려준다", async () => {
+    const app = buildApp();
+    await app.request("/api/po/profile", {
+      method: "PUT",
+      headers: AUTH,
+      body: JSON.stringify({ repoPath: H.repoDir, directive: "지침" }),
+    });
+    db()
+      .prepare(
+        `UPDATE po_profiles SET last_scheduled_outcome = ?, last_scheduled_error = ? WHERE repo_path = ?`,
+      )
+      .run("failed", "agent_missing: codex", H.repoDir);
+    const res = await app.request("/api/po/collect/scheduled", { headers: AUTH });
+    const body = await jsonAs<{
+      items: Array<{ repoPath: string; outcome: string | null; error: string | null }>;
+    }>(res);
+    const item = body.items.find((i) => i.repoPath === H.repoDir);
+    expect(item?.outcome).toBe("failed");
+    expect(item?.error).toBe("agent_missing: codex");
+  });
+});
+
 describe("POST /api/po/collect — 전문가 관점 렌즈 (po_collect_lens_v1)", () => {
   /** 수집을 시작하고 finalize 가 빌드한 프롬프트를 회수해 검증한 뒤 settle 시킨다. */
   async function promptFor(body: Record<string, unknown>): Promise<string> {

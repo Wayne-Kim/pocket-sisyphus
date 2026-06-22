@@ -266,6 +266,11 @@ struct LockView: View {
     /// authenticate() 재진입 가드 — scenePhase 복귀 재발사·재시도 버튼·자동 재시도 백오프가
     /// 겹쳐 두 루프가 동시에 phase 를 건드리는 레이스를 막는다.
     @State private var running = false
+    /// 앱이 «실제로» 백그라운드(.background)를 거쳤는지 추적 — scenePhase 자동 재발사의 트리거.
+    /// Face ID 시스템 프롬프트는 표시/해제 시 .inactive↔.active churn 만 만들고 .background 엔
+    /// 절대 닿지 않으므로, 이 플래그로 «진짜 백그라운드 복귀» 와 «실패한 프롬프트가 닫힌 것» 을
+    /// 가른다(무한 재프롬프트 방지 — 아래 onChange 참고).
+    @State private var didBackground = false
     /// transport·일시 실패 자동 재시도 상한(무한 루프 금지 — 상한 후엔 버튼 노출).
     private let maxAutoRetries = 2
 
@@ -282,16 +287,30 @@ struct LockView: View {
             await authenticate()
         }
         .onChange(of: scenePhase) { newScenePhase in
-            // FaceID 프롬프트가 떠 있는 동안 앱이 백그라운드로 가면(알림·앱전환) LA 가 취소되는데,
-            // .task 의 didStart 래치는 이미 소진돼 복귀해도 자동 인증이 다시 발사되지 않는다 →
-            // 멈춘 LockView. 포그라운드 복귀 시 아직 잠금 미해제면(= needsAuthGate 가 여전히 true,
-            // 곧 LockView 표시 중) 자동 인증을 다시 발사한다. 페어링 중·이미 unlocked 는
-            // needsAuthGate 가 false 라 자동으로 제외되고, 인증이 이미 진행 중(isAuthenticating)이면
-            // 건너뛴다 — AttestSession.ensureToken 의 inflight 디듀프 + 자체 running 가드와 합쳐
-            // 정상 1회 해제 흐름에서 생체 프롬프트가 두 번 뜨는 것을 막는다. (closure 파라미터 이름은
-            // @State var phase 와 섀도잉을 피해 newScenePhase 로 둔다.)
-            guard newScenePhase == .active, attest.needsAuthGate, !attest.isAuthenticating else { return }
-            Task { await authenticate() }
+            // FaceID 프롬프트가 떠 있는 동안 앱이 «진짜» 백그라운드로 가면(앱전환·홈·알림 탭) LA·
+            // 네트워크가 취소되는데, .task 의 didStart 래치는 이미 소진돼 복귀해도 자동 인증이 다시
+            // 발사되지 않는다 → 멈춘 LockView. 그래서 백그라운드 복귀 시 자동 인증을 재발사한다.
+            //
+            // 단, «.active 로 돌아왔다» 만으로 재발사하면 안 된다 — Face ID 시스템 프롬프트 자체가
+            // 표시 중 .inactive, 닫힐 때 .active 를 만든다. 인증이 지속 실패(SE 키 무효화·daemon
+            // 거부·반복 불일치)하면 프롬프트가 닫힐 때마다 .active 가 떠 곧바로 또 프롬프트를 띄우는
+            // «무한 재프롬프트» 루프가 된다. .background 는 앱전환·홈 복귀에서만 발생하고 프롬프트
+            // churn 에서는 절대 발생하지 않으므로, 이 신호(didBackground)로 «진짜 백그라운드 복귀» 와
+            // «실패한 프롬프트가 닫힌 것» 을 가른다. 실패 화면(.failed)은 «다시 시도» 버튼으로 재시도.
+            // (closure 파라미터 이름은 @State var phase 와 섀도잉을 피해 newScenePhase 로 둔다.)
+            switch newScenePhase {
+            case .background:
+                didBackground = true
+            case .active:
+                let cameFromBackground = didBackground
+                didBackground = false
+                // 페어링 중·이미 unlocked 는 needsAuthGate=false 로 제외, 진행 중(isAuthenticating)이면
+                // 건너뛴다 — inflight 디듀프 + running 가드와 합쳐 1회 해제 흐름의 이중 프롬프트를 막는다.
+                guard cameFromBackground, attest.needsAuthGate, !attest.isAuthenticating else { return }
+                Task { await authenticate() }
+            default:
+                break  // .inactive — 프롬프트 churn 또는 백그라운드 전이 경유. didBackground 를 건드리지 않는다.
+            }
         }
     }
 

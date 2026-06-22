@@ -26,9 +26,10 @@ jobs:
   agent-surfaces:
     runs-on: ubuntu-latest
     steps:
+      # 게이트·self-test 는 «작업 트리»(현재 체크아웃) 만 스캔한다 — git 히스토리 비의존이라
+      # 기본(shallow) 체크아웃으로 충분하다. (과거엔 test-po-agent-lint.sh 가 git show 7265d2d^ 로
+      # 실파일을 떠 fetch-depth: 0 이 필요했으나, 공개 스쿼시로 그 커밋이 사라져 합성 픽스처로 전환.)
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0   # test-po-agent-lint.sh 의 git show 7265d2d^ 회귀 고정에 전체 히스토리 필요
 
       # ubuntu-latest 는 python3·bash 기본 제공 — 별도 설치 없이 휴리스틱이 그대로 돈다(노드/빌드 불필요).
       - name: agent-surfaces-lint (게이트)

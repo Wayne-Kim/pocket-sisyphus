@@ -40,6 +40,8 @@ struct WorkflowCanvasView: View {
     @State private var pendingHistoryRunId: String?
     /// navigationDestination(item:) 을 구동 — 비-nil 이면 그 run 의 읽기전용 캔버스로 push.
     @State private var historyRunId: String?
+    /// 「루프 감독」 시트 노출 — 반복 진행/검사/변경을 위에서 한눈에 보고 한 번에 멈추는 전용 화면.
+    @State private var showLoopMonitor = false
 
     /// 사용자 결정이 필요한 노드 (승인 게이트 / 수동 개입).
     private struct NodeAction: Identifiable {
@@ -168,6 +170,16 @@ struct WorkflowCanvasView: View {
                 onOpenSession: onOpenSession
             )
             .toolbar(canvasTabBarVisibility, for: .tabBar)
+        }
+        // 「루프 감독」 — 반복 진행/마지막 검사/변경 요약을 위에서 한눈에 + 한 번에 멈춤(전용 화면).
+        .sheet(isPresented: $showLoopMonitor) {
+            WorkflowLoopMonitorView(
+                auth: auth,
+                conn: conn,
+                inflight: inflight,
+                runId: runId,
+                workflowTitle: def.title ?? String(localized: "워크플로우")
+            )
         }
         .alert(
             "오류",
@@ -511,6 +523,14 @@ struct WorkflowCanvasView: View {
                 workflowStatusText(run.status)
                     .font(.subheadline.weight(.medium))
                 Spacer()
+                // 「루프 감독」 진입 — 반복 진행/검사/변경을 위에서 한눈에 + 한 번에 멈춤. run 이 있으면 항상.
+                Button {
+                    showLoopMonitor = true
+                } label: {
+                    Label("루프 감독", systemImage: "gauge.with.dots.needle.bottom.50percent")
+                }
+                .font(.caption)
+                .accessibilityLabel(Text("루프 감독"))
                 if isRunning {
                     Text("진행 중…")
                         .font(.caption)

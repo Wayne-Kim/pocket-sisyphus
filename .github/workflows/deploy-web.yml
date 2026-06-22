@@ -1,11 +1,12 @@
-# web/ 소개 사이트를 GitHub Pages 로 정적 배포한다 (커스텀 도메인 pocketsisyphus.app).
+# web/ 소개 사이트를 GitHub Pages 로 정적 배포한다 (github.io 프로젝트 페이지).
 # - 이 저장소(pocket-sisyphus)가 공개되면서 web/ 를 «직접» Pages 로 배포한다
 #   (예전엔 별도 공개 repo 로 미러했지만 더 이상 불필요).
-# - 커스텀 도메인 루트 서빙이라 basePath 는 비운다(아래 NEXT_PUBLIC_BASE_PATH="").
-#   web/public/CNAME 이 도메인을 고정한다.
+# - 프로젝트 페이지는 `/pocket-sisyphus` 하위경로로 서빙되므로 basePath 를 그 값으로 준다
+#   (아래 NEXT_PUBLIC_BASE_PATH). 안 주면 `_next` 자산이 전부 404 난다. CNAME 은 없다 —
+#   커스텀 도메인(pocketsisyphus.app)은 미등록이라 쓰지 않는다.
 # - 최초 1회(메인테이너): repo Settings → Pages → Build and deployment → Source = "GitHub Actions".
-#   그리고 커스텀 도메인은 «한 repo 에만» 붙으므로, pocket-sisyphus-mac 의 Pages 도메인을
-#   먼저 해제한 뒤 이 repo 에 pocketsisyphus.app 이 잡히게 한다.
+#   딥링크 브리지(daemon Discord 알림)도 이 사이트의 /open 페이지를 가리킨다
+#   (mac/daemon/src/notify/discord.ts DEFAULT_DEEP_LINK_BRIDGE_BASE).
 name: Deploy web to GitHub Pages
 
 on:
@@ -52,9 +53,10 @@ jobs:
 
       - name: Build static export
         env:
-          # 커스텀 도메인 루트 서빙 — basePath 없음, origin 은 pocketsisyphus.app.
-          NEXT_PUBLIC_BASE_PATH: ""
-          NEXT_PUBLIC_SITE_URL: "https://pocketsisyphus.app"
+          # github.io 프로젝트 페이지 — `/pocket-sisyphus` 하위경로 서빙.
+          # basePath 가 _next 자산·링크·og:image 절대 URL 에 반영된다.
+          NEXT_PUBLIC_BASE_PATH: "/pocket-sisyphus"
+          NEXT_PUBLIC_SITE_URL: "https://wayne-kim.github.io"
         run: pnpm build
 
       # .nojekyll 보장 — 없으면 Pages 가 Jekyll 로 처리해 «_next» (밑줄 디렉터리)를 통째로

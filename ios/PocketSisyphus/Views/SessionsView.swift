@@ -252,9 +252,9 @@ struct SessionsView: View {
                     showNew = true
                 } label: {
                     Label("새 세션 만들기", systemImage: "plus")
-                        // 채움(accent/보라) 위 라벨은 흰색으로 고정 — tint 색이 글자·아이콘에
-                        // 새어 파랗게 읽히지 않도록(흰 글자가 일관됨).
-                        .foregroundStyle(.white)
+                        // 채움(accent/보라) 위 라벨은 Theme.onAccent(흰색)로 고정 — tint 색이
+                        // 글자·아이콘에 새어 파랗게 읽히지 않도록(색 배경 위 텍스트 = 의미 토큰).
+                        .foregroundStyle(Theme.onAccent)
                 }
                 .buttonStyle(.borderedProminent)
                 // prominent 가 (iOS 26 시뮬레이터에서) AccentColor 에셋을 안 타고 파랗게 뜰 때가

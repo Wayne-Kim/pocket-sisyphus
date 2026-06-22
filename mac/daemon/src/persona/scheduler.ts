@@ -13,7 +13,11 @@
 import { Cron } from "croner";
 import { db } from "../db/index.js";
 import { localTimezone } from "../cron/schedule.js";
-import { startPoCollection, isPoCollectionRunning } from "./executor.js";
+import {
+  startPoCollection,
+  isPoCollectionRunning,
+  recordScheduledCollectOutcome,
+} from "./executor.js";
 
 class PoScheduler {
   private crons = new Map<string, Cron>(); // key = repo_path
@@ -39,12 +43,24 @@ class PoScheduler {
           .get(repoPath) as { schedule: string | null } | undefined;
         if (!fresh?.schedule) return;
         if (isPoCollectionRunning(repoPath)) {
+          // overlap=skip — 직전 수집이 아직 진행 중. 이건 «실패» 가 아니다 (멱등에 가까운 수집을
+          // 겹쳐 돌릴 이유가 없을 뿐) → 결말 통지도 하지 않는다 (엣지케이스: skip≠failure).
           console.log(`[po] scheduled collect skipped repo=${repoPath} — 직전 수집이 아직 진행 중`);
           return;
         }
-        const result = startPoCollection(repoPath);
+        const result = startPoCollection(repoPath, undefined, undefined, undefined, undefined, "scheduled");
         if (result.status === "error") {
           console.warn(`[po] scheduled collect failed repo=${repoPath}: ${result.error}`);
+          // 시작 자체가 실패(에이전트 없음·무인 trifecta 캡·repo 해석 실패 등) — 예전엔 콘솔 경고만
+          // 남고 무인 사용자에겐 보이지 않았다. 결말을 «failed» 로 표면화한다 (앱 카드 + 억제 안 되면
+          // 알림). 세션이 없어 sessionId=null — 알림 딥링크는 백로그 탭으로 폴백한다.
+          void recordScheduledCollectOutcome({
+            repoPath,
+            sessionId: null,
+            status: "error",
+            briefCount: 0,
+            errorSummary: result.error,
+          });
         } else {
           console.log(`[po] scheduled collect repo=${repoPath} session=${result.sessionId}`);
         }

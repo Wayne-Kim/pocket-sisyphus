@@ -266,7 +266,8 @@ workflows.get("/runs/:id", (c) => {
       started_at: run.started_at,
       ended_at: run.ended_at,
       // fail 루프 재시도 상한 — 캔버스가 «재시도 N/한도» 를 그린다 (per-node iteration 과 짝).
-      max_iterations: WORKFLOW_MAX_ITERATIONS,
+      // 「반복 실행」(repeat_run_v1)이 per-run 으로 박았으면 그 값, 일반 캔버스 run 은 엔진 기본 상한.
+      max_iterations: run.max_iterations ?? WORKFLOW_MAX_ITERATIONS,
     },
     nodes: def.nodes,
     edges: def.edges,

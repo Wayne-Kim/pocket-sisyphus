@@ -40,7 +40,7 @@ import { getUpdateStatus, type UpdateStatus } from "./updateStatus.js";
 // 버전 bump 시 양쪽 project.yml 과 함께 이 값도 갱신한다.
 // daemon 은 Mac 앱 안에 번들로 들어가므로 두 값이 어긋나면 사용자가 «Mac
 // 데몬 0.2.1» 같이 옛 버전을 보게 된다 (실제 Mac 앱은 1.0.0).
-export const DAEMON_VERSION = "2.20.0";
+export const DAEMON_VERSION = "2.22.0";
 
 /**
  * daemon 이 받아들일 수 있는 iOS 앱의 최소 버전. 이보다 낮은 iOS 가 페어된 경우
@@ -242,6 +242,13 @@ export const DAEMON_CAPABILITIES: readonly string[] = [
   // «반영된 줄» 착각하던 무음 강등을 막는다. 완료 알림(Discord)도 같은 상태를 «Signals» 한 줄로 싣는다.
   // 옛 daemon 은 이 엔드포인트가 없어 iOS 가 조용히 폴백(카드 없음).
   "po_signal_status_v1",
+  // GET /api/po/collect/scheduled — 예약(scheduled) 수집의 «마지막 결말» 목록. po_signal_status_v1 이
+  // «무엇을 봤나»(신호원 상태)라면 이건 «그래서 무엇이 나왔나» 다: new(새 제안 N≥1)/empty(정상 빈손)/
+  // failed(시작 실패·인입 에러)를 repo 별로 담는다. 무인 사용자가 «오늘은 없네» 와 «수집이 깨졌네» 를
+  // 혼동하지 않게, 예약 수집의 결말을 알림(po_briefs/po_empty/po_failed) + 백로그 «마지막 예약 수집»
+  // 카드로 표면화한다 (수동 «지금 수집» 은 화면 앞 사용자라 대상 아님). iOS 가 이 capability 보고
+  // 카드를 노출 — 없으면(옛 daemon, 404) 조용히 숨김 (soft).
+  "po_scheduled_status_v1",
   // POST /api/po/collect body 에 persona="designer" — 수집을 «디자이너» 페르소나로 돌린다.
   // 코드/이슈/리뷰/크래시 신호를 «기회» 로 종합하던 기본 수집과 달리, 레포의 UI 표면을 위
   // 「디자인 제약」 이 선언/발견한 디자인 SSOT 대비로 스캔해 토큰 드리프트·접근성·대비·패턴
@@ -488,6 +495,16 @@ export const DAEMON_CAPABILITIES: readonly string[] = [
   // capability 보고 배너/집계 폴링을 켠다 — 없으면 숨김(soft, 옛 daemon 은 /attention 이 404). result_kind
   // 는 GET /runs/:id 의 nodeRuns 와 GET /:id 의 runs 에 함께 실려, 옛 클라이언트는 모르는 키로 무시(회귀 0).
   "workflow_attention_v1",
+  // POST /api/repeat + GET /api/repeat/runs(/:id) + cancel — 「반복 실행」(repeat_run_v1). 워크플로우
+  // 캔버스를 그리지 않고 (repo·에이전트·목표 스펙·완료 검사·최대 횟수)만 받아, 자기교정 루프
+  // (start→실행→점검→end + «점검 실패→실행» fail back-edge)를 즉석 «합성» 해 기존 WorkflowEngine 으로
+  // 돌린다. 매 회 새 세션(=새 컨텍스트)으로 같은 스펙을 다시 실행하고, 점검 verdict 가 pass(완료)거나
+  // 최대 횟수에 닿으면(실패) 멈춘다. 무인 경로라 worktree 격리(po/워크플로우와 동일)로 돌고
+  // no-unattended-trifecta·skip_permissions 방어(prepareUnattendedCwd)를 그대로 준수한다. 합성한
+  // 워크플로우는 ephemeral=1 이라 캔버스 목록(GET /api/workflows)엔 안 뜬다. iOS 가 이 capability 보고
+  // 자동화 탭에 「반복 실행」 진입점(시작 시트 + 진행 상태)을 노출 — 없으면 숨김(soft, 옛 daemon 은 이
+  // 라우트가 404 라 보여주면 거짓 UI). 프로(주황) 기능(.repeatRun)으로 게이트한다.
+  "repeat_run_v1",
 ] as const;
 
 /**

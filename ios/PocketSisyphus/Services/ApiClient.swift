@@ -989,6 +989,60 @@ struct LastCollectSignals: Codable, Equatable {
     let at: Double?
 }
 
+/// PO 루프 — 한 repo 의 «마지막 예약(scheduled) 수집» 결말 (po_scheduled_status_v1).
+/// daemon `GET /api/po/collect/scheduled` 의 items[] 한 건과 1:1. 무인 사용자가 «오늘은 제안이
+/// 없네» 와 «수집이 깨졌네» 를 혼동하지 않게, 예약 수집의 끝을 세 결말(new/empty/failed)로 가른다.
+/// last_collect 가 «수동·예약 가리지 않은 직전 1회» 의 신호원 상태(수동 폴링용)인 것과 달리, 이건
+/// «예약» 트리거만 기록된 결말이다 (수동 «지금 수집» 은 화면 앞 사용자라 표면화 대상 아님).
+struct PoScheduledCollect: Decodable, Equatable, Hashable, Identifiable {
+    let repoPath: String
+    /// 주기 수집이 켜져 있는가 — outcome 이 nil 이어도 켜졌으면 «아직 예약 수집 없음»(대기) 카드.
+    let scheduleEnabled: Bool
+    /// new(새 제안 N≥1) | empty(정상 종료·0건) | failed(시작 실패/인입 에러) | pending(아직 결말 없음).
+    let outcome: Outcome
+    let briefCount: Int
+    /// failed 결말의 사유 요약 (daemon 진단 텍스트 — 번역 대상 아님, 그대로 표시).
+    let error: String?
+    /// 실패 결말의 세션 진단 진입 — 시작 실패(세션 없음)는 nil.
+    let sessionId: String?
+    /// 그 예약 수집의 App Store 신호원 실행 상태 스냅샷 (있으면 카드에 신호 줄 함께).
+    let signals: CollectSignals?
+    /// 결말 시각 (epoch ms). 상대시간 표시.
+    let at: Double?
+
+    var id: String { repoPath }
+
+    /// daemon 의 outcome 문자열(또는 null)을 결말로. 미래 daemon 의 모르는 값은 .unknown 으로
+    /// 폴백해 카드가 조용히 숨긴다 (거짓 표시 금지 — SignalSourceState.Kind 와 같은 정책).
+    enum Outcome: Equatable, Hashable {
+        case new, empty, failed
+        case pending   // outcome == null — 스케줄만 켜진 «대기»
+        case unknown   // 옛/미래 daemon 의 모르는 값 → 조용히
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case repoPath, scheduleEnabled, outcome, briefCount, error, sessionId, signals, at
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        repoPath = try c.decode(String.self, forKey: .repoPath)
+        scheduleEnabled = (try? c.decodeIfPresent(Bool.self, forKey: .scheduleEnabled)) ?? false
+        briefCount = (try? c.decodeIfPresent(Int.self, forKey: .briefCount)) ?? 0
+        error = try? c.decodeIfPresent(String.self, forKey: .error)
+        sessionId = try? c.decodeIfPresent(String.self, forKey: .sessionId)
+        signals = try? c.decodeIfPresent(CollectSignals.self, forKey: .signals)
+        at = try? c.decodeIfPresent(Double.self, forKey: .at)
+        switch try c.decodeIfPresent(String.self, forKey: .outcome) {
+        case "new": outcome = .new
+        case "empty": outcome = .empty
+        case "failed": outcome = .failed
+        case nil: outcome = .pending
+        default: outcome = .unknown
+        }
+    }
+}
+
 
 /// PO 루프 — 리서치 요청 한 건. daemon `routes/po.ts` 의 researchToApi 와 1:1.
 /// `report` 는 상세 조회(`getPoResearch`)에서만 채워진다 (목록 응답엔 없음 → nil).
@@ -1754,6 +1808,36 @@ final class ApiClient {
         let _: Ok = try await send("POST", "/api/workflows/runs/\(runId)/nodes/\(nodeRunId)/\(action)", label: label)
     }
 
+    // MARK: - 반복 실행 (repeat_run_v1)
+
+    /// `POST /api/repeat` — 「반복 실행」 시작. (repo·에이전트·목표 스펙·완료 검사·최대 횟수)로
+    /// daemon 이 자기교정 루프를 합성해 엔진으로 돌린다. runId/workflowId 즉시 반환(진행은 백그라운드).
+    /// 옛 daemon 은 이 라우트가 404 — 호출처가 capability(repeat_run_v1) + 프로(.repeatRun)로 게이팅.
+    func startRepeatRun(
+        _ req: StartRepeatRunRequest,
+        label: String? = String(localized: "반복 실행 시작"),
+    ) async throws -> RepeatRunStartResponse {
+        try await send("POST", "/api/repeat", body: req, label: label)
+    }
+
+    /// `GET /api/repeat/runs` — 「반복 실행」 run 목록(진행/완료/실패). 최신순.
+    func listRepeatRuns(label: String? = nil) async throws -> [RepeatRun] {
+        let resp: RepeatRunsResponse = try await send("GET", "/api/repeat/runs", label: label)
+        return resp.runs
+    }
+
+    /// `GET /api/repeat/runs/:id` — 한 「반복 실행」 의 상태(반복 회차/상한/판정). 진행 화면이 폴링.
+    func repeatRunState(runId: String, label: String? = nil) async throws -> RepeatRun {
+        let resp: RepeatRunStateResponse = try await send("GET", "/api/repeat/runs/\(runId)", label: label)
+        return resp.run
+    }
+
+    /// `POST /api/repeat/runs/:id/cancel` — 진행 중 「반복 실행」 중지(파괴적 동작 → danger).
+    func cancelRepeatRun(runId: String, label: String? = String(localized: "반복 중지")) async throws {
+        struct Ok: Decodable { let ok: Bool? }
+        let _: Ok = try await send("POST", "/api/repeat/runs/\(runId)/cancel", label: label)
+    }
+
     // MARK: - PO 루프 (백로그)
 
     /// PO 산출(브리프·리서치 보고서)을 «사용자 앱 언어» 로 받기 위해 collect/research/revise 요청
@@ -1784,6 +1868,16 @@ final class ApiClient {
     func getLastCollectSignals(repoPath: String, label: String? = nil) async throws -> LastCollectSignals {
         let q = repoPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? repoPath
         return try await send("GET", "/api/po/collect/last?repoPath=\(q)", label: label)
+    }
+
+    /// `GET /api/po/collect/scheduled` — 예약(scheduled) 수집의 «마지막 결말» 목록
+    /// (po_scheduled_status_v1). 스케줄이 켜졌거나 결말이 한 번이라도 난 모든 repo 를 돌려준다 —
+    /// 무인 사용자가 «새 제안 N / 정상 빈손 / 실패» 를 백로그에서 구분해 확인한다. 미지원(옛) daemon 은
+    /// 404 → 호출부가 capability 게이트(po_scheduled_status_v1)로 막거나 조용히 폴백(카드 없음).
+    func getScheduledCollectOutcomes(label: String? = nil) async throws -> [PoScheduledCollect] {
+        struct Resp: Decodable { let items: [PoScheduledCollect] }
+        let resp: Resp = try await send("GET", "/api/po/collect/scheduled", label: label)
+        return resp.items
     }
 
     /// `GET /api/po/stats` — 누적 성적표 (po_stats_v1). repoPath 로 레포 필터 (nil = 전체 +

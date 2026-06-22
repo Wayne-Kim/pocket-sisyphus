@@ -149,6 +149,16 @@ function applyMigrations(d: Database.Database): void {
   ensureColumn("po_profiles", "last_collect_signals", "TEXT");
   ensureColumn("po_profiles", "last_collect_session_id", "TEXT");
   ensureColumn("po_profiles", "last_collect_at", "INTEGER");
+  // 직전 «예약(scheduled) 수집» 의 결말 (po_scheduled_status_v1) — 무인 사용자가 «새 제안 N / 정상
+  // 빈손 / 실패» 를 앱 안 열고도 알림으로, 열어서도 백로그 카드로 구분해 확인하게 한다. last_collect_*
+  // 와 달리 «예약» 트리거만 기록(수동 수집은 화면 앞 사용자라 표면화/알림 대상 아님). outcome 은
+  // 'new'|'empty'|'failed', NULL=아직 예약 결말 없음(대기). CHECK 없이 앱 계층이 값을 보증한다.
+  ensureColumn("po_profiles", "last_scheduled_outcome", "TEXT");
+  ensureColumn("po_profiles", "last_scheduled_brief_count", "INTEGER");
+  ensureColumn("po_profiles", "last_scheduled_error", "TEXT");
+  ensureColumn("po_profiles", "last_scheduled_session_id", "TEXT");
+  ensureColumn("po_profiles", "last_scheduled_signals", "TEXT");
+  ensureColumn("po_profiles", "last_scheduled_at", "INTEGER");
   // PO «워크플로우로 실행» run 의 per-run 격리 worktree (po_run_worktree_v1) — 동시 run 이
   // 공유 repo 의 작업트리·git 인덱스를 함께 밟지 않도록 run 마다 `po/<id8>` worktree 에서 돈다.
   // 이 두 컬럼은 그 경로/브랜치를 기록해 추적·정리(GC, reaper brief)를 가능케 한다. 일반 캔버스
@@ -167,6 +177,12 @@ function applyMigrations(d: Database.Database): void {
   ensureColumn("workflow_node_runs", "result_kind", "TEXT");
   ensureColumn("workflow_runs", "attention_kind", "TEXT");
   ensureColumn("workflow_runs", "attention_ack", "INTEGER NOT NULL DEFAULT 0");
+  // «반복 실행»(repeat_run_v1) — 자기교정 루프를 즉석 합성하는 일회용 워크플로우 표식 + per-run
+  // 반복 상한. ephemeral=1 워크플로우는 캔버스 목록에서 숨기고(GET /api/workflows), repeat 라우트만
+  // 다룬다. max_iterations 는 그 run 의 점검 fail-루프 상한(사용자가 시트에서 고른 «최대 횟수»).
+  // 옛 row 는 0 / NULL 로 채워져 회귀 0.
+  ensureColumn("workflows", "ephemeral", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn("workflow_runs", "max_iterations", "INTEGER");
 }
 
 /**
@@ -372,6 +388,8 @@ export type WorkflowRow = {
   /** JSON 배열 (EdgeDef[]). */
   edges: string;
   enabled: number;
+  /** 1 = «반복 실행»(repeat_run_v1)이 합성한 일회용 워크플로우 — 캔버스 목록에서 숨긴다. */
+  ephemeral: number;
   created_at: number;
   updated_at: number | null;
 };
@@ -406,6 +424,8 @@ export type WorkflowRunRow = {
   worktree_path: string | null;
   /** 그 worktree 의 브랜치 (`po/<id8>`). NULL = 격리 없음. 추적·정리(reaper brief)용. */
   worktree_branch: string | null;
+  /** «반복 실행»(repeat_run_v1)의 fail-루프 반복 상한. NULL = 일반 run(엔진 기본 상한). */
+  max_iterations: number | null;
   /** «미해결» 신호 (workflow_attention_v1) — run 마감 시 산출. NULL = 정상. 'failed'|'empty'|'synthetic'. */
   attention_kind: "failed" | "empty" | "synthetic" | null;
   /** 1 = 사용자가 확인/처리함 (배너에서 사라짐). */

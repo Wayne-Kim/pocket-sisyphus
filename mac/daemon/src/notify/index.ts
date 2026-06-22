@@ -261,56 +261,85 @@ export async function dispatchCronNotification(ev: {
 }
 
 /**
- * PO 루프 수집 완료 알림 — po/executor 가 ingest 직후 호출한다. cron 알림과 같은
- * 무인-실행 정책 (away-gating / mute 무시, enabled/webhookUrl 부재면 no-op, 절대 throw 없음).
- * 성공 + 브리프 0건이면 보내지 않는다 — «결재할 것이 생겼을 때» 만 울리는 알림.
+ * PO 루프 수집 완료 알림 — 세 결말을 가른다 (po_scheduled_status_v1):
+ *   - ok + briefCount>0  → po_briefs (주황, 딥링크=백로그 탭. 1건이면 그 브리프 상세 직행).
+ *   - ok + briefCount===0→ po_empty  («이번엔 없음», 회색 중립 — 실패와 시각적으로 구분).
+ *   - error/timeout       → po_failed (빨강, 사유 요약을 «Reason» 필드로. 세션 있으면 transcript 딥링크).
+ *
+ * cron 알림과 같은 무인-실행 정책 (away-gating / mute 무시, enabled/webhookUrl 부재면 no-op, 절대
+ * throw 없음). «보낼지» 판정(폭주 억제·예약 한정)은 호출처(recordScheduledCollectOutcome)가 이미 끝냈다
+ * — 이 함수는 들어오면 무조건 한 발 쏜다. 리서치(finalizeResearch)도 이 함수를 쓰되 briefCount 를
+ * 항상 ≥1 로 넘겨 po_empty 로 새지 않는다.
+ *
+ * sessionId 는 «시작 실패»(스케줄러 tick, 세션 없음)면 생략된다 — 그땐 repoPath 로 repo 를 보강하고
+ * 딥링크는 백로그 탭으로 폴백한다.
  */
 export async function dispatchPoNotification(ev: {
-  sessionId: string;
+  /** 수집 세션 id. 시작 실패(세션 없음)면 생략 — repoPath 로 보강, 딥링크는 백로그 폴백. */
+  sessionId?: string;
+  /** sessionId 가 없을 때 repo 보강용 (시작 실패). sessionId 가 있으면 그 세션 row 가 우선. */
+  repoPath?: string;
   status: "ok" | "error" | "timeout";
   briefCount: number;
   /** 새 브리프가 정확히 1건일 때 그 id — 딥링크가 브리프 상세로 바로 착지. */
   briefId?: string;
   /** App Store 신호원 실행 상태 (po_signal_status_v1) — 완료 알림 상세에 한 줄로 surface. */
   signals?: CollectSignals;
+  /** 실패 사유 요약 (po_failed) — 알림 «Reason» 필드. */
+  errorSummary?: string;
 }): Promise<void> {
   try {
     const cfg = readConfig();
     const d = cfg?.notify?.discord;
     if (!d || !d.enabled || !d.webhookUrl) return;
-    if (ev.status === "ok" && ev.briefCount === 0) return;
 
-    let repoPath = "";
-    try {
-      const row = db()
-        .prepare("SELECT repo_path FROM sessions WHERE id = ?")
-        .get(ev.sessionId) as { repo_path: string } | undefined;
-      if (row) repoPath = row.repo_path;
-    } catch {
-      /* best-effort */
+    let repoPath = ev.repoPath ?? "";
+    if (ev.sessionId) {
+      try {
+        const row = db()
+          .prepare("SELECT repo_path FROM sessions WHERE id = ?")
+          .get(ev.sessionId) as { repo_path: string } | undefined;
+        if (row?.repo_path) repoPath = row.repo_path;
+      } catch {
+        /* best-effort */
+      }
     }
     const repoName = repoPath ? path.basename(repoPath) : "—";
 
+    const kind: NotifyEventKind =
+      ev.status === "ok" ? (ev.briefCount > 0 ? "po_briefs" : "po_empty") : "po_failed";
+
     const body = buildDiscordBody({
-      kind: ev.status === "ok" ? "po_briefs" : "po_failed",
+      kind,
       repoName,
       repoPath,
       agentName: "PO agent",
-      // 제목 요약 자리에 결재 수량을 싣는다 — "📋 New product briefs · 3 proposals".
-      sessionTitle: ev.status === "ok" ? `${ev.briefCount} proposal${ev.briefCount === 1 ? "" : "s"}` : null,
+      // 새 제안이면 제목 요약 자리에 결재 수량 — "📋 New product briefs · 3 proposals".
+      sessionTitle:
+        kind === "po_briefs" ? `${ev.briefCount} proposal${ev.briefCount === 1 ? "" : "s"}` : null,
       sessionId: ev.sessionId,
-      // 성공(결재 요청)이면 세션 대신 백로그 탭으로 착지 — 결재는 백로그에서 한다.
-      // 1건이면 그 브리프 상세로 직행. 실패는 세션 딥링크 유지 (transcript 진단용).
+      // 새 제안/빈손은 백로그 탭으로 착지(결재/확인은 백로그에서). 1건이면 그 브리프 상세 직행.
+      // 실패는 세션이 있으면 그 세션 딥링크(transcript 진단), 없으면(시작 실패) 백로그 폴백.
       deepLinkPath:
-        ev.status === "ok" ? (ev.briefId ? `backlog/${ev.briefId}` : "backlog") : undefined,
+        kind === "po_briefs"
+          ? ev.briefId
+            ? `backlog/${ev.briefId}`
+            : "backlog"
+          : kind === "po_empty"
+            ? "backlog"
+            : ev.sessionId
+              ? undefined
+              : "backlog",
       deepLinkBaseUrl: d.deepLinkBaseUrl,
       // 신호원 실행 상태 한 줄 — used/실패만 싣고 off/empty(안 켬/정상 빈)는 빈 문자열로 침묵.
       signalsLine: ev.signals ? formatSignalsLine(ev.signals) : undefined,
+      // 실패 사유 — po_failed 일 때만 «Reason» 필드로.
+      reason: kind === "po_failed" ? ev.errorSummary : undefined,
     });
     const res = await postDiscordWebhook(d.webhookUrl, body);
     if (!res.ok) {
       console.warn(
-        `[notify] po discord delivery failed status=${res.status} detail=${res.detail ?? ""}`,
+        `[notify] po discord delivery failed kind=${kind} status=${res.status} detail=${res.detail ?? ""}`,
       );
     }
   } catch (e) {
@@ -369,10 +398,14 @@ export async function dispatchPoWorkflowNotification(ev: {
  * 일반 워크플로우(fleet orchestration) run 알림 — workflow/engine 의 상태 전이 훅이 호출한다.
  * PO «워크플로우로 실행» 경로(po_gate/po_failed)에서 빠져 있던, 사용자가 직접 만든 워크플로우
  * run 의 «에이전트가 멈춰 나를 기다림 / 실패» 를 폰으로 띄운다.
- *   - workflow_gate     : requires_approval 노드가 awaiting_approval 진입 (사람 승인 대기, 주황)
- *   - workflow_attention: 노드가 needs_attention (수동 개입 필요, 노랑)
- *   - workflow_failed   : run 이 failed 로 마감 (노드 하드 실패/루프 소진/재시작 reconcile, 빨강)
- *   - workflow_done     : run 이 done(성공)으로 마감 (와서 리뷰/머지하라는 완료 신호, 초록)
+ *   - workflow_gate       : requires_approval 노드가 awaiting_approval 진입 (사람 승인 대기, 주황)
+ *   - workflow_attention  : 노드가 needs_attention (수동 개입 필요, 노랑)
+ *   - workflow_failed     : run 이 failed 로 마감 (노드 하드 실패/루프 소진/재시작 reconcile, 빨강)
+ *   - workflow_done       : run 이 done(성공) + 진짜 결과 있음 (와서 리뷰/머지하라는 완료 신호, 초록)
+ *   - workflow_done_hollow: run 이 형식상 done 이지만 빈 결과/합성본이라 «진짜 결과 없이» 끝남 (노랑 «주의»)
+ *   - workflow_iteration  : 자기교정 루프가 다음 반복으로 되돌아감 (진행 카운터, 보라). iteration 으로 «· #N» 의미신호.
+ *   - workflow_check_pass : 점검(검사) 통과 (초록)
+ *   - workflow_check_fail : 점검(검사) 실패 → 루프 재시도 (빨강)
  * cancelled(사용자가 스스로 멈춘 것)는 의도된 종료라 무음 — 이 함수로 들어오지 않는다.
  * PO 경로와 같은 무인-실행 정책 — away-gating/세션 mute 무시(결재류라 away 무시), 설정 부재면
  * no-op, 절대 throw 없음. 딥링크는 workflow/<runId> 로 해당 run 캔버스에 직행한다 (iOS
@@ -380,12 +413,25 @@ export async function dispatchPoWorkflowNotification(ev: {
  * 추가됨). PO run 은 engine 이 suppressNotify 로 이 경로를 건너뛰고 po_gate 만 쏜다(이중 발화 방지).
  */
 export async function dispatchWorkflowNotification(ev: {
-  kind: "workflow_gate" | "workflow_attention" | "workflow_failed" | "workflow_done";
+  kind:
+    | "workflow_gate"
+    | "workflow_attention"
+    | "workflow_failed"
+    | "workflow_done"
+    | "workflow_done_hollow"
+    | "workflow_iteration"
+    | "workflow_check_pass"
+    | "workflow_check_fail";
   /** run 캔버스 딥링크용 — pocketsisyphus://workflow/<runId>. */
   runId: string;
   workflowTitle: string | null;
   /** 게이트/주의가 발생한 노드 제목 (있으면 제목 요약에 함께). */
   nodeTitle?: string | null;
+  /**
+   * 자기교정 루프 «반복 카운터» — workflow_iteration 에서만. 제목 요약에 `· #N` 으로 싣는
+   * 의미 신호다(본문 콘텐츠 아님 — 기존 «메타 신호만» 정책 준수). 없으면 생략.
+   */
+  iteration?: number;
   /** repo 이름 보강용 (없으면 «—»). */
   repoPath?: string | null;
 }): Promise<void> {
@@ -396,7 +442,11 @@ export async function dispatchWorkflowNotification(ev: {
 
     const wfTitle = ev.workflowTitle?.trim() || "Workflow";
     const nodeTitle = ev.nodeTitle?.trim();
-    const summary = nodeTitle ? `${wfTitle} · ${nodeTitle}` : wfTitle;
+    let summary = nodeTitle ? `${wfTitle} · ${nodeTitle}` : wfTitle;
+    // 반복 카운터는 의미 신호(숫자) — 제목 요약에 «· #N» 으로만 싣는다(본문 콘텐츠 미포함 정책 유지).
+    if (typeof ev.iteration === "number" && ev.iteration > 0) {
+      summary = `${summary} · #${ev.iteration}`;
+    }
 
     const body = buildDiscordBody({
       kind: ev.kind,
