@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base Activity theme. Compose draws the real UI; this only governs the splash window. -->
+    <style name="Theme.PocketSisyphus" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/ps_window_bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>

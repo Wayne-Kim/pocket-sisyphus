@@ -76,7 +76,7 @@ settings:
     EAGER_LINKING: NO
     EAGER_LINKING_TBDS: NO
     # 빌드 시 외부에서 override 가능 (TestFlight 스크립트가 git commit count 로 덮어씀)
-    MARKETING_VERSION: "2.22.0"
+    MARKETING_VERSION: "2.22.2"
     CURRENT_PROJECT_VERSION: "1"
 
 # Tor.framework SPM 미지원 — CocoaPods 로 통합 (Podfile 참고).
@@ -102,7 +102,11 @@ packages:
     exactVersion: 1.13.0
   Citadel:
     url: https://github.com/orlandos-nl/Citadel
-    from: 0.12.1
+    # BL-01: exact-pin (was `from: 0.12.1`). Citadel transitively resolves swift-nio-ssh from a
+    # fork (Wellz26, rev a05e6bbe) — audited benign (THREAT_MODEL §4). `from:` let a Citadel minor
+    # bump silently re-resolve a *different* fork commit (the «이동 표적» the scan flagged). Exact-pin
+    # freezes the audited supply chain; bumping Citadel is now a deliberate, re-auditable act.
+    exactVersion: 0.12.1
   Runestone:
     url: https://github.com/simonbs/Runestone
     from: 0.5.2
@@ -210,11 +214,19 @@ targets:
             CFBundleURLName: pe.wayne.pocketsisyphus.deeplink
             CFBundleURLSchemes:
               - pocketsisyphus
-        # ATS 예외 — 모든 트래픽은 Tor onion routing 안에서 흐름 (3겹 암호화 + 공개키 인증).
-        # iOS의 HTTPS 강제는 인터넷 평문 HTTP 보호 목적인데, 우리 트래픽은
-        # 절대 평문으로 인터넷에 노출되지 않음 (Tor가 emit하기 전에 onion-encrypt함).
+        # ATS(BL-03): 전역 NSAllowsArbitraryLoads 대신 «필요한 두 경로»만 연다 —
+        # ① loopback HTTP/WS(`http://127.0.0.1:<fwd>`, SSH 포워드 뒤) → NSAllowsLocalNetworking,
+        # ② `.onion` 평문 HTTP(ConnectionManager.fetchEndpoint 의 `http://<onion>/endpoint`, Tor SOCKS 경유)
+        #    → NSExceptionDomains 의 `onion` TLD 예외(NSIncludesSubdomains 로 `<base32>.onion` 매칭).
+        # 우리 트래픽은 전부 이 둘(loopback + onion) 안에 있고, 임의 인터넷 평문 HTTP 는 이제 ATS 가 막는다.
+        # 실기기(iPhone 13 mini) ATS 프로브로 검증: public http://example.com → -1022(차단·ATS 작동 증명),
+        # .onion → 비차단(예외 동작), 127.0.0.1 → 비차단(NSAllowsLocalNetworking). 앱은 정상 연결 유지 확인.
         NSAppTransportSecurity:
-          NSAllowsArbitraryLoads: true
+          NSAllowsLocalNetworking: true
+          NSExceptionDomains:
+            onion:
+              NSExceptionAllowsInsecureHTTPLoads: true
+              NSIncludesSubdomains: true
         # UIBackgroundModes/BGTaskSchedulerPermittedIdentifiers 제거 — 알림 기능
         # (BGAppRefreshTask 폴링 + 로컬 푸시) 전체 제거됨. iOS 의 알림 지연(15min~수시간)
         # 이 실용성보다 사용자 혼란이 더 컸음. 메인 앱이 fetch 모드로 깨어날 일 없음.

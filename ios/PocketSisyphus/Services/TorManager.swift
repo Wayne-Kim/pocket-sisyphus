@@ -407,6 +407,9 @@ final class TorManager: ObservableObject {
             ofItemAtPath: clientAuthDir.path
         )
         ensureCachesExcludedFromBackup(at: dataDir)
+        // BL-08: clientAuthDir(tor_client_auth) 도 백업에서 제외 — onion client-auth 평문 키가
+        // 기기 백업/iCloud 에 따라가지 않게(기존엔 dataDir 만 제외돼 이 키만 백업 노출 잔여).
+        ensureCachesExcludedFromBackup(at: clientAuthDir)
 
         // 1차 안전망 — stale lock 제거. start 직전 stopImpl 의 ④ 와 중복 안전망.
         let lock = dataDir.appendingPathComponent("lock")
@@ -550,8 +553,15 @@ final class TorManager: ObservableObject {
         let file = dir.appendingPathComponent("\(onionBase).auth_private")
         do {
             try line.write(to: file, atomically: true, encoding: .utf8)
+            // BL-08: onion client-auth x25519 키는 Tor 가 디스크 경로(ClientOnionAuthDir)를 요구해
+            // Keychain 밖 평문 파일로만 존재한다. 0600 + 파일보호 클래스를 «명시»해 백업/포렌식
+            // 노출면을 줄인다(기본도 동일 클래스지만 향후 기본값 변화·의도 명확화 차원). Tor 는
+            // 부팅(첫 잠금해제 이후) 중에만 읽으므로 completeUntilFirstUserAuthentication 으로 충분.
             try FileManager.default.setAttributes(
-                [.posixPermissions: 0o600],
+                [
+                    .posixPermissions: 0o600,
+                    .protectionKey: FileProtectionType.completeUntilFirstUserAuthentication,
+                ],
                 ofItemAtPath: file.path
             )
             NSLog("[Tor] wrote client auth: %@", file.lastPathComponent)

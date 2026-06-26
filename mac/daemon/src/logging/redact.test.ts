@@ -42,6 +42,20 @@ describe("maskSecrets — 패턴 기반", () => {
     expect(masked).not.toContain("deadbeefcafelongtoken");
   });
 
+  it('"secret." 접두 JSON 키(공인 IP·onion)를 가린다', () => {
+    const line =
+      '{"event.action":"nat.external_ip.resolve","secret.external_ipv4":"203.0.113.7"}';
+    const masked = maskSecrets(line);
+    expect(masked).toContain('"secret.external_ipv4":"***"');
+    expect(masked).not.toContain("203.0.113.7");
+    expect(masked).toContain('"event.action":"nat.external_ip.resolve"');
+
+    const onion = '{"secret.onion.address":"abcdef0123456789.onion"}';
+    const maskedOnion = maskSecrets(onion);
+    expect(maskedOnion).toContain('"secret.onion.address":"***"');
+    expect(maskedOnion).not.toContain("abcdef0123456789.onion");
+  });
+
   it("비-비밀 스택 프레임은 보존한다", () => {
     const stack =
       "Error: boom\n    at start (/Users/x/mac/daemon/src/server.ts:42:7)\n    at run (/Users/x/index.ts:10:1)";

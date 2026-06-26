@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  All daemon traffic flows over the SSH local port-forward to a loopback port; the HTTP/WS
+  on top of it is plaintext but the SSH tunnel provides the transport security. Permit
+  cleartext only to loopback — never to arbitrary hosts.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

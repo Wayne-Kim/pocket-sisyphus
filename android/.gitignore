@@ -1,0 +1,27 @@
+# Android / Gradle build artifacts
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+
+# Module build dirs
+**/build/
+
+# 릴리스 서명 — 메인테이너 전용, 절대 커밋 금지. release.keystore + keystore.properties
+# 를 반드시 안전한 곳에 백업할 것(분실 시 같은 서명으로 앱 업데이트 불가).
+/release.keystore
+*.keystore
+*.jks
+/keystore.properties
+
+# Firebase 연동 산출물 — 서비스 계정 키/설정은 공개 repo 미노출.
+/app/google-services.json
+firebase-service-account*.json
+.firebaserc

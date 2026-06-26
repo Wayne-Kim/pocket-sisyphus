@@ -260,22 +260,19 @@ describe("writeConfig — 디렉터리 자동생성 + 0600 + 라운드트립", (
     expect(mode).toBe(0o600);
   });
 
-  it("기존 0644 파일을 덮어쓰면 내용은 갱신되지만 권한은 «좁혀지지 않는다» (특성 고정)", () => {
-    // fs.writeFileSync 의 mode 옵션은 O_CREAT(=새 파일 생성) 시점에만 적용되고, 이미 존재하는
-    // 파일에는 chmod 를 하지 않는다(Node 의 POSIX open 의미론). 따라서 이미 느슨하게 만들어진
-    // 0644 파일은 writeConfig 가 덮어써도 0600 으로 «좁혀지지 않는다».
-    //   - 운영상은 안전: config.json 은 항상 writeConfig 가 «최초 생성» 하므로 0600 으로
-    //     태어나고(위 테스트), 이 «기존 느슨한 파일» 경로는 실제로 밟히지 않는다.
-    //   - 이 단언은 현재 동작의 «특성 고정» 이다. 누가 writeConfig 에 명시 chmod 를 더해
-    //     기존 파일도 0600 으로 조이도록 «강화» 하면 이 테스트가 빨갛게 되어 의식적 갱신을 강제한다.
+  it("기존 0644 파일을 덮어쓰면 0600 으로 «좁혀진다» (BL-10 — 매 기록마다 chmod 보정)", () => {
+    // fs.writeFileSync 의 mode 옵션은 O_CREAT(=새 파일 생성) 시점에만 적용되고 기존 파일
+    // 재기록 시엔 무시된다(Node 의 POSIX open 의미론). 그래서 과거(옛 버전·수동 생성·umask)에
+    // 느슨하게 만들어진 config.json 은 그냥 두면 0644 인 채 장기 비밀(ASC .p8 등)을 품는다.
+    // BL-10 으로 writeConfig 가 매 기록마다 fs.chmodSync(…,0o600) 를 보정하므로 이제 «좁혀진다».
     ensureConfigDir();
     fs.writeFileSync(CONFIG_FILE, "{}");
     fs.chmodSync(CONFIG_FILE, 0o644); // umask 무관하게 전제를 정확히 0644 로 고정
     expect(fs.statSync(CONFIG_FILE).mode & 0o777).toBe(0o644);
 
     writeConfig(baseCfg({ port: 4321 }));
-    expect(fs.statSync(CONFIG_FILE).mode & 0o777).toBe(0o644); // 권한은 그대로
-    expect(readConfig()).toEqual(baseCfg({ port: 4321 })); // 내용은 갱신됨
+    expect(fs.statSync(CONFIG_FILE).mode & 0o777).toBe(0o600); // 0644 → 0600 으로 보정됨
+    expect(readConfig()).toEqual(baseCfg({ port: 4321 })); // 내용도 갱신됨
   });
 
   it("writeConfig→readConfig 라운드트립이 동일 — 민감 필드(token/tokenHash/localAdminSecret) 무손실", () => {

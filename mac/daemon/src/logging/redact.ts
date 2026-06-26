@@ -63,6 +63,10 @@ export function maskSecrets(text: unknown, knownSecrets: string[] = []): string 
     new RegExp(`\\b(${SECRET_KEYS})=[^&\\s"',]+`, "gi"),
     `$1=${REDACTED}`,
   );
+  // `secret.` 접두가 붙은 JSON 키 일반 — server.ts 가 공인 IP·onion 주소를
+  // `"secret.external_ipv4"`·`"secret.onion.address"` 키로 unified.log(JSON Lines)에 남기지만
+  // 위 SECRET_KEYS 목록엔 없어 누락됐다. 접두만으로 값 전체를 가린다(프라이버시: 집 공인 IP·서버 신원).
+  out = out.replace(/("secret\.[^"]*"\s*:\s*)"[^"]*"/gi, `$1"${REDACTED}"`);
 
   return out;
 }

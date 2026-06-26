@@ -1,0 +1,19 @@
+<!-- Monochrome status-bar icon (white silhouette, system-tinted): a boulder on a slope. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFFFF">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M4,18 L20,18 L20,20 L4,20 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M5,18.5 L18,11"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.6" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M15,8 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 Z" />
+</vector>

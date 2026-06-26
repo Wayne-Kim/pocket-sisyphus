@@ -120,6 +120,7 @@ scripts/deploy-testflight.sh
 scripts/deploy-web.sh
 scripts/store-shot.sh
 scripts/bump-version.sh
+scripts/dist-android.sh
 
 # 배포/심사 export 설정 — App Store 제출·Developer ID 릴리스 export 전용(미추적 deploy
 # 스크립트만 사용; dev 빌드는 안 씀). 배포/심사 관련이라 공유하지 않는다.
@@ -134,3 +135,9 @@ mac/build-config/ExportOptions-DeveloperID.plist
 
 # 메인테이너 전용 운영 문서 (배포 자격증명 세팅·서명·업로드 절차) — 공개 안 함.
 docs/ops/
+
+# 보안 점검 워크플로 산출물 (위협 표면 스캔·트리아지·백로그 초안) — 전체 취약점
+# 목록·파일:라인이 담겨 공개 repo 에 노출되면 공격 로드맵이 되므로 추적 제외.
+/security-findings.md
+/security-backlog.md
+/triaged-findings.md

@@ -96,6 +96,22 @@ if [ ! -d "$NODE_EXTRACT_DIR/bin" ]; then
     if [ ! -f "$NODE_TARBALL_PATH" ]; then
         curl -sL "$NODE_URL" -o "$NODE_TARBALL_PATH"
     fi
+    # BL-06: 공식 SHASUMS256.txt 와 대조 — 무결성 앵커를 TLS 단독이 아니라 «게시된 해시»로
+    # 끌어올린다. 손상된 CDN/자산·빌드머신 MITM 시 변조 타르볼을 빌드 실패로 차단.
+    EXPECTED_SHA="$(curl -sL "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt" \
+        | awk -v f="$NODE_TARBALL" '$2 == f { print $1 }')"
+    if [ -z "$EXPECTED_SHA" ]; then
+        red "Node SHASUMS256.txt 에서 $NODE_TARBALL 해시를 못 찾음 — 무결성 검증 불가"
+        rm -f "$NODE_TARBALL_PATH"
+        exit 1
+    fi
+    ACTUAL_SHA="$(shasum -a 256 "$NODE_TARBALL_PATH" | awk '{ print $1 }')"
+    if [ "$EXPECTED_SHA" != "$ACTUAL_SHA" ]; then
+        red "Node 타르볼 SHA-256 불일치! expected=$EXPECTED_SHA actual=$ACTUAL_SHA"
+        rm -f "$NODE_TARBALL_PATH"
+        exit 1
+    fi
+    green "✔ Node 타르볼 SHA-256 검증 통과 ($NODE_TARBALL)"
     tar xJf "$NODE_TARBALL_PATH" -C "$CACHE_DIR"
 fi
 

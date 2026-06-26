@@ -15,6 +15,21 @@ vi.mock("../nat/external-ip.js", () => ({
   getCachedExternalIPv4: vi.fn(() => ({ ipv4: "203.0.113.5", fetchedAt: 0 })),
 }));
 
+// /endpoint 는 endpointToken(=daemon token) bearer 를 요구한다(BL-04). auth.ts 의
+// getCachedConfig → readConfig 가 매칭 tokenHash 를 돌려주도록 config 를 모킹한다.
+const TOKEN = "test-endpoint-token";
+const AUTH = { Authorization: `Bearer ${TOKEN}` };
+vi.mock("../config.js", async (importActual) => {
+  const actual = await importActual<typeof import("../config.js")>();
+  const crypto = await import("node:crypto");
+  // vi.mock 은 파일 최상단으로 호이스트되므로 위 TOKEN 상수를 참조할 수 없다 — 리터럴 고정.
+  const tokenHash = crypto
+    .createHash("sha256")
+    .update("test-endpoint-token")
+    .digest("hex");
+  return { ...actual, readConfig: () => ({ tokenHash }) as never };
+});
+
 function baseDeps(over: Partial<EndpointDeps> = {}): EndpointDeps {
   return {
     getOnionAddress: () => "abc123.onion",
@@ -67,9 +82,19 @@ describe("routes/endpoint LAN 전용", () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
-  it("기본(off): direct_lan + 공인/onion 을 함께 광고", async () => {
+  it("bearer 토큰이 없으면 401 (BL-04 — 사용자명·공인 IP 노출 차단)", async () => {
     const app = endpointRoute(baseDeps());
     const res = await app.request("/endpoint");
+    expect(res.status).toBe(401);
+    const wrong = await app.request("/endpoint", {
+      headers: { Authorization: "Bearer wrong-token" },
+    });
+    expect(wrong.status).toBe(401);
+  });
+
+  it("기본(off): direct_lan + 공인/onion 을 함께 광고", async () => {
+    const app = endpointRoute(baseDeps());
+    const res = await app.request("/endpoint", { headers: AUTH });
     expect(res.status).toBe(200);
     const body = (await res.json()) as { endpoints: { type: string }[] };
     const types = body.endpoints.map((e) => e.type);
@@ -81,7 +106,7 @@ describe("routes/endpoint LAN 전용", () => {
 
   it("lanOnly: direct_lan «만» — 공인/onion 을 후보에서 제거 (fail-closed)", async () => {
     const app = endpointRoute(baseDeps({ isLanOnly: () => true }));
-    const res = await app.request("/endpoint");
+    const res = await app.request("/endpoint", { headers: AUTH });
     expect(res.status).toBe(200);
     const body = (await res.json()) as { endpoints: { type: string; host: string }[] };
     const types = new Set(body.endpoints.map((e) => e.type));

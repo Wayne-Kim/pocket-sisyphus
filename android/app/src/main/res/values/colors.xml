@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- accent = purple, the unified brand/selection token (mirrors iOS AccentColor). -->
+    <color name="ps_accent">#FF7C5CFF</color>
+    <color name="ic_launcher_background">#FF1B1230</color>
+    <color name="ps_window_bg">#FF0E0B16</color>
+</resources>

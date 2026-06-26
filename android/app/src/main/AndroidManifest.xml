@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- On-device voice dictation (Vosk) — records a short push-to-talk clip, transcribed locally. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Gate the device-attestation Keystore key behind biometrics (lost-phone protection). -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- Android 13+ runtime notification permission — agent «waiting» local notifications. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <uses-feature
+        android:name="android.hardware.camera.any"
+        android:required="false" />
+
+    <application
+        android:name=".PsApp"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.PocketSisyphus">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|density|fontScale"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.PocketSisyphus">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Handles the agent-wait notification «진행/중지» actions (not exported — internal only). -->
+        <receiver
+            android:name=".data.AgentWaitActionReceiver"
+            android:exported="false" />
+
+        <!-- In-process Tor (Guardian Project). Bound locally; not exported. -->
+        <service
+            android:name="org.torproject.jni.TorService"
+            android:exported="false" />
+    </application>
+
+</manifest>

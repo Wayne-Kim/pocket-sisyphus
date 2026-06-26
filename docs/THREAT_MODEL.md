@@ -106,6 +106,17 @@ reference in [CAPABILITY_CAPS.md](CAPABILITY_CAPS.md), and this threat model rec
    Keychain, code signing/Gatekeeper/notarization, TCC permission gates.
 4. **The bundled OSS dependencies are honest** — Tor, OpenSSH portable, Citadel (swift-nio-ssh), Node, IPtProxy.
    Supply-chain tampering is a separate threat (this model assumes we embed those «known-good» builds).
+   - **NIOSSH provenance (audited).** Citadel (pinned `from: 0.12.1`) resolves `swift-nio-ssh` not from
+     `apple/swift-nio-ssh` but from the fork `Wellz26/swift-nio-ssh` pinned at revision `a05e6bbe` (0.3.6) in
+     `Package.resolved`. This is *by Citadel's design* — the maintainer keeps patches Apple has not merged in 4+ years
+     (Citadel issue #116). Audit result: the pinned commit is `Joannis/swift-nio-ssh` (the Citadel author's fork) plus a
+     single one-line `Package.swift` change (a Mac-Catalyst NIO product import) — **zero crypto/protocol source changes**;
+     its base is `apple/swift-nio-ssh` 0.3.3 + 12 Apple-team-authored PRs (banners, padding-byte hardening, `Sendable`).
+     The pin is also **load-bearing** for the live-screen direct-tcpip teardown workaround. Therefore we keep the
+     **exact reviewed pin** rather than floating it — Citadel is now `exactVersion: 0.12.1` (was `from:`) so a minor
+     bump cannot silently re-resolve a different fork commit; bumping it is a deliberate, re-auditable act. Migrating to
+     upstream is blocked (no matching version + drops the workaround) and would require a full on-device SSH
+     re-verification. Recommended follow-up: mirror the fork under our own org so the reviewed commit cannot disappear.
 5. **The code-agent CLI and its provider are chosen and trusted by the user.** Pocket Sisyphus only spawns the CLI
    and does not relay model traffic (§3.6) — trusting the CLI/provider is the user's responsibility.
 6. **The cryptographic primitives are not broken** — Ed25519, x25519, ECDHE, SSH/Tor v3 protocols.

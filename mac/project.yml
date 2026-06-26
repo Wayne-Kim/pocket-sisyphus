@@ -41,7 +41,7 @@ settings:
     # Info.plist 가 $(MARKETING_VERSION) / $(CURRENT_PROJECT_VERSION) 로 치환해 받는다.
     # iOS 와 동일한 single source of truth — 버전 bump 절차가 양쪽 yml 의
     # MARKETING_VERSION 만 갱신한다.
-    MARKETING_VERSION: "2.22.0"
+    MARKETING_VERSION: "2.22.2"
     CURRENT_PROJECT_VERSION: "1"
 
 # Sparkle — Developer ID + DMG 직접 배포에 표준. 앱 안에서 «업데이트 확인»

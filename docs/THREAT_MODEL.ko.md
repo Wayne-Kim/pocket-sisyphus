@@ -106,6 +106,15 @@ Pocket Sisyphus 의 약속은 **«맥에서 돌아가는 코드 에이전트 CLI
    Keychain, 코드사이닝/Gatekeeper/notarization, TCC 권한 게이트.
 4. **번들 OSS 의존성이 정직하다** — Tor, OpenSSH portable, Citadel(swift-nio-ssh), Node, IPtProxy.
    공급망 변조는 별도 위협(이 모델은 우리가 그 «알려진 양품» 을 빌드에 박는다고 가정).
+   - **NIOSSH 출처(감사 완료).** Citadel(`from: 0.12.1` 핀)은 `swift-nio-ssh` 를 `apple/swift-nio-ssh` 가 아니라
+     포크 `Wellz26/swift-nio-ssh` 의 revision `a05e6bbe`(0.3.6)로 `Package.resolved` 에 고정해 끌어온다. 이는
+     *Citadel 의 설계* — 메인테이너가 Apple 이 4년+ 미병합한 패치를 유지하기 때문(Citadel issue #116). 감사 결과:
+     고정 커밋은 `Joannis/swift-nio-ssh`(Citadel 저자 포크) + `Package.swift` 한 줄 변경(Mac Catalyst NIO product
+     import)뿐이고 **crypto/프로토콜 소스 변경 0**; 베이스는 `apple/swift-nio-ssh` 0.3.3 + Apple 팀이 작성한 PR 12개
+     (banner·padding-byte 강화·`Sendable`). 이 핀은 라이브 화면 direct-tcpip teardown 우회의 **load-bearing** 이기도
+     하다. 따라서 floating 하지 않고 **감사된 정확한 핀** 을 유지한다 — Citadel 을 `exactVersion: 0.12.1`(기존 `from:`)
+     로 고정해 minor bump 이 다른 포크 커밋을 조용히 재해석하지 못하게 했다(bump 은 의도적·재감사 행위). 상류 이동은
+     막혀 있고(범위 불일치 + 우회 깨짐) 실기기 SSH 전면 재검증 필요. 권장 후속: 감사된 커밋이 사라지지 않도록 포크를 우리 org 로 미러링.
 5. **코드 에이전트 CLI 와 그 제공자는 사용자가 선택해 신뢰한다.** Pocket Sisyphus 는 CLI 를 spawn 만
    하고 모델 트래픽을 중계하지 않는다(§3.6) — CLI/제공자 신뢰는 사용자 몫.
 6. **암호 프리미티브는 깨지지 않는다** — Ed25519, x25519, ECDHE, SSH/Tor v3 프로토콜.

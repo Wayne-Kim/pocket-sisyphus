@@ -18,19 +18,20 @@
   "author": "",
   "license": "ISC",
   "type": "module",
+    "_comment_pin_BL05": "보안 민감 표면(@hono/node-server·better-sqlite3·hono·node-pty·ws)은 exact-pin (^ 제거) — lockfile 없는 npm install/update 가 향후/손상된 마이너·패치를 끌어오지 못하게. 빌드/CI 는 npm ci.",
   "dependencies": {
-    "@hono/node-server": "^2.0.5",
+    "@hono/node-server": "2.0.5",
     "@xterm/addon-serialize": "^0.14.0",
     "@xterm/headless": "^6.0.0",
-    "better-sqlite3": "^12.11.1",
+    "better-sqlite3": "12.11.1",
     "croner": "^9.1.0",
-    "hono": "^4.12.26",
+    "hono": "4.12.26",
     "nat-api": "^0.3.1",
-    "node-pty": "^1.1.0",
+    "node-pty": "1.1.0",
     "pino": "^10.3.1",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
-    "ws": "^8.21.0"
+    "ws": "8.21.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
@@ -41,5 +42,11 @@
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"
+  },
+  "_comment_overrides_BL02": "nat-api(최신 0.3.1)의 취약한 전이 의존성을 패치본으로 강제. xml2js 는 nat-api 가 new Parser().parseString() (0.1↔0.6 호환 API)만 쓰므로 0.6 으로 올려도 UPnP 파싱 동작 동일하면서 prototype-pollution CVE 제거. tough-cookie/qs 는 request 의 쿠키/쿼리 경로(호환 유지).",
+  "overrides": {
+    "xml2js": "^0.6.2",
+    "tough-cookie": "^4.1.4",
+    "qs": "^6.14.1"
   }
 }

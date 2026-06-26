@@ -321,6 +321,13 @@ export function readConfig(): DaemonConfig | null {
 export function writeConfig(cfg: DaemonConfig): void {
   ensureConfigDir();
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), { mode: 0o600 });
+  // `mode` 는 open(O_CREAT) 에 전달되어 «생성 시」에만 적용된다 — 기존 파일 재기록 땐
+  // 무시되므로(과거 느슨한 권한·umask·수동 생성), authorized_keys 처럼 매번 0600 으로 보정한다.
+  try {
+    fs.chmodSync(CONFIG_FILE, 0o600);
+  } catch {
+    // 권한 보정 실패는 치명적이지 않음 — 다음 기록에서 재시도.
+  }
 }
 
 /** 유한 정수로 강제 + [lo,hi] 클램프. 비숫자/비유한은 fallback. */

@@ -9,6 +9,7 @@
 // 명확히 한다.
 
 import { Hono } from "hono";
+import { bearerAuth } from "../auth.js";
 import {
   getExternalIPv4,
   getGlobalIPv6,
@@ -60,6 +61,12 @@ const ENDPOINT_TTL_SEC = 5 * 60;
 
 export function endpointRoute(deps: EndpointDeps) {
   const app = new Hono();
+
+  // 2차 방어선(BL-04): onion client-auth(x25519)가 Tor 계층에서 «QR 보유자»로 1차 게이트하지만,
+  // 페어링 페이로드의 endpointToken(= daemon token)을 bearer 로도 검증한다. 클라이언트(iOS
+  // ConnectionManager·Android EndpointResolver)는 이미 `Authorization: Bearer <endpointToken>` 을
+  // 보내므로 호환 깨짐 없음 — 토큰 없이/틀린 토큰이면 401 로 사용자명·공인 IP·호스트키 지문 노출을 막는다.
+  app.use("*", bearerAuth);
 
   app.get("/endpoint", async (c) => {
     const onion = deps.getOnionAddress();
